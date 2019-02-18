@@ -1,4 +1,5 @@
 import inspect
+import enum
 import sys
 import os
 
@@ -10,10 +11,14 @@ def split_path(path):
         List[str]: A list of all the element in this path.
     """
     head, tail = os.path.split(path)
-    if head == path:
-        return [head]
-    else:
-        return split_path(head) + [tail]
+    return [head] if head == path else split_path(head) + [tail]
+
+class Color(enum.Enum):
+    DEFAULT = "0m"
+    GRAY = "90m"
+    GREEN = "92m"
+    PURPLE = "95m"
+    RED = "31m"
 
 class Logger(object):
     VERBOSE = 0
@@ -34,13 +39,11 @@ class Logger(object):
         self.severity = severity
         self.path_depth = path_depth
 
-    @staticmethod
-    def severity_color_prefix(sev):
-        prefix = "\033[1;"
-        color = {Logger.VERBOSE: "90m", Logger.DEBUG: "90m", Logger.INFO: "92m", Logger.WARNING: "95m", Logger.ERROR: "31m"}[sev]
-        return prefix + color if color else ""
-
     def assemble_message(self, message, stack_depth, prefix):
+        # Disable logging when running with -O.
+        if not __debug__:
+            return None
+
         module = inspect.getmodule(sys._getframe(stack_depth))
         # Handle logging from the top-level of a module.
         if not module:
@@ -53,23 +56,24 @@ class Logger(object):
             filename = os.path.join(*split_path(filename)[-self.path_depth:])
             return f"{prefix} [{filename}:{sys._getframe(stack_depth).f_lineno}] {message}"
 
-    def log(self, message, severity):
-        if severity >= self.severity and not self.severity == Logger.SILENT:
-            print("{:}{:}\033[0m".format(Logger.severity_color_prefix(severity), message))
+    def log(self, message, severity, color=Color.DEFAULT):
+        # Disable logging when running with -O.
+        if __debug__ and severity >= self.severity and not self.severity == Logger.SILENT:
+            print("\033[1;{:}{:}\033[0m".format(color.value, message))
 
-    def verbose(self, message):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="V"), Logger.VERBOSE)
+    def verbose(self, message, color=Color.GRAY):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="V"), severity=Logger.VERBOSE, color=color)
 
-    def debug(self, message):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="D"), Logger.DEBUG)
+    def debug(self, message, color=Color.GRAY):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="D"), severity=Logger.DEBUG, color=color)
 
-    def info(self, message):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="I"), Logger.INFO)
+    def info(self, message, color=Color.GREEN):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="I"), severity=Logger.INFO, color=color)
 
-    def warning(self, message):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="W"), Logger.WARNING)
+    def warning(self, message, color=Color.PURPLE):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="W"), severity=Logger.WARNING, color=color)
 
-    def error(self, message):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), Logger.ERROR)
+    def error(self, message, color=Color.RED):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), severity=Logger.ERROR, color=color)
 
 G_LOGGER = Logger()
