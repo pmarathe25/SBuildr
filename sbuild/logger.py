@@ -1,9 +1,10 @@
+from typing import List
 import inspect
 import enum
 import sys
 import os
 
-def split_path(path):
+def split_path(path) -> List[str]:
     """
     Splits the given path into all its components.
 
@@ -39,10 +40,10 @@ class Logger(object):
         self.severity = severity
         self.path_depth = path_depth
 
-    def assemble_message(self, message, stack_depth, prefix):
+    def assemble_message(self, message, stack_depth, prefix) -> str:
         # Disable logging when running with -O.
         if not __debug__:
-            return None
+            return ""
 
         module = inspect.getmodule(sys._getframe(stack_depth))
         # Handle logging from the top-level of a module.

@@ -3,22 +3,21 @@ import sbuild.graph.node as node
 
 # A dummy node that sets one of its attributes to True when execute is called.
 class DummyNode(node.Node):
-    def __init__(self, timestamp, inputs=[], name=""):
-        super().__init__(timestamp, inputs, name)
+    def __init__(self, inputs=[], name=""):
+        super().__init__(inputs=inputs, name=name)
         self.updated = False
 
     def execute(self):
-        # Set this node to be as new as the newest input + 1.
-        self.timestamp = max([inp.timestamp for inp in self.inputs]) + 1
         self.updated = True
+        super().execute()
 
 class TestNodes(unittest.TestCase):
     def linear_graph(self):
         # Constructs a linear graph:
         # A -> B -> C
-        A = DummyNode(0, name="A")
-        B = DummyNode(0, inputs=set([A]), name="B")
-        C = DummyNode(0, inputs=set([B]), name="C")
+        A = DummyNode(name="A")
+        B = DummyNode(inputs=set([A]), name="B")
+        C = DummyNode(inputs=set([B]), name="C")
         return A, B, C
 
     def test_linear_outputs_correct(self):
@@ -41,10 +40,10 @@ class TestNodes(unittest.TestCase):
         # A     D (output)
         #   \  /
         #    C
-        A = DummyNode(0, name="A")
-        B = DummyNode(0, inputs=set([A]), name="B")
-        C = DummyNode(0, inputs=set([A]), name="C")
-        D = DummyNode(0, inputs=set([B, C]), name="D")
+        A = DummyNode(name="A")
+        B = DummyNode(inputs=set([A]), name="B")
+        C = DummyNode(inputs=set([A]), name="C")
+        D = DummyNode(inputs=set([B, C]), name="D")
         return A, B, C, D
 
     def test_diamond_one_hop_updates(self):
