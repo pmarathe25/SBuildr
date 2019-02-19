@@ -39,13 +39,15 @@ class SourceNode(PathNode):
         super().add_input(node)
 
 class ObjectNode(PathNode):
-    def __init__(self, inputs: Set[SourceNode], compiler: Compiler, opts: Set[str]=[]):
+    def __init__(self, inputs: Set[SourceNode], compiler: Compiler, output_dir: str, opts: Set[str]=[]):
         assert len(inputs) <= 1, "ObjectNodes can only have a single SourceNode as an input."
         self.opts = opts
         self.compiler = compiler
         # Get the first element of the set.
         self.source_node = next(iter(inputs))
-        path = f"{os.path.splitext(self.source_node.path)[0]}.{compiler.signature(self.source_node.dirs, opts)}.o"
+        source_name = os.path.splitext(os.path.basename(self.source_node.path))[0]
+        filename = f"{source_name}.{compiler.signature(self.source_node.dirs, opts)}.o"
+        path = os.path.join(output_dir, filename)
         super().__init__(path, inputs)
 
     def add_input(self, node: SourceNode):

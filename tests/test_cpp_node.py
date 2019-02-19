@@ -28,7 +28,7 @@ class TestCppNodes(unittest.TestCase):
         source_path = os.path.join(TEST_PROJECT_ROOT, "src", f"{source_name}.cpp")
         source_node = cpp.SourceNode(path=source_path, inputs=set([header_node]))
         opts = set(["--std=c++17"])
-        object_node = cpp.ObjectNode(inputs=set([source_node]), compiler=compiler.clang, opts=opts)
+        object_node = cpp.ObjectNode(inputs=set([source_node]), compiler=compiler.clang, output_dir=TEST_PROJECT_BUILD, opts=opts)
         return object_node
 
     def test_single_source_node_has_dirs(self):
