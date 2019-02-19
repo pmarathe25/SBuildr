@@ -3,6 +3,7 @@ import sbuild.utils as utils
 from typing import List, Dict, Set
 import subprocess
 import enum
+import os
 
 class Flags(enum.Flag):
     COMPILE_ONLY = 1
@@ -34,7 +35,9 @@ class Compiler(object):
             str: A unique signature for the provided inputs.
         """
         # The signature is everything that makes the resulting object file unique - i.e. compiler, input file, include directories and compile options.
-        return utils.frozen_hash(set([self.executable]) | opts | include_dirs)
+        include_dirs = set([os.path.realpath(dir) for dir in include_dirs])
+        sig = sorted(set([self.executable]) | opts | include_dirs)
+        return utils.str_hash(sig)
 
     def compile(self, input_file: str, output_file, include_dirs: Set[str]=[], opts: Set[str]=[]):
         """

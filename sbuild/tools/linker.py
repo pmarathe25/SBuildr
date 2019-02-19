@@ -1,5 +1,6 @@
-from sbuild.logger import G_LOGGER
 from sbuild.tools.language import Language
+from sbuild.logger import G_LOGGER
+import sbuild.utils as utils
 from typing import List, Dict, Set
 import subprocess
 import enum
@@ -48,8 +49,10 @@ class Linker(object):
         Returns:
             str: A unique signature for the provided inputs.
         """
-        # The signature is everything that makes the resulting object file unique - i.e. linker, input file, link directories and compile options.
-        return utils.frozen_hash(set([self.executable]) | opts | link_dirs | set([language, shared]))
+        # The signature is everything that makes the resulting object file unique - i.e. linker, input file, link directories and linker options.
+        link_dirs = set([os.path.realpath(dir) for dir in link_dirs])
+        sig = sorted(set([self.executable]) | opts | link_dirs | set([str(language), str(shared)]))
+        return utils.str_hash(sig)
 
     def link(self, input_files: Set[str], output_file, link_dirs: Set[str]=[], opts: Set[str]=[], language=Language.CPP, shared=False):
         """

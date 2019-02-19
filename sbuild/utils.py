@@ -1,9 +1,11 @@
+from sbuild.logger import G_LOGGER
+import hashlib
 import sys
 import os
 
-def frozen_hash(obj) -> str:
+def str_hash(obj) -> str:
     """
-    Returns a string representation of a hash of a frozen set constructed from the specified object.
+    Returns a string representation of the hash of a string constructed from the specified object.
 
     Args:
         obj (object): The object to hash.
@@ -11,7 +13,11 @@ def frozen_hash(obj) -> str:
     Returns:
         str: The resulting hash.
     """
-    return f"{hash(frozenset(obj)) % ((sys.maxsize + 1) * 2)}"
+    in_str = " ".join(obj).strip()
+    generated_hash = hashlib.md5(in_str.encode()).hexdigest()
+    G_LOGGER.verbose(f"Generated hash {generated_hash} from '{in_str}'")
+    return generated_hash
+
 
 def timestamp(path) -> int:
     """
