@@ -21,6 +21,7 @@ class Linker(object):
             executable (str): The linker binary to use.
             flags (Dict[Flags, str]): A mapping of Flags to their respective command-line strings.
         """
+        # TODO: FIXME: Add external libraries as PathNode dependencies to linked targets.
         def find_libcpp():
             # Prefer libc++, but fall back to libstdc++ if needed.
             try:

@@ -36,6 +36,16 @@ class Node(object):
     def __repr__(self):
         return f"{self} (at {hex(id(self))})"
 
+    def dependency_graph_str(self, tab_depth=0):
+        """
+        Returns a string representation of the dependency graph for this node.
+        """
+        tab = '\t'
+        out = f"{tab * tab_depth}{self.name}\n"
+        for inp in self.inputs:
+            out += f"{inp._tabbed_dependency_str(tab_depth + 1)}\n"
+        return out
+
     def add_input(self, node: Node):
         """
         Adds an input to this node. Each node is responsible for updating the `outputs` value of its inputs.
@@ -70,7 +80,6 @@ class Node(object):
             inp.build()
 
         if self.needs_update():
-            G_LOGGER.debug(f"{self} out of date, executing.")
             self.execute()
             return True
         return False

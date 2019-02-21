@@ -9,6 +9,10 @@ import os
 class HeaderNode:
     pass
 
+# TODO: dirs could be specified from a higher level instead of being the dirname of the tracked file.
+# For example, if a source file includes a header using a longer path i.e. include <path/to/my/header.h>,
+# then the SOURCE file should have an include dir pointing to path/to/my/../../..
+# IMPORTANT: Finally, execute can be used to propagate the paths up, rather than making every node stateful.
 class HeaderNode(PathNode):
     def __init__(self, path: str, inputs: Set[HeaderNode]=[]):
         """
