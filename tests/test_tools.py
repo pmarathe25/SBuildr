@@ -62,14 +62,6 @@ class TestCompilers(unittest.TestCase):
                 self.assertTrue(os.path.exists(out_exec))
                 subprocess.run([out_exec], check=True, capture_output=True)
 
-    def test_compiler_hashes_match(self):
-        for comp in TestCompilers.compilers:
-            with self.subTest():
-                include_dirs = set(["some/", "fake/", "directories/"])
-                include_dirs_equivalent = set(["some", "fake", "directories"])
-                opts = set(["-march=native", "--std=c++17"])
-                self.assertEqual(comp.signature(include_dirs, opts), comp.signature(include_dirs_equivalent, opts))
-
     def test_linker_hashes_match(self):
         for link in TestCompilers.linkers:
             with self.subTest():

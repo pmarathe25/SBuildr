@@ -16,31 +16,31 @@ class TestCppNodes(unittest.TestCase):
         os.makedirs(os.path.join(TEST_PROJECT_BUILD, "libs"), exist_ok=True)
 
     def build_utils_node(self):
-        utils_header_node = cpp.HeaderNode(path=os.path.join(TEST_PROJECT_ROOT, "include", "utils.hpp"))
+        header_file = os.path.join(TEST_PROJECT_ROOT, "include", "utils.hpp")
+        utils_header_node = cpp.SourceNode(path=header_file)
         return utils_header_node
 
     def build_test_node(self, utils_header_node):
-        test_header_node = cpp.HeaderNode(path=os.path.join(TEST_PROJECT_ROOT, "test", "test.hpp"), inputs=set([utils_header_node]))
+        header_file = os.path.join(TEST_PROJECT_ROOT, "test", "test.hpp")
+        test_header_node = cpp.SourceNode(path=header_file, dirs=[os.path.join(TEST_PROJECT_ROOT, "include")], inputs=set([utils_header_node]))
         return test_header_node
 
     def build_object_graph(self, source_name, utils_header_node):
-        header_node = cpp.HeaderNode(path=os.path.join(TEST_PROJECT_ROOT, "include", f"{source_name}.hpp"), inputs=set([utils_header_node]))
+        header_node = cpp.SourceNode(path=os.path.join(TEST_PROJECT_ROOT, "include", f"{source_name}.hpp"), dirs=[os.path.join(TEST_PROJECT_ROOT, "include")], inputs=set([utils_header_node]))
         source_path = os.path.join(TEST_PROJECT_ROOT, "src", f"{source_name}.cpp")
-        source_node = cpp.SourceNode(path=source_path, inputs=set([header_node]))
+        source_node = cpp.SourceNode(path=source_path, dirs=[os.path.join(TEST_PROJECT_ROOT, "include")], inputs=set([header_node]))
         opts = set(["--std=c++17"])
-        object_node = cpp.ObjectNode(inputs=set([source_node]), compiler=compiler.clang, output_dir=TEST_PROJECT_BUILD, opts=opts)
+        comp = compiler.clang
+        output_path = os.path.join(TEST_PROJECT_BUILD, f"{source_name}.{comp.signature(opts)}.o")
+        object_node = cpp.ObjectNode(inputs=set([source_node]), compiler=comp, output_path=output_path, opts=opts)
         return object_node
-
-    def test_single_source_node_has_dirs(self):
-        utils_header_node = self.build_utils_node()
-        self.assertTrue(os.path.join(TEST_PROJECT_ROOT, "include") in utils_header_node.dirs)
 
     def test_nested_source_node_has_dirs(self):
         utils_header_node = self.build_utils_node()
         # This header should include the
         test_header_node = self.build_test_node(utils_header_node)
-        self.assertTrue(os.path.join(TEST_PROJECT_ROOT, "include") in test_header_node.dirs)
-        self.assertTrue(os.path.join(TEST_PROJECT_ROOT, "test") in test_header_node.dirs)
+        test_header_node.build()
+        self.assertTrue(os.path.join(TEST_PROJECT_ROOT, "include") in test_header_node.all_dirs)
 
     def test_factorial_object_node_compiles(self):
         # Nested header dependency.

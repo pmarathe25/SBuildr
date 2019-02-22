@@ -22,7 +22,7 @@ class Compiler(object):
         self.executable = executable
         self.flags = flags
 
-    def signature(self, include_dirs: Set[str]=[], opts: Set[str]=[]) -> str:
+    def signature(self, opts: Set[str]=[]) -> str:
         """
         Generates a signature for a given set of options.
         If two signatures are the same for an input file, it means the resulting object file(s) would be identical.
@@ -35,8 +35,7 @@ class Compiler(object):
             str: A unique signature for the provided inputs.
         """
         # The signature is everything that makes the resulting object file unique - i.e. compiler, input file, include directories and compile options.
-        include_dirs = set([os.path.realpath(dir) for dir in include_dirs])
-        sig = sorted(set([self.executable]) | opts | include_dirs)
+        sig = sorted(set([self.executable]) | opts)
         return utils.str_hash(sig)
 
     def compile(self, input_file: str, output_file, include_dirs: Set[str]=[], opts: Set[str]=[]):

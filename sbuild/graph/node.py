@@ -43,7 +43,7 @@ class Node(object):
         tab = '\t'
         out = f"{tab * tab_depth}{self.name}\n"
         for inp in self.inputs:
-            out += f"{inp._tabbed_dependency_str(tab_depth + 1)}\n"
+            out += f"{inp.dependency_graph_str(tab_depth + 1)}\n"
         return out
 
     def add_input(self, node: Node):
@@ -79,6 +79,12 @@ class Node(object):
         for inp in self.inputs:
             inp.build()
 
+        self.update()
+
+    def update(self):
+        """
+        Executes this node, but only if an update is required, as indicated by `self.needs_update()`
+        """
         if self.needs_update():
             self.execute()
             return True
@@ -86,11 +92,18 @@ class Node(object):
 
     def execute(self):
         """
-        Unconditionally execute this node and update its timestamp accordingly.
+        This function should put the node in a state where its outputs can then be executed,
+        as well as update the node's timestamp. Successive executions should work as expected.
         """
+        G_LOGGER.debug(f"{self}: Executing...")
         # Set this node to be as new as it's newest input.
-        # Or, if it is already newer than its inputs, leave it unchanged.
         self.timestamp = max([inp.timestamp for inp in self.inputs] + [self.timestamp])
+
+    def clean(self):
+        """
+        This function should undo any changes made by execute.
+        """
+        G_LOGGER.debug(f"{self}: Cleaning...")
 
 class PathNode(Node):
     def __init__(self, path: str, inputs: Set[Node]):
@@ -110,14 +123,5 @@ class PathNode(Node):
             outputs (Set[Node]): The outputs of this node.
             name (str): The name of this node.
         """
+        super().__init__(utils.timestamp(path), inputs, os.path.basename(path))
         self.path = path
-        super().__init__(utils.timestamp(self.path), inputs, os.path.basename(self.path))
-
-    def execute(self):
-        """
-        Updates this node's timestamp based on the path being tracked, then calls Node's `execute` function.
-        Effectively, this means that the timestamp of this node will be the maximum of the tracked path's timestamp
-        and the timestamps of the input nodes.
-        """
-        self.timestamp = utils.timestamp(self.path)
-        super().execute()
