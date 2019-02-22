@@ -22,32 +22,32 @@ class SourceNode(PathNode):
             dirs (List[str]): A list of directories where any files included by this file can be found.
         """
         self.dirs = dirs
-        # All directories, including directories from any input nodes. This is set up by execute.
-        self.all_dirs = None
+        # All include directories, including directories from any input nodes. This is set up by execute.
+        self.include_dirs = None
         super().__init__(path, inputs)
         G_LOGGER.debug(f"For {path}, using directories: {self.dirs}")
 
     def needs_update(self):
         # Source nodes are out of date when they are either older than their dependencies,
-        # or when all_dirs is None (to distinguish from being correctly empty).
-        return self.all_dirs is None or super().needs_update()
+        # or when include_dirs is None (to distinguish from being correctly empty).
+        return self.include_dirs is None or super().needs_update()
 
     def execute(self):
         super().execute()
-        self.all_dirs = []
-        self.all_dirs.extend(self.dirs)
+        self.include_dirs = []
+        self.include_dirs.extend(self.dirs)
         G_LOGGER.verbose(f"{self}: Using dirs: {self.dirs}")
         for inp in self.inputs:
-            G_LOGGER.verbose(f"{self}: For input {inp}, found dirs: {inp.all_dirs}")
-            self.all_dirs.extend(inp.all_dirs)
-        G_LOGGER.debug(f"{self}: all_dirs: {self.all_dirs}")
+            G_LOGGER.verbose(f"{self}: For input {inp}, found dirs: {inp.include_dirs}")
+            self.include_dirs.extend(inp.include_dirs)
+        G_LOGGER.debug(f"{self}: include_dirs: {self.include_dirs}")
         # If the file is newer than this node's timestamp, update the timestamp.
         self.timestamp = max([self.timestamp, utils.timestamp(self.path)])
         G_LOGGER.verbose(f"{self}: Updating timestamp to {self.timestamp}")
 
     def clean(self):
         super().clean()
-        self.all_dirs = None
+        self.include_dirs = None
 
 class ObjectNode(PathNode):
     def __init__(self, inputs: Set[SourceNode], compiler: Compiler, output_path: str, opts: Set[str]=[]):
@@ -64,7 +64,7 @@ class ObjectNode(PathNode):
 
     def execute(self):
         super().execute()
-        self.compiler.compile(input_file=self.source_node.path, output_file=self.path, include_dirs=self.source_node.dirs, opts=self.opts)
+        self.compiler.compile(input_file=self.source_node.path, output_file=self.path, include_dirs=self.source_node.include_dirs, opts=self.opts)
         # For object nodes, the timestamp should always be tied to the file.
         self.timestamp = utils.timestamp(self.path)
 

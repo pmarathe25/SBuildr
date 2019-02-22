@@ -40,7 +40,7 @@ class TestCppNodes(unittest.TestCase):
         # This header should include the
         test_header_node = self.build_test_node(utils_header_node)
         test_header_node.build()
-        self.assertTrue(os.path.join(TEST_PROJECT_ROOT, "include") in test_header_node.all_dirs)
+        self.assertTrue(os.path.join(TEST_PROJECT_ROOT, "include") in test_header_node.include_dirs)
 
     def test_factorial_object_node_compiles(self):
         # Nested header dependency.

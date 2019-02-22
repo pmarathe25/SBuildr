@@ -92,8 +92,9 @@ class Node(object):
 
     def execute(self):
         """
-        This function should put the node in a state where its outputs can then be executed,
-        as well as update the node's timestamp. Successive executions should work as expected.
+        This function should put the node in a state where its outputs can then be executed.
+
+        This function is also responsible for updating the timestamp and multiple consecutive executions should work as expected.
         """
         G_LOGGER.debug(f"{self}: Executing...")
         # Set this node to be as new as it's newest input.
