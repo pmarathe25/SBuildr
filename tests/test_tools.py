@@ -1,74 +1,51 @@
-from sbuild.tools import compiler, linker
-from sbuild.logger import G_LOGGER
-import unittest
+from srbuild.tools import compiler, linker
+from srbuild.tools.flags import BuildFlags
+from srbuild.logger import G_LOGGER
+from typing import List
+import subprocess
+import pytest
 import shutil
 import os
-import subprocess
 
-TESTS_ROOT = os.path.abspath(os.path.dirname(__file__))
-TEST_PROJECT_ROOT = os.path.join(TESTS_ROOT, "minimal_project")
-TEST_PROJECT_BUILD = os.path.join(TEST_PROJECT_ROOT, "build")
+ROOT = os.path.join(os.path.abspath(os.path.dirname(__file__)), "minimal_project")
+PATHS = {
+    "include": os.path.join(ROOT, "include"),
+    "test": os.path.join(ROOT, "test"),
+    "fibonacci.cpp": os.path.join(ROOT, "src", "fibonacci.cpp"),
+    "factorial.cpp": os.path.join(ROOT, "src", "factorial.cpp"),
+    "test.cpp": os.path.join(ROOT, "test", "test.cpp"),
+    # Output files
+    "build": os.path.join(ROOT, "build"),
+}
 G_LOGGER.severity = G_LOGGER.VERBOSE
 
-class TestCompilers(unittest.TestCase):
-    def setUp(self):
-        self.include_dirs = set([os.path.join(TEST_PROJECT_ROOT, "include")])
-        os.mkdir(TEST_PROJECT_BUILD)
-        os.makedirs(os.path.join(TEST_PROJECT_BUILD, "objs"), exist_ok=True)
-        os.makedirs(os.path.join(TEST_PROJECT_BUILD, "libs"), exist_ok=True)
 
-    def compile_src(self, filename, compiler):
-        input_file = os.path.join(TEST_PROJECT_ROOT, "src", f"{filename}.cpp")
-        output_file = os.path.join(TEST_PROJECT_BUILD, "objs", f"{filename}.o")
-        compiler.compile(input_file, output_file, include_dirs=self.include_dirs, opts=set(["--std=c++17"]))
-        return output_file
+class TestCompilers(object):
+    @classmethod
+    def setup_class(cls):
+        G_LOGGER.verbose(f"Creating build directory: {PATHS['build']}")
+        os.mkdir(PATHS["build"])
 
-    def compile_test(self, filename, compiler):
-        input_file = os.path.join(TEST_PROJECT_ROOT, "test", f"{filename}.cpp")
-        output_file = os.path.join(TEST_PROJECT_BUILD, "objs", f"{filename}.o")
-        compiler.compile(input_file, output_file, include_dirs=self.include_dirs, opts=set(["--std=c++17"]))
-        return output_file
+    @staticmethod
+    def compile(compiler, path, include_dirs: List[str]=[], flags: BuildFlags=None):
+        flags = flags or BuildFlags().O(3).std(17).march("native").fpic()
+        include_dirs = include_dirs or [PATHS["include"], PATHS["test"]]
+        # Get output path
+        base = os.path.splitext(os.path.basename(path))[0]
+        output_path = os.path.join(PATHS["build"], f"{base}.o")
+        # Generate the command needed
+        cmd = compiler.compile(path, output_path, include_dirs, flags)
+        G_LOGGER.verbose(f"Running command: {cmd}")
+        subprocess.run(cmd)
+        return output_path
 
-    compilers = [compiler.gcc, compiler.clang]
+    @pytest.mark.parametrize("compiler", [compiler.gcc, compiler.clang])
+    @pytest.mark.parametrize("src_path", [PATHS["fibonacci.cpp"], PATHS["factorial.cpp"]])
+    def test_can_compile(self, compiler, src_path):
+        output_path = TestCompilers.compile(compiler, src_path)
+        assert os.path.exists(output_path)
 
-    def test_can_compile_gcc(self):
-        for comp in TestCompilers.compilers:
-            with self.subTest():
-                self.assertTrue(os.path.exists(self.compile_src("factorial", comp)))
-                self.assertTrue(os.path.exists(self.compile_src("fibonacci", comp)))
-
-    linkers = [linker.gcc, linker.clang]
-
-    def test_can_compile_and_link_so(self):
-        for comp in TestCompilers.compilers:
-            with self.subTest():
-                input_files = set([self.compile_src("factorial", comp), self.compile_src("fibonacci", comp)])
-
-        for link in TestCompilers.linkers:
-            with self.subTest():
-                out_so = os.path.join(TEST_PROJECT_BUILD, "libs", "libmath.so")
-                link.link(input_files, out_so, opts=set(["--std=c++17"]), shared=True)
-                self.assertTrue(os.path.exists(out_so))
-
-    def test_can_compile_and_link_executable(self):
-        for comp in TestCompilers.compilers:
-            with self.subTest():
-                input_files = set([self.compile_src("factorial", comp), self.compile_src("fibonacci", comp), self.compile_test("test", comp)])
-
-        for link in TestCompilers.linkers:
-            with self.subTest():
-                out_exec = os.path.join(TEST_PROJECT_BUILD, "libs", "test")
-                link.link(input_files, out_exec, opts=set(["--std=c++17"]))
-                self.assertTrue(os.path.exists(out_exec))
-                subprocess.run([out_exec], check=True, capture_output=True)
-
-    def test_linker_hashes_match(self):
-        for link in TestCompilers.linkers:
-            with self.subTest():
-                link_dirs = set(["some/", "fake/", "directories/"])
-                link_dirs_equivalent = set(["some", "fake", "directories"])
-                opts = set(["-march=native", "--std=c++17"])
-                self.assertEqual(link.signature(link_dirs, opts), link.signature(link_dirs_equivalent, opts))
-
-    def tearDown(self):
-        shutil.rmtree(TEST_PROJECT_BUILD)
+    @classmethod
+    def teardown_class(cls):
+        G_LOGGER.verbose(f"Removing build directory: {PATHS['build']}")
+        shutil.rmtree(PATHS["build"])

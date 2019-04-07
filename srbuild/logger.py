@@ -27,7 +27,7 @@ class Logger(object):
     INFO = 20
     WARNING = 30
     ERROR = 40
-    SILENT = 50
+    CRITICAL = 50
 
     def __init__(self, severity=INFO, path_depth=3):
         """
@@ -59,7 +59,7 @@ class Logger(object):
 
     def log(self, message, severity, color=Color.DEFAULT):
         # Disable logging when running with -O.
-        if __debug__ and severity >= self.severity and not self.severity == Logger.SILENT:
+        if __debug__ and severity >= self.severity:
             print("\033[1;{:}{:}\033[0m".format(color.value, message))
 
     def verbose(self, message, color=Color.GRAY):
@@ -76,5 +76,9 @@ class Logger(object):
 
     def error(self, message, color=Color.RED):
         self.log(self.assemble_message(message, stack_depth=2, prefix="E"), severity=Logger.ERROR, color=color)
+
+    def critical(self, message, color=Color.RED):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), severity=Logger.ERROR, color=color)
+        raise Exception()
 
 G_LOGGER = Logger()

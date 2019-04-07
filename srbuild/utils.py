@@ -1,4 +1,4 @@
-from sbuild.logger import G_LOGGER
+from srbuild.logger import G_LOGGER
 import hashlib
 import sys
 import os
