@@ -7,6 +7,7 @@ Dates are in yyyy-mm-dd format.
 - Disables logging when python is run with -O. This can provide some speed improvements.
 - Added Source and Object nodes.
 - Renamed to SRBuild.
+- Added CompilerDef/LinkerDef to isolate behavior specific to individual compilers/linkers. Compiler/Linker can now operate in a platform-agnostic way.
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.
