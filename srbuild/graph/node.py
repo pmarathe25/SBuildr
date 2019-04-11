@@ -4,12 +4,8 @@ from typing import List
 import time
 import os
 
-# Forward declaration for type annotations.
-class Node:
-    pass
-
 class Node(object):
-    def __init__(self, inputs: List[Node]=[], name=""):
+    def __init__(self, inputs: List["Node"]=[], name=""):
         """
         Represents a node in a dependency graph.
 
@@ -45,7 +41,7 @@ class Node(object):
             out += f"{inp.dependency_graph_str(tab_depth + 1)}\n"
         return out
 
-    def add_input(self, node: Node):
+    def add_input(self, node: "Node"):
         """
         Adds an input to this node and updates the `outputs` value of the input.
         """
@@ -55,7 +51,7 @@ class Node(object):
 
     def execute(self):
         """
-        This function should put the node in a state where its outputs can then be executed.
+        This function should put the node in a state such that its outputs can be executed.
         """
         G_LOGGER.debug(f"{self}: Executing...")
 
