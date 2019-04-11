@@ -14,22 +14,21 @@ class SourceNode(PathNode):
         self.include_dirs = include_dirs
         G_LOGGER.debug(f"For {path}, using directories: {self.include_dirs}")
 
-class ObjectNode(PathNode):
+class CompiledNode(PathNode):
     def __init__(self, path: str, inputs: List[SourceNode], compiler: compiler.Compiler, flags: BuildFlags=BuildFlags()):
         if len(inputs) > 1:
-            raise ValueError("ObjectNodes can only have a single SourceNode as an input.")
+            raise ValueError("CompiledNodes can only have a single SourceNode as an input.")
         super().__init__(path, inputs)
         self.compiler = compiler
         self.flags = flags
 
     def add_input(self, node: SourceNode):
         if len(self.inputs) > 0:
-            raise ValueError("ObjectNodes can only have a single SourceNode as an input.")
+            raise ValueError("CompiledNodes can only have a single SourceNode as an input.")
         return super().add_input(node)
 
-
-class DynamicLibraryNode(PathNode):
-    def __init__(self, path: str, inputs: List[ObjectNode], linker: linker.Linker, flags: BuildFlags=BuildFlags()):
+class LinkedNode(PathNode):
+    def __init__(self, path: str, inputs: List[CompiledNode], linker: linker.Linker, flags: BuildFlags=BuildFlags()):
         super().__init__(path, inputs)
         self.linker = linker
         self.flags = flags

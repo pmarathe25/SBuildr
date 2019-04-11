@@ -51,12 +51,12 @@ class TestCompilers(object):
 
 class TestLinkers(TestCompilers):
     @staticmethod
-    def link(linker, input_paths, output_name, lib_dirs: List[str]=[], flags: BuildFlags=None, shared=False):
+    def link(linker, input_paths, output_name, lib_dirs: List[str]=[], flags: BuildFlags=None):
         flags = flags or BuildFlags().O(3).std(17).march("native").fpic()
         # Get output path
         output_path = os.path.join(PATHS["build"], output_name)
         # Generate the command needed
-        cmd = linker.link(input_paths, output_path, lib_dirs, flags, shared)
+        cmd = linker.link(input_paths, output_path, lib_dirs, flags)
         G_LOGGER.verbose(f"Running command: {cmd}")
         subprocess.run(cmd)
         return output_path
@@ -65,7 +65,7 @@ class TestLinkers(TestCompilers):
     def build_libtest(compiler, linker):
         fibonacci = TestLinkers.compile(compiler, PATHS["fibonacci.cpp"])
         factorial = TestLinkers.compile(compiler, PATHS["factorial.cpp"])
-        return TestLinkers.link(linker, [fibonacci, factorial, "-lstdc++"], "libtest.so", shared=True)
+        return TestLinkers.link(linker, [fibonacci, factorial, "-lstdc++"], "libtest.so", flags=BuildFlags().shared())
 
     @pytest.mark.parametrize("compiler", [compiler.gcc, compiler.clang])
     @pytest.mark.parametrize("linker", [linker.gcc, linker.clang])

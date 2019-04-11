@@ -77,7 +77,10 @@ class LinuxLinkerDef(LinkerDef):
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
-        return compiler.LinuxCompilerDef.parse_flags(build_flags)
+        linker_flags = compiler.LinuxCompilerDef.parse_flags(build_flags)
+        if build_flags._shared:
+            linker_flags.append("-shared")
+        return linker_flags
 
 class ClangDef(LinuxLinkerDef):
     @staticmethod
@@ -104,13 +107,12 @@ class Linker(object):
         return utils.str_hash(sig)
 
     # Generates the command required to link the inputs files with the specified options.
-    def link(self, input_paths: List[str], output_path, lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), shared=False):
+    def link(self, input_paths: List[str], output_path, lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
         G_LOGGER.debug(f"self.ldef: {self.ldef}")
         linker_flags = self.ldef.parse_flags(flags)
         lib_dirs = [self.ldef.lib_dir(dir) for dir in lib_dirs]
-        shared = [self.ldef.shared()] if shared else []
         # The full command.
-        cmd = [self.ldef.executable()] + input_paths + linker_flags + lib_dirs + shared + [self.ldef.output(output_path)]
+        cmd = [self.ldef.executable()] + input_paths + linker_flags + lib_dirs + [self.ldef.output(output_path)]
         G_LOGGER.debug(f"Link Command: {' '.join(cmd)}")
         return cmd
 

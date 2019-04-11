@@ -10,6 +10,8 @@ class BuildFlags(object):
         self._std: str = None
         self._march: str = None
         self._fpic: bool = False
+        # Distinguishes shared library from executable.
+        self._shared: bool = False
 
     def O(self, level: Union[int, str]) -> 'BuildFlags':
         self._o = str(level).strip()
@@ -25,4 +27,8 @@ class BuildFlags(object):
 
     def fpic(self) -> 'BuildFlags':
         self._fpic = True
+        return self
+
+    def shared(self) -> 'BuildFlags':
+        self._shared = True
         return self
