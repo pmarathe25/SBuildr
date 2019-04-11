@@ -49,12 +49,6 @@ class Node(object):
         node.outputs.append(self)
         self.inputs.append(node)
 
-    def execute(self):
-        """
-        This function should put the node in a state such that its outputs can be executed.
-        """
-        G_LOGGER.debug(f"{self}: Executing...")
-
 class PathNode(Node):
     def __init__(self, path: str, inputs: List[Node]=[]):
         """
