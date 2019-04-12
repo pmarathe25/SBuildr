@@ -1,26 +1,29 @@
+from srbuild.tools import compiler, linker
+from srbuild.tools.flags import BuildFlags
 from srbuild.logger import G_LOGGER
-import srbuild.utils as utils
 from typing import List
-import time
 import os
 
 class Node(object):
-    def __init__(self, inputs: List["Node"]=[], name=""):
+    def __init__(self, path: str, inputs: List["Node"]=[], name=""):
         """
-        Represents a node in a dependency graph.
+        Represents a node in a dependency graph that tracks a path on the filesystem.
 
         Optional Args:
+            path (str): The path this node should track.
             inputs (List[Node]): The inputs to this node.
             name (str): The name of this node.
 
         Vars:
+            path (str): The path this node should track.
             inputs (List[Node]): The inputs to this node.
             outputs (List[Node]): The outputs of this node.
             name (str): The name of this node.
         """
+        self.path = path
+        self.name = name or os.path.basename(path)
         self.inputs: List[Node] = []
         self.outputs: List[Node] = []
-        self.name = name
         G_LOGGER.debug(f"Constructing {self} with {len(inputs)} inputs: {inputs}")
         for inp in inputs:
             self.add_input(inp)
@@ -31,10 +34,8 @@ class Node(object):
     def __repr__(self):
         return f"{self} (at {hex(id(self))})"
 
+    # Returns a string representation of the dependency graph for this node.
     def dependency_graph_str(self, tab_depth=0):
-        """
-        Returns a string representation of the dependency graph for this node.
-        """
         tab = '\t'
         out = f"{tab * tab_depth}{self.name}\n"
         for inp in self.inputs:
@@ -42,29 +43,36 @@ class Node(object):
         return out
 
     def add_input(self, node: "Node"):
-        """
-        Adds an input to this node and updates the `outputs` value of the input.
-        """
         G_LOGGER.verbose(f"Adding {self} as an output of {node}")
         node.outputs.append(self)
         self.inputs.append(node)
 
-class PathNode(Node):
-    def __init__(self, path: str, inputs: List[Node]=[]):
-        """
-        A special kind of node that tracks a path on the system.
+    def __hash__(self):
+        return hash(self.path)
 
-        Args:
-            path (str): The path this node should track.
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
-        Optional Args:
-            inputs (List[Node]): The inputs to this node.
-            name (str): The name of this node. Defaults to the basename of the path.
+class SourceNode(Node):
+    def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=[], name=""):
+        super().__init__(path, inputs, name)
 
-        Vars:
-            inputs (List[Node]): The inputs to this node.
-            outputs (List[Node]): The outputs of this node.
-            name (str): The name of this node.
-        """
-        super().__init__(inputs, os.path.basename(path))
-        self.path = path
+class CompiledNode(Node):
+    def __init__(self, path: str, inputs: List[SourceNode], compiler: compiler.Compiler, flags: BuildFlags=BuildFlags(), name=""):
+        super().__init__(path, inputs, name)
+        self.compiler = compiler
+        # All include directories required for this file.
+        self.include_dirs = include_dirs
+        G_LOGGER.debug(f"For {path}, using directories: {self.include_dirs}")
+        self.flags = flags
+
+    def add_input(self, node: SourceNode):
+        if len(self.inputs) > 0:
+            raise ValueError("CompiledNodes can only have a single SourceNode as an input.")
+        return super().add_input(node)
+
+class LinkedNode(Node):
+    def __init__(self, path: str, inputs: List[CompiledNode], linker: linker.Linker, flags: BuildFlags=BuildFlags(), name=""):
+        super().__init__(path, inputs, name)
+        self.linker = linker
+        self.flags = flags
