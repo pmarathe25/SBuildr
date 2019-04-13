@@ -56,9 +56,11 @@ class Node(object):
 class SourceNode(Node):
     def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=[], name=""):
         super().__init__(path, inputs, name)
+        # All include directories required for this file.
+        self.include_dirs = include_dirs
 
 class CompiledNode(Node):
-    def __init__(self, path: str, inputs: List[SourceNode], compiler: compiler.Compiler, flags: BuildFlags=BuildFlags(), name=""):
+    def __init__(self, path: str, inputs: List[SourceNode], compiler: compiler.Compiler, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), name=""):
         super().__init__(path, inputs, name)
         self.compiler = compiler
         # All include directories required for this file.
