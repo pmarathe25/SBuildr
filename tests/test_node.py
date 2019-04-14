@@ -35,7 +35,7 @@ class TestNodes(object):
 
     def test_hashes_same_node(self):
         A0 = Node(path="A")
-        A1 = Node(path="A")
+        A1 = A0
         assert hash(A0) == hash(A1)
         test = set([A0, A1])
         assert len(test) == 1

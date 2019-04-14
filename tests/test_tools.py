@@ -1,6 +1,5 @@
 from srbuild.tools import compiler, linker
 from srbuild.tools.flags import BuildFlags
-from srbuild.logger import G_LOGGER
 from typing import List
 import subprocess
 import pytest
@@ -10,36 +9,53 @@ import os
 ROOT = os.path.join(os.path.abspath(os.path.dirname(__file__)), "minimal_project")
 PATHS = {
     "include": os.path.join(ROOT, "include"),
-    "test": os.path.join(ROOT, "test"),
-    "fibonacci.cpp": os.path.join(ROOT, "src", "fibonacci.cpp"),
+    "factorial.hpp": os.path.join(ROOT, "include", "factorial.hpp"),
+    "fibonacci.hpp": os.path.join(ROOT, "include", "fibonacci.hpp"),
+    "utils.hpp": os.path.join(ROOT, "include", "utils.hpp"),
     "factorial.cpp": os.path.join(ROOT, "src", "factorial.cpp"),
+    "fibonacci.cpp": os.path.join(ROOT, "src", "fibonacci.cpp"),
+    "test": os.path.join(ROOT, "test"),
+    "test.hpp": os.path.join(ROOT, "test", "test.hpp"),
     "test.cpp": os.path.join(ROOT, "test", "test.cpp"),
     # Output files
     "build": os.path.join(ROOT, "build"),
 }
-G_LOGGER.severity = G_LOGGER.VERBOSE
+
+def compile_cmd(compiler, input_path: str, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
+    flags += BuildFlags().O(3).std(17).march("native").fpic()
+    include_dirs = include_dirs or [PATHS["include"], PATHS["test"]]
+    # Get output path
+    base = os.path.splitext(os.path.basename(input_path))[0]
+    output_path = os.path.join(PATHS["build"], f"{base}.o")
+    # Generate the command needed
+    return compiler.compile(input_path, output_path, include_dirs, flags), output_path
+
+def link_cmd(linker, input_paths, output_name, lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
+    flags += BuildFlags().O(3).std(17).march("native").fpic()
+    # Get output path
+    output_path = os.path.join(PATHS["build"], output_name)
+    # Generate the command needed
+    return linker.link(input_paths, output_path, lib_dirs, flags), output_path
 
 class TestCompilers(object):
     @classmethod
     def setup_class(cls):
-        G_LOGGER.verbose(f"Creating build directory: {PATHS['build']}")
+        cls.teardown_class()
+        print(f"Creating build directory: {PATHS['build']}")
         os.mkdir(PATHS["build"])
 
     @classmethod
     def teardown_class(cls):
-        G_LOGGER.verbose(f"Removing build directory: {PATHS['build']}")
-        shutil.rmtree(PATHS["build"])
+        print(f"Removing build directory: {PATHS['build']}")
+        try:
+            shutil.rmtree(PATHS["build"])
+        except FileNotFoundError:
+            pass
 
     @staticmethod
-    def compile(compiler, input_path: str, include_dirs: List[str]=[], flags: BuildFlags=None):
-        flags = flags or BuildFlags().O(3).std(17).march("native").fpic()
-        include_dirs = include_dirs or [PATHS["include"], PATHS["test"]]
-        # Get output path
-        base = os.path.splitext(os.path.basename(input_path))[0]
-        output_path = os.path.join(PATHS["build"], f"{base}.o")
-        # Generate the command needed
-        cmd = compiler.compile(input_path, output_path, include_dirs, flags)
-        G_LOGGER.verbose(f"Running command: {cmd}")
+    def compile(compiler, input_path: str, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
+        cmd, output_path = compile_cmd(compiler, input_path, include_dirs, flags)
+        print(f"Running command: {cmd}")
         subprocess.run(cmd)
         return output_path
 
@@ -51,13 +67,9 @@ class TestCompilers(object):
 
 class TestLinkers(TestCompilers):
     @staticmethod
-    def link(linker, input_paths, output_name, lib_dirs: List[str]=[], flags: BuildFlags=None):
-        flags = flags or BuildFlags().O(3).std(17).march("native").fpic()
-        # Get output path
-        output_path = os.path.join(PATHS["build"], output_name)
-        # Generate the command needed
-        cmd = linker.link(input_paths, output_path, lib_dirs, flags)
-        G_LOGGER.verbose(f"Running command: {cmd}")
+    def link(linker, input_paths, output_name, lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
+        cmd, output_path = link_cmd(linker, input_paths, output_name, lib_dirs, flags)
+        print(f"Running command: {cmd}")
         subprocess.run(cmd)
         return output_path
 

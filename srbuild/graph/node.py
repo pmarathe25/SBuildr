@@ -4,25 +4,13 @@ from srbuild.logger import G_LOGGER
 from typing import List
 import os
 
+# Represents a node in a dependency graph that tracks a path on the filesystem.
 class Node(object):
-    def __init__(self, path: str, inputs: List["Node"]=[], name=""):
-        """
-        Represents a node in a dependency graph that tracks a path on the filesystem.
-
-        Optional Args:
-            path (str): The path this node should track.
-            inputs (List[Node]): The inputs to this node.
-            name (str): The name of this node.
-
-        Vars:
-            path (str): The path this node should track.
-            inputs (List[Node]): The inputs to this node.
-            outputs (List[Node]): The outputs of this node.
-            name (str): The name of this node.
-        """
+    def __init__(self, path: str, inputs: List["Node"]=[], cmds: List[List[str]]=[], name=""):
         self.path = path
         self.name = name or os.path.basename(path)
         self.inputs: List[Node] = []
+        self.cmds = cmds
         self.outputs: List[Node] = []
         G_LOGGER.debug(f"Constructing {self} with {len(inputs)} inputs: {inputs}")
         for inp in inputs:
@@ -46,35 +34,3 @@ class Node(object):
         G_LOGGER.verbose(f"Adding {self} as an output of {node}")
         node.outputs.append(self)
         self.inputs.append(node)
-
-    def __hash__(self):
-        return hash(self.path)
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-class SourceNode(Node):
-    def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=[], name=""):
-        super().__init__(path, inputs, name)
-        # All include directories required for this file.
-        self.include_dirs = include_dirs
-
-class CompiledNode(Node):
-    def __init__(self, path: str, inputs: List[SourceNode], compiler: compiler.Compiler, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), name=""):
-        super().__init__(path, inputs, name)
-        self.compiler = compiler
-        # All include directories required for this file.
-        self.include_dirs = include_dirs
-        G_LOGGER.debug(f"For {path}, using directories: {self.include_dirs}")
-        self.flags = flags
-
-    def add_input(self, node: SourceNode):
-        if len(self.inputs) > 0:
-            raise ValueError("CompiledNodes can only have a single SourceNode as an input.")
-        return super().add_input(node)
-
-class LinkedNode(Node):
-    def __init__(self, path: str, inputs: List[CompiledNode], linker: linker.Linker, flags: BuildFlags=BuildFlags(), name=""):
-        super().__init__(path, inputs, name)
-        self.linker = linker
-        self.flags = flags

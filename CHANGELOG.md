@@ -6,8 +6,10 @@ Dates are in YYYY-MM-DD format.
 - Disables logging when python is run with -O. This can provide some speed improvements.
 - Added CompilerDef/LinkerDef to isolate behavior specific to individual compilers/linkers. Compiler/Linker can now operate in a platform-agnostic way.
 - Adds BuildFlags to make compiler/linker flags platform agnostic from the user's perspective.
-- Simplifies CPP Nodes to 3 categories: Source, Compiled, and Linked.
-- Adds Graph
+- Adds Graph and rbuild generator.
+- Adds raw options to BuildFlags
+- Adds `+` and `+=` overloads for BuildFlags
+- Removes all node categories except `Node`, which now only keeps track of arbitrary paths and associated commands
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.
