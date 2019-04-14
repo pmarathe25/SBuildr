@@ -77,7 +77,7 @@ class LinuxLinkerDef(LinkerDef):
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
-        linker_flags = compiler.LinuxCompilerDef.parse_flags(build_flags)
+        linker_flags = compiler.LinuxCompilerDef.parse_flags(build_flags) + build_flags._raw
         if build_flags._shared:
             linker_flags.append("-shared")
         return linker_flags

@@ -75,7 +75,7 @@ class LinuxCompilerDef(CompilerDef):
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
-        compiler_flags = []
+        compiler_flags = build_flags._raw
         if build_flags._o:
             compiler_flags.append(f"-O{build_flags._o}")
         if build_flags._std:
