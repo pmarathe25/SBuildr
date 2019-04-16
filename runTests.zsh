@@ -1,2 +1,2 @@
 #!/usr/bin/env zsh
-python -m pytest tests/
+python -m pytest tests/ "$@"
