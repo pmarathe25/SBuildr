@@ -78,7 +78,8 @@ class Logger(object):
         self.log(self.assemble_message(message, stack_depth=2, prefix="E"), severity=Logger.ERROR, color=color)
 
     def critical(self, message, color=Color.RED):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), severity=Logger.ERROR, color=color)
-        raise Exception()
+        message = self.assemble_message(message, stack_depth=2, prefix="E")
+        self.log(message, severity=Logger.ERROR, color=color)
+        raise Exception(message)
 
 G_LOGGER = Logger()

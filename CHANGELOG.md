@@ -11,6 +11,7 @@ Dates are in YYYY-MM-DD format.
 - Adds `+` and `+=` overloads for BuildFlags
 - Removes all node categories except `Node`, which now only keeps track of arbitrary paths and associated commands
 - Adds Project, which can track one or more directories and the files contained within.
+- Adds FileManager, which can determine include directories required for a given file, assuming included files are also tracked by the manager.
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

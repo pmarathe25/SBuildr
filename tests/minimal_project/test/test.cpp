@@ -3,6 +3,7 @@
 // Internal dependencies
 #include "fibonacci.hpp"
 #include "factorial.hpp"
+#include "test.hpp"
 
 int main() {
     std::cout << "5! is " << factorial(5) << '\n';

@@ -2,7 +2,7 @@ from srbuild.graph.node import Node
 from typing import List, Dict, Set
 
 class Graph(set):
-    def __init__(self, nodes: Set[Node]={}):
+    def __init__(self, nodes: Set[Node]=set()):
         self.nodes: Dict[str, Node] = {node.path: node for node in nodes}
 
     # Adds a node if it is not already present.
