@@ -1,5 +1,7 @@
+from srbuild.graph.graph import Graph
+from srbuild.graph.node import Node
 from srbuild.logger import G_LOGGER
-from typing import Set, Dict
+from typing import Set, Dict, Tuple
 import glob
 import os
 import re
@@ -24,6 +26,8 @@ class FileManager(object):
         G_LOGGER.debug(f"Found {len(self.files)} files")
         G_LOGGER.verbose(f"{self.files}")
         self.include_cache: Dict[str, Set[str]] = {}
+        # Keep track of all source files.
+        self.source_graph = Graph()
 
     # TODO: Docstrings
     # Finds filename in self.files. Always returns an absolute path.
@@ -31,11 +35,12 @@ class FileManager(object):
         return [path for path in self.files if path.endswith(filename)]
 
     # Finds all required include directories for any given file.
-    def include_dirs(self, filename: str) -> Set[str]:
+    def source_info(self, filename: str) -> Tuple[Node, Set[str]]:
         if filename in self.include_cache:
             include_dirs = self.include_cache[filename]
-            G_LOGGER.verbose(f"Found {filename} in include cache with include dirs: {include_dirs}")
-            return include_dirs
+            node = self.source_graph[filename]
+            G_LOGGER.verbose(f"Found {filename} in include cache with include dirs: {include_dirs}, node: {node}")
+            return node, include_dirs
 
         G_LOGGER.verbose(f"Could not find {filename} in include cache")
 
@@ -69,6 +74,7 @@ class FileManager(object):
 
         # Find all included files in this file. If they are in the project, recurse over them.
         # Otherwise, assume they are external headers.
+        node = self.source_graph.add(Node(filename))
         include_dirs = set()
         external_includes = set()
         included_files = _find_included(filename)
@@ -82,7 +88,9 @@ class FileManager(object):
                 G_LOGGER.verbose(f"For path {path}, using include dir: {include_dir}")
                 include_dirs.add(include_dir)
                 # Also recurse over any include directories needed for the path itself
-                include_dirs.update(self.include_dirs(path))
+                path_node, path_include_dirs = self.source_info(path)
+                node.add_input(path_node)
+                include_dirs.update(path_include_dirs)
             else:
                 external_includes.add(included)
         if external_includes:
@@ -90,4 +98,5 @@ class FileManager(object):
         G_LOGGER.debug(f"For {filename}, found include dirs: {include_dirs}")
         self.include_cache[filename] = include_dirs
         G_LOGGER.verbose(f"Updated include cache to: {self.include_cache}")
-        return include_dirs
+        G_LOGGER.verbose(f"Updated source graph to: {self.source_graph}")
+        return node, include_dirs

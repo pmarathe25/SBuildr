@@ -58,5 +58,5 @@ class TestRBuild(object):
             f.write(config)
         assert subprocess.run(["rbuild", filepath])
         # All paths should exist after building.
-        for node in graph:
+        for node in graph.values():
             assert os.path.exists(node.path)

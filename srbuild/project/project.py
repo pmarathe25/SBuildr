@@ -1,13 +1,13 @@
 from srbuild.project.file_manager import FileManager
+from srbuild.tools.compiler import Compiler
+from srbuild.tools.linker import Linker
 from srbuild.tools.flags import BuildFlags
 from srbuild.graph.graph import Graph
+from srbuild.graph.node import Node
 from srbuild.logger import G_LOGGER
-from typing import Set
+from typing import List, Set, Union
 import inspect
 import os
-
-global DEFAULT_GRAPH
-DEFAULT_GRAPH = Graph()
 
 class Project(object):
     def __init__(self, root: str="", dirs: Set[str]=set(), build: str=""):
@@ -26,12 +26,16 @@ class Project(object):
         # Keep track of all files present in project dirs. Since dirs is a set,
         # files is guaranteed to contain no duplicates as well.
         self.files = FileManager(self.dirs)
+        self.graph = Graph()
 
-    def _target_impl(self, name, sources, flags, compiler, linker, include_dirs, lib_dirs):
-        pass
+    # libs can contain either Nodes from this graph, or paths to libraries, or names of libraries
+    def _target_impl(self, name: str, sources: List[str], flags: BuildFlags, libs: List[Union[Node, str]], compiler: Compiler, include_dirs: List[str], linker: Linker, lib_dirs: List[str]) -> Node:
+        # First add or retrieve object nodes for each source.
+        pass 
 
-    def executable(self, name, sources, flags, compiler, linker, include_dirs, lib_dirs):
-        return self._target_impl(name, sources, flags + BuildFlags().shared(), compiler, linker, include_dirs, lib_dirs)
+    # TODO: Docstrings
+    def executable(self, name, sources, libs, flags, compiler, include_dirs, linker, lib_dirs) -> Node:
+        return self._target_impl(name, sources, libs, flags, compiler, include_dirs, linker, lib_dirs)
 
-    def library(self, name, sources, flags, compiler, linker, include_dirs, lib_dirs):
-        return self._target_impl(name, sources, flags + BuildFlags().shared(), compiler, linker, include_dirs, lib_dirs)
+    def library(self, name, sources, libs, flags, compiler, include_dirs, linker, lib_dirs) -> Node:
+        return self._target_impl(name, sources, libs, flags + BuildFlags().shared(), compiler, include_dirs, linker, lib_dirs)

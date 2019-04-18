@@ -1,22 +1,19 @@
 from srbuild.graph.node import Node
 from typing import List, Dict, Set
 
-class Graph(set):
+# TODO: Docstrings
+class Graph(dict):
     def __init__(self, nodes: Set[Node]=set()):
-        self.nodes: Dict[str, Node] = {node.path: node for node in nodes}
+        self.update({node.path: node for node in nodes})
 
     # Adds a node if it is not already present.
     def add(self, node: Node) -> Node:
-        if node.path not in self.nodes:
-            self.nodes[node.path] = node
-        return self.nodes[node.path]
+        if node.path not in self:
+            self[node.path] = node
+        return self[node.path]
 
-    def __getitem__(self, path: str) -> Node:
-        return self.nodes[path]
-
-    # Indicates that the graph is completely populated.
     def layers(self) -> List[Set[Node]]:
-        outputs = set([node for node in self.nodes.values() if not node.outputs])
+        outputs = set([node for node in self.values() if not node.outputs])
         # The layers of the graph.
         _layers: List[Set[Node]] = []
         _layers.append(outputs)

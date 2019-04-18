@@ -24,7 +24,7 @@ PATHS = {
 
 def compile_cmd(compiler, input_path: str, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
     flags += BuildFlags().O(3).std(17).march("native").fpic()
-    include_dirs = include_dirs or [PATHS["include"], PATHS["test"]]
+    include_dirs = include_dirs or [PATHS["include"], PATHS["test"], ROOT, TESTS_ROOT]
     # Get output path
     base = os.path.splitext(os.path.basename(input_path))[0]
     output_path = os.path.join(PATHS["build"], f"{base}.o")

@@ -54,6 +54,17 @@ class LinkerDef(abc.ABC):
         pass
 
     @staticmethod
+    def lib(name: str) -> str:
+        """
+        Specifies command-line arguments for linking a library.
+        For example, this would return "-lname" for Clang.
+
+        Returns:
+            str: The required arguments.
+        """
+        pass
+
+    @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
         """
         Parses build flags and returns the required command-line arguments.
@@ -74,6 +85,10 @@ class LinuxLinkerDef(LinkerDef):
     @staticmethod
     def lib_dir(path: str) -> str:
         return f"-L{path}"
+
+    @staticmethod
+    def lib(name: str) -> str:
+        return f"-l{name}"
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
