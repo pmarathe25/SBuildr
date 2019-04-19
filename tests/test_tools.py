@@ -36,7 +36,7 @@ def link_cmd(linker, input_paths, output_name, lib_dirs: List[str]=[], flags: Bu
     # Get output path
     output_path = os.path.join(PATHS["build"], output_name)
     # Generate the command needed
-    return linker.link(input_paths, output_path, lib_dirs, flags), output_path
+    return linker.link(input_paths, output_path, lib_dirs=lib_dirs, flags=flags), output_path
 
 class TestCompilers(object):
     @classmethod

@@ -34,7 +34,7 @@ class FileManager(object):
     def find(self, filename: str):
         return [path for path in self.files if path.endswith(filename)]
 
-    # Finds all required include directories for any given file.
+    # Finds all required include directories for a given managed file. Adds it to the source_graph if missing.
     def source_info(self, filename: str) -> Tuple[Node, Set[str]]:
         if filename in self.include_cache:
             include_dirs = self.include_cache[filename]

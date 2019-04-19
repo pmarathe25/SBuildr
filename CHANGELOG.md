@@ -12,6 +12,7 @@ Dates are in YYYY-MM-DD format.
 - Removes all node categories except `Node`, which now only keeps track of arbitrary paths and associated commands
 - Adds Project, which can track one or more directories and the files contained within.
 - Adds FileManager, which can determine include directories required for a given file, assuming included files are also tracked by the manager.
+- Adds the concept of `Profile`s, which allow for building the same targets with different options. 
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

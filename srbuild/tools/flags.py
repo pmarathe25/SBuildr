@@ -13,6 +13,7 @@ class BuildFlags(object):
         self._fpic: bool = False
         # Distinguishes shared library from executable.
         self._shared: bool = False
+        self._debug: bool = False
         self._raw: List[str] = []
 
     def O(self, level: Union[int, str]) -> 'BuildFlags':
@@ -35,17 +36,22 @@ class BuildFlags(object):
         self._shared = True
         return self
 
+    def debug(self) -> 'BuildFlags':
+        self._debug = True
+        return self
+
     # Raw options, as a list of strings.
     def raw(self, opts: List[str]) -> 'BuildFlags':
         self._raw = opts
         return self
 
+    # Overwrite self where needed.
     def __iadd__(self, other):
-        self._o = self._o or other._o
-        self._std = self._std or other._std
-        self._march = self._march or other._march
-        self._fpic = self._fpic or other._fpic
-        self._shared = self._shared or other._shared
+        self._o = other._o or self._o
+        self._std = other._std or self._std
+        self._march = other._march or self._march
+        self._fpic = other._fpic or self._fpic
+        self._shared = other._shared or self._shared
         self._raw += other._raw
         return self
 

@@ -122,12 +122,13 @@ class Linker(object):
         return utils.str_hash(sig)
 
     # Generates the command required to link the inputs files with the specified options.
-    def link(self, input_paths: List[str], output_path, lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
+    def link(self, input_paths: List[str], output_path, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
         G_LOGGER.debug(f"self.ldef: {self.ldef}")
         linker_flags = self.ldef.parse_flags(flags)
         lib_dirs = [self.ldef.lib_dir(dir) for dir in lib_dirs]
+        libs = [self.ldef.lib(lib) for lib in libs]
         # The full command.
-        cmd = [self.ldef.executable()] + input_paths + linker_flags + lib_dirs + [self.ldef.output(output_path)]
+        cmd = [self.ldef.executable()] + input_paths + libs + linker_flags + lib_dirs + [self.ldef.output(output_path)]
         G_LOGGER.debug(f"Link Command: {' '.join(cmd)}")
         return cmd
 

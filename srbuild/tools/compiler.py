@@ -84,6 +84,8 @@ class LinuxCompilerDef(CompilerDef):
             compiler_flags.append(f"-march={build_flags._march}")
         if build_flags._fpic:
             compiler_flags.append("-fPIC")
+        if build_flags._debug:
+            compiler_flags.append("-g")
         return compiler_flags
 
 class ClangDef(LinuxCompilerDef):
