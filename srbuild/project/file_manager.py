@@ -1,5 +1,5 @@
 from srbuild.graph.graph import Graph
-from srbuild.graph.node import Node
+from srbuild.graph.node import Node, SourceNode
 from srbuild.logger import G_LOGGER
 from typing import Set, Dict, Tuple, List
 import glob
@@ -15,18 +15,27 @@ def _find_included(filename: str) -> Set[str]:
     with open(filename, 'r') as file:
         return set(INCLUDE_REGEX.findall(file.read()))
 
+# Checks if path is in any of the specified dirs.
+def _is_in_directories(path: str, dirs: Set[str]):
+    def _is_in_directory(path: str, dir: str):
+        # e.g. for _is_in_directory(/my/dir/my/path, /my/dir/), commonpath == dir.
+        # This is always the case if path is in dir.
+        return os.path.commonpath([path, dir]) == dir
+    return any([_is_in_directory(path, dir) for dir in dirs])
+
 # TODO: Docstrings
 class FileManager(object):
-    def __init__(self, dirs: Set[str]=set()):
+    def __init__(self, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
         self.files = []
+        # Remove directories that are within exclude_dirs
+        dirs = [dir for dir in dirs if not _is_in_directories(dir, exclude_dirs)]
         for dir in dirs:
             for path in glob.iglob(os.path.join(dir, "**"), recursive=True):
-                if os.path.isfile(path):
+                if os.path.isfile(path) and not _is_in_directories(path, exclude_dirs):
                     self.files.append(os.path.abspath(path))
         # self.files = list(map(os.path.abspath, self.files))
         G_LOGGER.debug(f"Found {len(self.files)} files")
         G_LOGGER.verbose(f"{self.files}")
-        self.include_cache: Dict[str, List[str]] = {}
         # Keep track of all source files.
         self.source_graph = Graph()
 
@@ -35,29 +44,27 @@ class FileManager(object):
     def find(self, filename: str):
         return [path for path in self.files if path.endswith(filename)]
 
-    # Gets the include directories for a source file.
-    def includes(self, source: str) -> List[str]:
-        return self.include_cache[source]
+    # def add_library(self, lib_path: str) -> Node:
+    #     node = self.source_graph.add(Node(lib_path))
+    #     return node
+
+    def source(self, path: str) -> SourceNode:
+        if path not in self.source_graph:
+            self.source_graph.add(SourceNode(path))
+        return self.source_graph[path]
+
+    def scan_all(self) -> None:
+        sources = list(self.source_graph.values())
+        [self.scan(node) for node in sources]
 
     # Finds all required include directories for a given managed file. Adds it to the source_graph if missing.
-    # Scan determines whether the source file should be scanned for dependencies.
-    def add_source(self, filename: str, scan=True) -> Tuple[Node, List[str]]:
-        if filename in self.source_graph:
-            node = self.source_graph[filename]
-            G_LOGGER.verbose(f"Found {filename} in graph, node: {node}")
-            return node
-
-        node = self.source_graph.add(Node(filename))
-        if not scan:
-            return node
-
-        G_LOGGER.verbose(f"Could not find {filename} in include cache, scanning for include directories.")
-
-        # Such paths should always be relative to the file itself, otherwise it's an error.
+    def scan(self, node: str) -> None:
+        # Finds the file path for the file included in `path` by the `included` token.
         # This always returns an absolute path, since self.find always returns absolute paths.
-        def _disambiguate_included_file(included: str, filename: str) -> str:
+        def _disambiguate_included_file(included: str, path: str) -> str:
             # TODO: Handle paths that start with ../
-            if filename.startswith(os.pardir):
+            # Such paths should always be relative to the file itself, otherwise it's an error.
+            if path.startswith(os.pardir):
                 raise NotImplementedError(f"FileManager does not currently support includes containing {os.pardir}")
 
             candidates = self.find(included)
@@ -69,8 +76,8 @@ class FileManager(object):
                 return len(os.path.split(os.path.commonpath([path_a, path_b])))
 
             # Return the path that is closest to the file
-            closest_path = max(candidates, key=lambda candidate: _file_proximity(candidate, filename))
-            G_LOGGER.debug(f"For {filename}, determined that {closest_path} best matches include for {included}. If this is not the case, please provide a longer path in the include to disambiguate, or manually provide the correct include directories. Note, candidates were: {candidates}")
+            closest_path = max(candidates, key=lambda candidate: _file_proximity(candidate, path))
+            G_LOGGER.debug(f"For {path}, determined that {closest_path} best matches include for {included}. If this is not the case, please provide a longer path in the include to disambiguate, or manually provide the correct include directories. Note, candidates were: {candidates}")
             return closest_path
 
         # TODO: Handle relative paths in included here.
@@ -81,36 +88,37 @@ class FileManager(object):
             include_dir = path[:-len(included)]
             if not os.path.isdir(include_dir):
                 # It would be completely ridiculous if this actually displays ever.
-                G_LOGGER.critical(f"While attempting to find include dir to use for {path} (Note: included in {filename}), found that {include_dir} does not exist!")
+                G_LOGGER.critical(f"While attempting to find include dir to use for {path} (Note: included in {path}), found that {include_dir} does not exist!")
             return os.path.abspath(include_dir)
 
         # Find all included files in this file. If they are in the project, recurse over them.
         # Otherwise, assume they are external headers.
         include_dirs = set()
         external_includes = set()
-        included_files = _find_included(filename)
+        path = node.path
+        included_files = _find_included(path)
         for included in included_files:
             # Determines the most likely file path based on an include.
-            path = _disambiguate_included_file(included, filename)
-            if path:
-                G_LOGGER.verbose(f"For included token {included}, found path: {path}")
-                # The include dir for a path for filename depends on how exactly the path was included in filename.
-                include_dir = _get_path_include_dir(path, included)
-                G_LOGGER.verbose(f"For path {path}, using include dir: {include_dir}")
+            included_path = _disambiguate_included_file(included, path)
+            if included_path:
+                G_LOGGER.verbose(f"For included token {included}, found path: {included_path}")
+                # The include dir for a path for path depends on how exactly the path was included in path.
+                include_dir = _get_path_include_dir(included_path, included)
+                G_LOGGER.verbose(f"For path {included_path}, using include dir: {include_dir}")
                 include_dirs.add(include_dir)
                 # Also recurse over any include directories needed for the path itself
-                path_node = self.add_source(path)
-                path_include_dirs = self.includes(path)
-                node.add_input(path_node)
-                include_dirs.update(path_include_dirs)
+                included_path_node = self.source(included_path)
+                if not included_path_node.include_dirs:
+                    G_LOGGER.verbose(f"{included_path_node} does not specify include directories. Scanning file.")
+                    self.scan(included_path_node)
+                include_dirs.update(included_path_node.include_dirs)
+                node.add_input(included_path_node)
             else:
                 external_includes.add(included)
         if external_includes:
-            G_LOGGER.info(f"For {filename}, could not find headers: {external_includes}. Assuming they are external. If this is not the case, please add the appropriate directories to the project definition.")
+            G_LOGGER.info(f"For {path}, could not find headers: {external_includes}. Assuming they are external. If this is not the case, please add the appropriate directories to the project definition.")
 
         include_dirs = sorted(include_dirs)
-        G_LOGGER.debug(f"For {filename}, found include dirs: {include_dirs}")
-        self.include_cache[filename] = include_dirs
-        G_LOGGER.verbose(f"Updated include cache to: {self.include_cache}")
+        node.include_dirs = include_dirs
+        G_LOGGER.debug(f"For {path}, found include dirs: {include_dirs}")
         G_LOGGER.verbose(f"Updated source graph to: {self.source_graph}")
-        return node

@@ -12,6 +12,11 @@ class TestProject(object):
         proj = Project()
         assert proj.root_dir == os.path.dirname(__file__)
 
+    def test_can_find_sources(self):
+        proj = Project(root=ROOT)
+        test = proj.executable("test", sources=["test/test.cpp"])
+        assert test.source_paths == [PATHS["test.cpp"]]
+
 class TestFileManager(object):
     def test_globs_files_from_relpath_into_abspaths(self):
         manager = FileManager(dirs=[os.path.relpath(os.path.join(os.path.dirname(__file__), "minimal_project"))])
@@ -19,6 +24,7 @@ class TestFileManager(object):
         for file in glob.iglob(os.path.join(ROOT, "**"), recursive=True):
             if os.path.isfile(file):
                 all_files.append(os.path.abspath(file))
+        print(all_files)
         assert manager.files == all_files
         assert all([os.path.isabs(file) for file in manager.files])
 
@@ -28,35 +34,31 @@ class TestFileManager(object):
             if os.path.isfile(path):
                 assert manager.find(filename) == [path]
 
-    def test_add_source(self):
+    def test_source(self):
         manager = FileManager(dirs=[ROOT])
+        factorial_hpp = manager.source(PATHS["factorial.hpp"])
+        fibonacci_hpp = manager.source(PATHS["fibonacci.hpp"])
+        factorial_cpp = manager.source(PATHS["factorial.cpp"])
+        fibonacci_cpp = manager.source(PATHS["fibonacci.cpp"])
+        test_hpp = manager.source(PATHS["test.hpp"])
+        test_cpp = manager.source(PATHS["test.cpp"])
+        manager.scan_all()
         # Headers
         # Includes utils.hpp, but using a path starting with minimal_project/
-        manager.add_source(PATHS["factorial.hpp"])
-        factorial_hpp_includes = manager.includes(PATHS["factorial.hpp"])
-        assert factorial_hpp_includes == sorted([TESTS_ROOT])
+        assert factorial_hpp.include_dirs == sorted([TESTS_ROOT])
         # Includes utils.hpp, but using a path starting with include/
-        manager.add_source(PATHS["fibonacci.hpp"])
-        fibonacci_hpp_includes = manager.includes(PATHS["fibonacci.hpp"])
-        assert fibonacci_hpp_includes == sorted([ROOT])
+        assert fibonacci_hpp.include_dirs == sorted([ROOT])
         # CPP files
         # Includes factorial.hpp
-        manager.add_source(PATHS["factorial.cpp"])
-        factorial_cpp_includes = manager.includes(PATHS["factorial.cpp"])
-        assert factorial_cpp_includes == sorted(set([PATHS["include"]] + factorial_hpp_includes))
+        assert factorial_cpp.include_dirs == sorted(set([PATHS["include"]] + factorial_hpp.include_dirs))
         # Includes fibonacci.hpp
-        manager.add_source(PATHS["fibonacci.cpp"])
-        fibonacci_cpp_includes = manager.includes(PATHS["fibonacci.cpp"])
-        assert fibonacci_cpp_includes == sorted(set([PATHS["include"]] + fibonacci_hpp_includes))
+        assert fibonacci_cpp.include_dirs == sorted(set([PATHS["include"]] + fibonacci_hpp.include_dirs))
         # Test files
         # Includes utils.hpp
-        manager.add_source(PATHS["test.hpp"])
-        test_hpp_includes = manager.includes(PATHS["test.hpp"])
-        assert test_hpp_includes == sorted([PATHS["include"]])
+        assert test_hpp.include_dirs == sorted([PATHS["include"]])
         # Includes utils.hpp, test.hpp, factorial.hpp and fibonacci.hpp
         # Also includes iostream, which the logger should mention as not found.
-        manager.add_source(PATHS["test.cpp"])
-        assert manager.includes(PATHS["test.cpp"]) == sorted(set([PATHS["include"], PATHS["test"]] + test_hpp_includes + fibonacci_hpp_includes + factorial_hpp_includes))
+        assert test_cpp.include_dirs == sorted(set([PATHS["include"], PATHS["test"]] + test_hpp.include_dirs + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
         # Make sure that the source graph has been populated
         for file in ["factorial.hpp", "fibonacci.hpp", "test.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
             assert PATHS[file] in manager.source_graph

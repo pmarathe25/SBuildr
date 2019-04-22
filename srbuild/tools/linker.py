@@ -4,6 +4,7 @@ from srbuild.logger import G_LOGGER
 import srbuild.utils as utils
 from typing import List, Union
 import abc
+import os
 
 # Responsible for translating srbuild.tools.flags.BuildFlags to actual command-line flags.
 # This class defines everything about each linker by supplying a unified interface.
@@ -92,7 +93,7 @@ class LinuxLinkerDef(LinkerDef):
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
-        linker_flags = compiler.LinuxCompilerDef.parse_flags(build_flags) + build_flags._raw
+        linker_flags: List[str] = compiler.LinuxCompilerDef.parse_flags(build_flags)
         if build_flags._shared:
             linker_flags.append("-shared")
         return linker_flags
@@ -122,13 +123,15 @@ class Linker(object):
         return utils.str_hash(sig)
 
     # Generates the command required to link the inputs files with the specified options.
-    def link(self, input_paths: List[str], output_path, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
+    def link(self, input_paths: List[str], output_path, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> List[str]:
         G_LOGGER.debug(f"self.ldef: {self.ldef}")
         linker_flags = self.ldef.parse_flags(flags)
         lib_dirs = [self.ldef.lib_dir(dir) for dir in lib_dirs]
-        libs = [self.ldef.lib(lib) for lib in libs]
+        # In libs, absolute paths are not prepended with the lib prefix (e.g. -l)
+        libs = [lib if os.path.isabs(lib) else self.ldef.lib(lib) for lib in libs]
         # The full command.
         cmd = [self.ldef.executable()] + input_paths + libs + linker_flags + lib_dirs + [self.ldef.output(output_path)]
+        G_LOGGER.verbose(f"input_paths: {input_paths}, libs: {libs}, linker_flags: {linker_flags}, lib_dirs: {lib_dirs}")
         G_LOGGER.debug(f"Link Command: {' '.join(cmd)}")
         return cmd
 

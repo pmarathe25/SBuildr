@@ -41,6 +41,7 @@ class BuildFlags(object):
         return self
 
     # Raw options, as a list of strings.
+    # TODO: Split into xcompiler and xlinker
     def raw(self, opts: List[str]) -> 'BuildFlags':
         self._raw = opts
         return self

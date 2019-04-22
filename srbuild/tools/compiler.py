@@ -2,6 +2,7 @@ from srbuild.tools.flags import BuildFlags
 from srbuild.logger import G_LOGGER
 import srbuild.utils as utils
 from typing import List, Union
+import copy
 import abc
 
 # Responsible for translating srbuild.tools.flags.BuildFlags to actual command-line flags.
@@ -75,7 +76,7 @@ class LinuxCompilerDef(CompilerDef):
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
-        compiler_flags = build_flags._raw
+        compiler_flags: List[str] = copy.copy(build_flags._raw)
         if build_flags._o:
             compiler_flags.append(f"-O{build_flags._o}")
         if build_flags._std:
@@ -104,7 +105,7 @@ class Compiler(object):
         self.cdef = cdef
 
     # The signature is everything that makes the resulting object file unique
-    # - i.e. compiler, input file, include directories and compile options.
+    # - i.e. compiler, include directories and compile options.
     # If two signatures are the same for an input file, it means the resulting object file(s) would be identical.
     # This helps name object files uniquely, e.g. for release/debug builds.
     # TODO: Revisit this.

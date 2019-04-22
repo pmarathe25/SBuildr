@@ -6,11 +6,10 @@ import os
 
 # Represents a node in a dependency graph that tracks a path on the filesystem.
 class Node(object):
-    def __init__(self, path: str, inputs: List["Node"]=[], cmds: List[List[str]]=[], name=""):
+    def __init__(self, path: str, inputs: List["Node"]=[], name=""):
         self.path = path
         self.name = name or os.path.basename(path)
         self.inputs: List[Node] = []
-        self.cmds = cmds
         self.outputs: List[Node] = []
         G_LOGGER.debug(f"Constructing {self} with {len(inputs)} inputs: {inputs}")
         for inp in inputs:
@@ -34,3 +33,31 @@ class Node(object):
         G_LOGGER.verbose(f"Adding {self} as an output of {node}")
         node.outputs.append(self)
         self.inputs.append(node)
+
+class SourceNode(Node):
+    def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=[], name=""):
+        super().__init__(path, inputs, name)
+        # All include directories required for this file.
+        self.include_dirs = include_dirs
+
+class CompiledNode(Node):
+    # These include_dirs are user-specified, since any scanned dirs would be in the SourceNode.
+    def __init__(self, path: str, input: SourceNode, compiler: compiler.Compiler, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), name=""):
+        super().__init__(path, [input], name)
+        self.compiler = compiler
+        # All include directories required for this file.
+        self.include_dirs = include_dirs
+        self.flags = flags
+
+    def add_input(self, node: SourceNode):
+        if len(self.inputs) > 0:
+            G_LOGGER.critical(f"Cannot create a CompiledNode with more than one source. This node already has one input: {self.inputs}")
+        super().add_input(node)
+
+class LinkedNode(Node):
+    def __init__(self, path: str, inputs: List[Node], linker: linker.Linker, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), name=""):
+        super().__init__(path, inputs, name)
+        self.linker = linker
+        self.libs = libs
+        self.lib_dirs = lib_dirs
+        self.flags = flags
