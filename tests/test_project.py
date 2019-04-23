@@ -10,16 +10,24 @@ G_LOGGER.severity = G_LOGGER.VERBOSE
 class TestProject(object):
     def test_inits_to_curdir(self):
         proj = Project()
-        assert proj.root_dir == os.path.dirname(__file__)
+        assert proj.files.root_dir == os.path.dirname(__file__)
 
     def test_can_find_sources(self):
         proj = Project(root=ROOT)
-        test = proj.executable("test", sources=["test/test.cpp"])
-        assert test.source_paths == [PATHS["test.cpp"]]
+        nodes = proj._get_source_nodes(sources=["test/test.cpp"])
+        source_paths = [node.path for node in nodes]
+        assert source_paths == [PATHS["test.cpp"]]
+
+    def test_executable_api(self):
+        proj = Project(root=ROOT)
+        test = proj.executable("test", sources=["test/test.cpp"], libs=["stdc++"])
+        for name in proj.profiles.keys():
+            assert name in test
 
 class TestFileManager(object):
     def test_globs_files_from_relpath_into_abspaths(self):
-        manager = FileManager(dirs=[os.path.relpath(os.path.join(os.path.dirname(__file__), "minimal_project"))])
+        dirs = [os.path.relpath(os.path.join(os.path.dirname(__file__), "minimal_project"))]
+        manager = FileManager(ROOT, PATHS["build"], dirs=dirs)
         all_files = []
         for file in glob.iglob(os.path.join(ROOT, "**"), recursive=True):
             if os.path.isfile(file):
@@ -29,13 +37,13 @@ class TestFileManager(object):
         assert all([os.path.isabs(file) for file in manager.files])
 
     def test_find(self):
-        manager = FileManager(dirs=[ROOT])
+        manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
         for filename, path in PATHS.items():
             if os.path.isfile(path):
                 assert manager.find(filename) == [path]
 
     def test_source(self):
-        manager = FileManager(dirs=[ROOT])
+        manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
         factorial_hpp = manager.source(PATHS["factorial.hpp"])
         fibonacci_hpp = manager.source(PATHS["fibonacci.hpp"])
         factorial_cpp = manager.source(PATHS["factorial.cpp"])

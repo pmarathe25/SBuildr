@@ -108,9 +108,8 @@ class Compiler(object):
     # - i.e. compiler, include directories and compile options.
     # If two signatures are the same for an input file, it means the resulting object file(s) would be identical.
     # This helps name object files uniquely, e.g. for release/debug builds.
-    # TODO: Revisit this.
-    def signature(self, flags: BuildFlags) -> str:
-        sig = [self.cdef.executable()] + self.cdef.parse_flags(flags)
+    def signature(self, input_path: str, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> str:
+        sig = [self.cdef.executable()] + [input_path] + self.cdef.parse_flags(flags) + include_dirs
         return utils.str_hash(sig)
 
     # Generates the command required to compile the input file with the specified options.

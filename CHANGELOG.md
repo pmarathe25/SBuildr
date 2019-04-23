@@ -15,6 +15,8 @@ Dates are in YYYY-MM-DD format.
 - Project now lazily evaluates targets, and only when `configure` is invoked.
 - Added `exclude_dirs` option to `FileManager`
 - Split `FileManager`'s '`source_info` into `source`, which adds sources to the graph, and `scan` which scans for include directories. Removed `includes` since that information is now part of the `Node`.
+- `FileManager` now tracks root directory and build directory instead of `Project` tracking it directly.
+- Smarter `find` function in `FileManager`. Additionally, `source` uses `find` to make sure sources exist.
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

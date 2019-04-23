@@ -25,11 +25,21 @@ def _is_in_directories(path: str, dirs: Set[str]):
 
 # TODO: Docstrings
 class FileManager(object):
-    def __init__(self, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
+    # The root directory is used for relative paths. The build directory is automatically excluded from searches.
+    def __init__(self, root_dir: str, build_dir: str, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
+        self.root_dir = os.path.abspath(root_dir)
+        if not os.path.isdir(self.root_dir):
+            G_LOGGER.critical(f"Root Directory: {self.root_dir} does not exist, or is not a directory.")
+        self.build_dir = os.path.abspath(build_dir) if build_dir else os.path.join(root_dir, "build")
+        exclude_dirs.add(self.build_dir)
         self.files = []
-        # Remove directories that are within exclude_dirs
-        dirs = [dir for dir in dirs if not _is_in_directories(dir, exclude_dirs)]
-        for dir in dirs:
+
+        # Remove directories that are within exclude_dirs after converting all directories to abspaths.
+        dirs = [self.abspath(dir) for dir in dirs] or set([root_dir])
+        G_LOGGER.verbose(f"Directories after converting to absolute paths: {dirs}")
+        self.dirs = set([dir for dir in dirs if not _is_in_directories(dir, exclude_dirs)])
+        G_LOGGER.verbose(f"Directories after removing ignored: {self.dirs}")
+        for dir in self.dirs:
             for path in glob.iglob(os.path.join(dir, "**"), recursive=True):
                 if os.path.isfile(path) and not _is_in_directories(path, exclude_dirs):
                     self.files.append(os.path.abspath(path))
@@ -39,16 +49,37 @@ class FileManager(object):
         # Keep track of all source files.
         self.source_graph = Graph()
 
+    # Converts path to an absolute path. First checks if it exists relative to the root directory,
+    # otherwise falls back to cwd.
+    def abspath(self, path: str) -> str:
+        in_root_path = os.path.abspath(os.path.join(self.root_dir, path))
+        if os.path.exists(in_root_path):
+            return in_root_path
+        return os.path.abspath(path)
+
     # TODO: Docstrings
-    # Finds filename in self.files. Always returns an absolute path.
-    def find(self, filename: str):
-        return [path for path in self.files if path.endswith(filename)]
+    # Finds filename in self.files. Always returns absolute paths.
+    # If the file exists but is not in this FileManager's tracked directories, returns an empty list.
+    def find(self, filename: str) -> List[str]:
+        candidates = set([path for path in self.files if path.endswith(filename)])
+        # Also check if this exists when converted to an absolute path.
+        path = self.abspath(filename)
+        if os.path.isfile(path) and _is_in_directories(path, self.dirs):
+            candidates.add(path)
+        return list(candidates)
 
-    # def add_library(self, lib_path: str) -> Node:
-    #     node = self.source_graph.add(Node(lib_path))
-    #     return node
-
+    # Finds the given path in self.files and returns the SourceNode for it.
+    # The SourceNode is added to the source_graph if it does not already exist.
     def source(self, path: str) -> SourceNode:
+        candidates = self.find(path)
+        if len(candidates) > 1:
+            G_LOGGER.critical(f"For {path}, found multiple candidates: {candidates}. Please disambiguate by providing either an absolute path, or a longer relative path.")
+        elif len(candidates) == 0:
+            if not os.path.exists(path):
+                G_LOGGER.critical(f"Could not find {path}. Does it exist?")
+            else:
+                G_LOGGER.critical(f"Found {path}, but cannot use it since it does not belong to this project. Please add {os.path.dirname(path)} to project directories to use this file.")
+        path = candidates[0]
         if path not in self.source_graph:
             self.source_graph.add(SourceNode(path))
         return self.source_graph[path]
@@ -61,7 +92,7 @@ class FileManager(object):
     def scan(self, node: str) -> None:
         # Finds the file path for the file included in `path` by the `included` token.
         # This always returns an absolute path, since self.find always returns absolute paths.
-        def _disambiguate_included_file(included: str, path: str) -> str:
+        def disambiguate_included_file(included: str, path: str) -> str:
             # TODO: Handle paths that start with ../
             # Such paths should always be relative to the file itself, otherwise it's an error.
             if path.startswith(os.pardir):
@@ -82,7 +113,7 @@ class FileManager(object):
 
         # TODO: Handle relative paths in included here.
         # TODO: FIXME: This will not work if the include has escaped characters in it.
-        def _get_path_include_dir(path: str, included: str) -> str:
+        def get_path_include_dir(path: str, included: str) -> str:
             # path is the full path of the included file.
             # included is the token used to include the file.
             include_dir = path[:-len(included)]
@@ -99,11 +130,11 @@ class FileManager(object):
         included_files = _find_included(path)
         for included in included_files:
             # Determines the most likely file path based on an include.
-            included_path = _disambiguate_included_file(included, path)
+            included_path = disambiguate_included_file(included, path)
             if included_path:
                 G_LOGGER.verbose(f"For included token {included}, found path: {included_path}")
                 # The include dir for a path for path depends on how exactly the path was included in path.
-                include_dir = _get_path_include_dir(included_path, included)
+                include_dir = get_path_include_dir(included_path, included)
                 G_LOGGER.verbose(f"For path {included_path}, using include dir: {include_dir}")
                 include_dirs.add(include_dir)
                 # Also recurse over any include directories needed for the path itself

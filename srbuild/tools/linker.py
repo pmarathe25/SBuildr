@@ -6,6 +6,8 @@ from typing import List, Union
 import abc
 import os
 
+# TODO: Detect whether libstdc++ or libc++ is available on the system.
+
 # Responsible for translating srbuild.tools.flags.BuildFlags to actual command-line flags.
 # This class defines everything about each linker by supplying a unified interface.
 # That means that Linker can blindly use any LinkerDef to generate valid build commands.
@@ -117,7 +119,7 @@ class Linker(object):
     # Generates a signature for a given combination of input file and options.
     # If two signatures are the same for an input file, it means the resulting file(s) would be identical.
     # The signature is everything that makes the resulting object file unique - i.e. linker, input file, link directories and linker options.
-    # TODO: Revise this
+    # TODO(0): Revise this
     def signature(self, flags: BuildFlags, shared=False) -> List[str]:
         sig = [self.ldef.executable()] + self.ldef.parse_flags(flags) + [str(shared)]
         return utils.str_hash(sig)
