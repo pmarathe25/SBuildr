@@ -16,6 +16,7 @@ PATHS = {
     "factorial.cpp": os.path.join(ROOT, "src", "factorial.cpp"),
     "fibonacci.cpp": os.path.join(ROOT, "src", "fibonacci.cpp"),
     "test": os.path.join(ROOT, "test"),
+    "test/test": os.path.join(ROOT, "test", "test"),
     "test.hpp": os.path.join(ROOT, "test", "test.hpp"),
     "test.cpp": os.path.join(ROOT, "test", "test.cpp"),
     # Output files

@@ -68,6 +68,28 @@ class LinkerDef(abc.ABC):
         pass
 
     @staticmethod
+    def lib_basename(name: str) -> str:
+        """
+        Given the name of a library, specifies the basename of the corresponding file.
+        For example, on Linux, lib_basename("stdc++") would return "libstdc++.so"
+
+        Returns:
+            str: The basename of the library.
+        """
+        pass
+
+    @staticmethod
+    def exec_basename(name: str) -> str:
+        """
+        Given the name of a executable, specifies the basename of the corresponding file.
+        For example, on Windows, exec_basename("test") would return "test.exe"
+
+        Returns:
+            str: The basename of the library.
+        """
+        pass
+
+    @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
         """
         Parses build flags and returns the required command-line arguments.
@@ -92,6 +114,14 @@ class LinuxLinkerDef(LinkerDef):
     @staticmethod
     def lib(name: str) -> str:
         return f"-l{name}"
+
+    @staticmethod
+    def lib_basename(name: str) -> str:
+        return f"lib{name}.so"
+
+    @staticmethod
+    def exec_basename(name: str) -> str:
+        return name
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
@@ -120,8 +150,9 @@ class Linker(object):
     # If two signatures are the same for an input file, it means the resulting file(s) would be identical.
     # The signature is everything that makes the resulting object file unique - i.e. linker, input file, link directories and linker options.
     # TODO(0): Revise this
-    def signature(self, flags: BuildFlags, shared=False) -> List[str]:
-        sig = [self.ldef.executable()] + self.ldef.parse_flags(flags) + [str(shared)]
+    def signature(self, input_paths: List[str], libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> str:
+        # Order of inputs does not matter, but order of libs does. TODO: Check if that's true
+        sig = [self.ldef.executable()] + list(sorted(input_paths)) + self.ldef.parse_flags(flags) + libs + lib_dirs
         return utils.str_hash(sig)
 
     # Generates the command required to link the inputs files with the specified options.
@@ -136,6 +167,13 @@ class Linker(object):
         G_LOGGER.verbose(f"input_paths: {input_paths}, libs: {libs}, linker_flags: {linker_flags}, lib_dirs: {lib_dirs}")
         G_LOGGER.debug(f"Link Command: {' '.join(cmd)}")
         return cmd
+
+    def lib_basename(self, name: str) -> str:
+        return self.ldef.lib_basename(name)
+
+    def exec_basename(self, name: str) -> str:
+        return self.ldef.exec_basename(name)
+
 
 clang = Linker(ClangDef)
 gcc = Linker(GCCDef)

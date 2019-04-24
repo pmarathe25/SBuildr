@@ -4,11 +4,9 @@ from typing import List
 
 class Generator(object):
     # Generate a build command for the given node.
-    # For source nodes this is an empty list, otherwise, it is a compiler/linker command.
+    # For source nodes and basic nodes this is an empty list, otherwise, it is a compiler/linker command.
     def _build_command(self, node: Node) -> List[str]:
-        if isinstance(node, SourceNode):
-            return []
-        elif isinstance(node, CompiledNode):
+        if isinstance(node, CompiledNode):
             if len(node.inputs) != 1:
                 G_LOGGER.critical(f"CompiledNodes must have exactly one inputs, but received {node} with inputs: {node.inputs}")
             source = node.inputs[0]
@@ -17,3 +15,4 @@ class Generator(object):
             return node.compiler.compile(source.path, node.path, node.include_dirs + source.include_dirs, node.flags)
         elif isinstance(node, LinkedNode):
             return node.linker.link([inp.path for inp in node.inputs], node.path, node.libs, node.lib_dirs, node.flags)
+        return []

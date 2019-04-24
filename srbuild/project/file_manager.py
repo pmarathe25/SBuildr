@@ -46,8 +46,8 @@ class FileManager(object):
         # self.files = list(map(os.path.abspath, self.files))
         G_LOGGER.debug(f"Found {len(self.files)} files")
         G_LOGGER.verbose(f"{self.files}")
-        # Keep track of all source files.
-        self.source_graph = Graph()
+        # Keep track of all files relevant to building the project.
+        self.graph = Graph()
 
     # Converts path to an absolute path. First checks if it exists relative to the root directory,
     # otherwise falls back to cwd.
@@ -60,35 +60,40 @@ class FileManager(object):
     # TODO: Docstrings
     # Finds filename in self.files. Always returns absolute paths.
     # If the file exists but is not in this FileManager's tracked directories, returns an empty list.
+    # The returned list is in order of proximity to the root. The first element is closest to the root.
     def find(self, filename: str) -> List[str]:
         candidates = set([path for path in self.files if path.endswith(filename)])
+        # Prefer shorter paths, i.e. closer to the root.
+        candidates = list(sorted(candidates, key=lambda elem: len(elem)))
         # Also check if this exists when converted to an absolute path.
+        # Since this may not be relative to the root_dir, it is the lowest priority.
         path = self.abspath(filename)
-        if os.path.isfile(path) and _is_in_directories(path, self.dirs):
-            candidates.add(path)
-        return list(candidates)
+        if os.path.isfile(path) and path not in candidates:
+            candidates.append(path)
+        return candidates
+
+    # Adds an external path to the source graph.
+    def external(self, path: str) -> Node:
+        return self.graph.add(Node(path))
 
     # Finds the given path in self.files and returns the SourceNode for it.
-    # The SourceNode is added to the source_graph if it does not already exist.
+    # The SourceNode is added to the graph if it does not already exist.
     def source(self, path: str) -> SourceNode:
         candidates = self.find(path)
         if len(candidates) > 1:
-            G_LOGGER.critical(f"For {path}, found multiple candidates: {candidates}. Please disambiguate by providing either an absolute path, or a longer relative path.")
+            G_LOGGER.warning(f"For {path}, found multiple candidates: {candidates}. Using {candidates[0]}. If this is incorrect, please disambiguate by providing either an absolute path, or a longer relative path.")
         elif len(candidates) == 0:
-            if not os.path.exists(path):
-                G_LOGGER.critical(f"Could not find {path}. Does it exist?")
-            else:
-                G_LOGGER.critical(f"Found {path}, but cannot use it since it does not belong to this project. Please add {os.path.dirname(path)} to project directories to use this file.")
+            G_LOGGER.critical(f"Could not find {path}. Does it exist?")
         path = candidates[0]
-        if path not in self.source_graph:
-            self.source_graph.add(SourceNode(path))
-        return self.source_graph[path]
+        # This will not overwrite if the SourceNode is already in the graph.
+        return self.graph.add(SourceNode(path))
 
     def scan_all(self) -> None:
-        sources = list(self.source_graph.values())
-        [self.scan(node) for node in sources]
+        # scan() will modify the graph, so cannot iterate over values() directly
+        source_nodes = [node for node in self.graph.values() if isinstance(node, SourceNode)]
+        [self.scan(node) for node in source_nodes]
 
-    # Finds all required include directories for a given managed file. Adds it to the source_graph if missing.
+    # Finds all required include directories for a given managed file. Adds it to the graph if missing.
     def scan(self, node: str) -> None:
         # Finds the file path for the file included in `path` by the `included` token.
         # This always returns an absolute path, since self.find always returns absolute paths.
@@ -152,4 +157,4 @@ class FileManager(object):
         include_dirs = sorted(include_dirs)
         node.include_dirs = include_dirs
         G_LOGGER.debug(f"For {path}, found include dirs: {include_dirs}")
-        G_LOGGER.verbose(f"Updated source graph to: {self.source_graph}")
+        G_LOGGER.verbose(f"Updated source graph to: {self.graph}")

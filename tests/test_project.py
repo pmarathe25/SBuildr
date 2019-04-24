@@ -12,17 +12,21 @@ class TestProject(object):
         proj = Project()
         assert proj.files.root_dir == os.path.dirname(__file__)
 
-    def test_can_find_sources(self):
-        proj = Project(root=ROOT)
-        nodes = proj._get_source_nodes(sources=["test/test.cpp"])
-        source_paths = [node.path for node in nodes]
-        assert source_paths == [PATHS["test.cpp"]]
-
+    # TODO(0): Make these robust
     def test_executable_api(self):
         proj = Project(root=ROOT)
         test = proj.executable("test", sources=["test/test.cpp"], libs=["stdc++"])
         for name in proj.profiles.keys():
             assert name in test
+
+    def test_library_api(self):
+        proj = Project(root=ROOT)
+        lib = proj.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
+        for name in proj.profiles.keys():
+            assert name in lib
+        for node in lib.values():
+            assert node.flags._shared
+
 
 class TestFileManager(object):
     def test_globs_files_from_relpath_into_abspaths(self):
@@ -41,6 +45,11 @@ class TestFileManager(object):
         for filename, path in PATHS.items():
             if os.path.isfile(path):
                 assert manager.find(filename) == [path]
+
+    def test_can_find_sources(self):
+        manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
+        node = manager.source("test/test.cpp")
+        assert node.path == PATHS["test.cpp"]
 
     def test_source(self):
         manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
@@ -69,4 +78,4 @@ class TestFileManager(object):
         assert test_cpp.include_dirs == sorted(set([PATHS["include"], PATHS["test"]] + test_hpp.include_dirs + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
         # Make sure that the source graph has been populated
         for file in ["factorial.hpp", "fibonacci.hpp", "test.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
-            assert PATHS[file] in manager.source_graph
+            assert PATHS[file] in manager.graph
