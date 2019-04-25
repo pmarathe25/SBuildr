@@ -1,27 +1,27 @@
 from srbuild.graph.node import Node, CompiledNode, LinkedNode
 from srbuild.tools.flags import BuildFlags
-from srbuild.tools import compiler, linker
-from srbuild.project.target import Target
 from srbuild.graph.graph import Graph
-from typing import List, Union, Dict
+from srbuild.logger import G_LOGGER
 
+from typing import List, Union, Dict
 import os
 
 # Inserts suffix into path, just before the extension
 def _file_suffix(path: str, suffix: str, ext: str = None) -> str:
-    split = os.path.splitext(path)
+    split = os.path.splitext(os.path.basename(path))
     basename = split[0]
     ext = ext or split[1]
-    return f"{path}.{suffix}" + f".{ext}" if ext else ""
+    suffixed = f"{basename}.{suffix}" + ext if ext else ""
+    G_LOGGER.verbose(f"_file_suffix received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
+    return suffixed
 
 # Each profile has a Graph for linked/compiled targets. The source tree (i.e. FileManager) is shared.
 # Profiles can have default properties that are applied to each target within.
 # TODO: Add compiler/linker as a property of Profile.
 class Profile(object):
-    def __init__(self, parent: "Project", flags: BuildFlags, build_dir: str):
+    def __init__(self, flags: BuildFlags, build_dir: str):
         self.flags = flags
         self.build_dir = build_dir
-        self.parent = parent
         self.graph = Graph()
 
     # libs can contain either Nodes from this graph, or paths to libraries, or names of libraries
@@ -38,7 +38,7 @@ class Profile(object):
             # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
             # TODO: Maybe push signature generation into Generator.
             obj_sig = compiler.signature(source_node.path, include_dirs, flags)
-            obj_path = os.path.join(self.build_dir, _file_suffix(source_node.path, obj_sig, "o"))
+            obj_path = os.path.join(self.build_dir, _file_suffix(source_node.path, obj_sig, ".o"))
             # User defined includes are always prepended the ones deduced for SourceNodes.
             obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
             object_nodes.append(self.graph.add(obj_node))

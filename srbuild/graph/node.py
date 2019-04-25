@@ -1,6 +1,7 @@
 from srbuild.tools import compiler, linker
 from srbuild.tools.flags import BuildFlags
 from srbuild.logger import G_LOGGER
+
 from typing import List
 import os
 

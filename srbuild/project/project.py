@@ -3,7 +3,7 @@ from srbuild.project.file_manager import FileManager
 from srbuild.project.profile import Profile
 from srbuild.tools import compiler, linker
 from srbuild.tools.flags import BuildFlags
-from srbuild.project.target import Target
+from srbuild.project.target import ProjectTarget
 from srbuild.graph.graph import Graph
 from srbuild.logger import G_LOGGER
 
@@ -25,15 +25,16 @@ class Project(object):
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
         self.files = FileManager(root_dir, build_dir, dirs)
-        self.executables: Dict[str, Target] = {}
-        self.libraries: Dict[str, Target] = {}
+        self.executables: Dict[str, ProjectTarget] = {}
+        self.libraries: Dict[str, ProjectTarget] = {}
         self.profiles: Dict[str, Profile] = {}
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic())
+        # Whether this project has been configured for building.
+        self.configured = False
 
-
-    def _target(self, basename: str, sources: List[str], flags: BuildFlags, libs: List[Union[Target, str]], compiler: compiler.Compiler, include_dirs: List[str], linker: linker.Linker, lib_dirs: List[str]) -> Target:
+    def _target(self, basename: str, sources: List[str], flags: BuildFlags, libs: List[Union[ProjectTarget, str]], compiler: compiler.Compiler, include_dirs: List[str], linker: linker.Linker, lib_dirs: List[str]) -> ProjectTarget:
 
         # Convert sources to full paths
         def get_source_nodes(sources: List[str]) -> List[CompiledNode]:
@@ -45,7 +46,7 @@ class Project(object):
         # e.g. ["stdc++", "/path/to/libtest.so"]
         # If the library is provided as a path, we also add it as a node to the file manager
         # so that we can properly rebuild when it is updated (even if it's external).
-        def get_libraries(libs: List[Union[Target, str]]) -> List[Union[Target, Node, str]]:
+        def get_libraries(libs: List[Union[ProjectTarget, str]]) -> List[Union[ProjectTarget, Node, str]]:
 
             # Determines whether lib looks like a path, or like a library name.
             def is_lib_path(lib: str) -> bool:
@@ -56,7 +57,7 @@ class Project(object):
             fixed_libs = []
             for lib in libs:
                 # Targets are handled by each profile individually
-                if not isinstance(lib, Target):
+                if not isinstance(lib, ProjectTarget):
                     candidates = self.files.find(lib)
                     if is_lib_path(lib):
                         if len(candidates) > 1:
@@ -70,13 +71,13 @@ class Project(object):
             return fixed_libs
 
         source_nodes = get_source_nodes(sources)
-        libs: List[Union[Target, Node, str]] = get_libraries(libs)
-        target = Target()
+        libs: List[Union[ProjectTarget, Node, str]] = get_libraries(libs)
+        target = ProjectTarget()
         for profile_name, profile in self.profiles.items():
             # Process targets so we only give each profile its own LinkedNodes.
             # Purposely don't convert all libs to paths here, so that each profile can set up dependencies correctly.
-            target_libs = [lib if not isinstance(lib, Target) else lib[profile_name] for lib in libs]
-            target[profile_name] = profile.target(basename, source_nodes, flags, libs, compiler, include_dirs, linker, lib_dirs)
+            target_libs = [lib if not isinstance(lib, ProjectTarget) else lib[profile_name] for lib in libs]
+            target[profile_name] = profile.target(basename, source_nodes, flags, target_libs, compiler, include_dirs, linker, lib_dirs)
         return target
 
     # TODO: Docstrings
@@ -85,34 +86,36 @@ class Project(object):
                     name: str,
                     sources: List[str],
                     flags: BuildFlags = BuildFlags(),
-                    libs: List[Union[Target, str]] = [],
+                    libs: List[Union[ProjectTarget, str]] = [],
                     compiler: compiler.Compiler = compiler.clang,
                     include_dirs: List[str] = [],
                     linker: linker.Linker = linker.clang,
-                    lib_dirs: List[str] = []) -> Target:
-        self.executables[name] = self._target(linker.exec_basename(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
+                    lib_dirs: List[str] = []) -> ProjectTarget:
+        self.executables[name] = self._target(linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
         return self.executables[name]
 
     def library(self,
                 name: str,
                 sources: List[str],
                 flags: BuildFlags = BuildFlags(),
-                libs: List[Union[Target, str]] = [],
+                libs: List[Union[ProjectTarget, str]] = [],
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
-                lib_dirs: List[str] = []) -> Target:
-        self.libraries[name] = self._target(linker.lib_basename(name), sources, flags + BuildFlags().shared(), libs, compiler, include_dirs, linker, lib_dirs)
+                lib_dirs: List[str] = []) -> ProjectTarget:
+        self.libraries[name] = self._target(linker.to_lib(name), sources, flags + BuildFlags().shared(), libs, compiler, include_dirs, linker, lib_dirs)
         return self.libraries[name]
-
-    # Before configuring, populate the source field of None
-    def configure(self) -> None:
-        pass
 
     # Returns a profile if it exists, otherwise creates a new one and returns it.
     def profile(self, name, flags: BuildFlags=BuildFlags(), build_subdir: str=None) -> Profile:
         if name not in self.profiles:
             build_subdir = build_subdir or name
             build_dir = os.path.join(self.files.build_dir, build_subdir)
-            self.profiles[name] = Profile(parent=self, flags=flags, build_dir=build_dir)
+            self.profiles[name] = Profile(flags=flags, build_dir=build_dir)
         return self.profiles[name]
+
+    # Prepares the project for a build.
+    def configure(self) -> None:
+        # Scan for all headers, and create the appropriate nodes.
+        self.files.scan_all()
+        self.configured = True

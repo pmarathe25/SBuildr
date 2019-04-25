@@ -21,6 +21,8 @@ Dates are in YYYY-MM-DD format.
 - `FileManager`'s `find` will now accept absolute paths that are outside the project.
 - `Profile` now has runnable `target` function (untested).
 - Improved handling of libraries in `Project`
+- Implemented `Project.configure` and added `configured` attribute to `Project` to indicate whether the project is ready to build. 
+- Overhauled `Generator` API so it now takes a `configure`d `Project` as an input
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

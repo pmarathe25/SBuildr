@@ -29,6 +29,17 @@ def generate_build_graph(compiler, linker):
     test = LinkedNode(os.path.join(PATHS["build"], "test"), [test_o, libmath], linker=linker, flags=flags, libs=["stdc++"])
     return Graph([utils_h, factorial_h, fibonacci_h, test_h, factorial_cpp, fibonacci_cpp, test_cpp, factorial_o, fibonacci_o, test_o, libmath, test])
 
+# Create dummy structs to satisfy the API
+class FakeFileManager(object):
+    def __init__(self, graph):
+        self.graph = graph
+
+class FakeProject(object):
+    def __init__(self, files: FakeFileManager):
+        self.files = files
+        self.configured = True
+        self.profiles = {}
+
 class TestRBuild(object):
     @classmethod
     def setup_class(cls):
@@ -48,7 +59,7 @@ class TestRBuild(object):
     @pytest.mark.parametrize("linker", [linker.gcc, linker.clang])
     def test_config_file(self, compiler, linker):
         graph = generate_build_graph(compiler, linker)
-        config = RBuildGenerator().generate(graph)
+        config = RBuildGenerator().generate(FakeProject(FakeFileManager(graph)))
         filepath = os.path.join(PATHS["build"], "rbuild")
         with open(filepath, "w") as f:
             f.write(config)

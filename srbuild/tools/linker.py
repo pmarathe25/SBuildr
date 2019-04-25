@@ -2,6 +2,7 @@ from srbuild.tools.flags import BuildFlags
 from srbuild.tools import compiler
 from srbuild.logger import G_LOGGER
 import srbuild.utils as utils
+
 from typing import List, Union
 import abc
 import os
@@ -68,10 +69,10 @@ class LinkerDef(abc.ABC):
         pass
 
     @staticmethod
-    def lib_basename(name: str) -> str:
+    def to_lib(name: str) -> str:
         """
         Given the name of a library, specifies the basename of the corresponding file.
-        For example, on Linux, lib_basename("stdc++") would return "libstdc++.so"
+        For example, on Linux, to_lib("stdc++") would return "libstdc++.so"
 
         Returns:
             str: The basename of the library.
@@ -79,10 +80,10 @@ class LinkerDef(abc.ABC):
         pass
 
     @staticmethod
-    def exec_basename(name: str) -> str:
+    def to_exec(name: str) -> str:
         """
         Given the name of a executable, specifies the basename of the corresponding file.
-        For example, on Windows, exec_basename("test") would return "test.exe"
+        For example, on Windows, to_exec("test") would return "test.exe"
 
         Returns:
             str: The basename of the library.
@@ -116,11 +117,11 @@ class LinuxLinkerDef(LinkerDef):
         return f"-l{name}"
 
     @staticmethod
-    def lib_basename(name: str) -> str:
+    def to_lib(name: str) -> str:
         return f"lib{name}.so"
 
     @staticmethod
-    def exec_basename(name: str) -> str:
+    def to_exec(name: str) -> str:
         return name
 
     @staticmethod
@@ -168,11 +169,11 @@ class Linker(object):
         G_LOGGER.debug(f"Link Command: {' '.join(cmd)}")
         return cmd
 
-    def lib_basename(self, name: str) -> str:
-        return self.ldef.lib_basename(name)
+    def to_lib(self, name: str) -> str:
+        return self.ldef.to_lib(name)
 
-    def exec_basename(self, name: str) -> str:
-        return self.ldef.exec_basename(name)
+    def to_exec(self, name: str) -> str:
+        return self.ldef.to_exec(name)
 
 
 clang = Linker(ClangDef)

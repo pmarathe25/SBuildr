@@ -1,7 +1,9 @@
 from srbuild.project.file_manager import FileManager
 from srbuild.project.project import Project
 from srbuild.logger import G_LOGGER
+
 from test_tools import PATHS, TESTS_ROOT, ROOT
+
 import glob
 import os
 
@@ -12,21 +14,28 @@ class TestProject(object):
         proj = Project()
         assert proj.files.root_dir == os.path.dirname(__file__)
 
-    # TODO(0): Make these robust
+    def check_target(self, proj, target):
+        for name in proj.profiles.keys():
+            assert name in target
+        for profile_name, node in target.items():
+            # Make sure generated files are in the build directory.
+            build_dir = proj.profile(profile_name).build_dir
+            assert os.path.dirname(node.path) == build_dir
+            print(node)
+            print([os.path.dirname(inp.path) for inp in node.inputs])
+            assert all([os.path.dirname(inp.path) == build_dir for inp in node.inputs])
+
     def test_executable_api(self):
         proj = Project(root=ROOT)
         test = proj.executable("test", sources=["test/test.cpp"], libs=["stdc++"])
-        for name in proj.profiles.keys():
-            assert name in test
+        self.check_target(proj, test)
 
     def test_library_api(self):
         proj = Project(root=ROOT)
         lib = proj.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
-        for name in proj.profiles.keys():
-            assert name in lib
         for node in lib.values():
             assert node.flags._shared
-
+        self.check_target(proj, lib)
 
 class TestFileManager(object):
     def test_globs_files_from_relpath_into_abspaths(self):
