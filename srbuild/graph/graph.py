@@ -6,9 +6,15 @@ class Graph(dict):
     def __init__(self, nodes: Set[Node]=set()):
         self.update({node.path: node for node in nodes})
 
+    def __contains__(self, node: Node) -> bool:
+        return self.contains_path(node.path)
+
+    def contains_path(self, path: str) -> bool:
+        return dict.__contains__(self, path)
+
     # Adds a node if it is not already present.
     def add(self, node: Node) -> Node:
-        if node.path not in self:
+        if node not in self:
             self[node.path] = node
         return self[node.path]
 
