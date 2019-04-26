@@ -16,12 +16,13 @@ def _find_included(filename: str) -> Set[str]:
     with open(filename, 'r') as file:
         return set(INCLUDE_REGEX.findall(file.read()))
 
+def _is_in_directory(path: str, dir: str):
+    # e.g. for _is_in_directory(/my/dir/my/path, /my/dir/), commonpath == dir.
+    # This is always the case if path is in dir.
+    return os.path.commonpath([path, dir]) == dir
+
 # Checks if path is in any of the specified dirs.
 def _is_in_directories(path: str, dirs: Set[str]):
-    def _is_in_directory(path: str, dir: str):
-        # e.g. for _is_in_directory(/my/dir/my/path, /my/dir/), commonpath == dir.
-        # This is always the case if path is in dir.
-        return os.path.commonpath([path, dir]) == dir
     return any([_is_in_directory(path, dir) for dir in dirs])
 
 # TODO: Docstrings
@@ -31,7 +32,8 @@ class FileManager(object):
         self.root_dir = os.path.abspath(root_dir)
         if not os.path.isdir(self.root_dir):
             G_LOGGER.critical(f"Root Directory: {self.root_dir} does not exist, or is not a directory.")
-        self.build_dir = os.path.abspath(build_dir) if build_dir else os.path.join(root_dir, "build")
+        # build_dir is the only location to which FileManager is allowed to write.
+        self.build_dir = self.abspath(build_dir) if build_dir else os.path.join(root_dir, "build")
         exclude_dirs.add(self.build_dir)
         self.files = []
 
@@ -49,6 +51,14 @@ class FileManager(object):
         G_LOGGER.verbose(f"{self.files}")
         # Keep track of all files relevant to building the project.
         self.graph = Graph()
+
+    # Returns whether the directory was created inside the build directory.
+    # If it is not a subdirectory of the build directory, returns False.
+    def mkdir(self, dir_path: str) -> bool:
+        if _is_in_directory(dir_path, self.build_dir):
+            os.makedirs(dir_path, exist_ok=True)
+            return True
+        return False
 
     # Converts path to an absolute path. First checks if it exists relative to the root directory,
     # otherwise falls back to cwd.
