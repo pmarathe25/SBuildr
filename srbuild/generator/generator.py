@@ -2,7 +2,8 @@ from srbuild.graph.node import Node, CompiledNode, LinkedNode
 from srbuild.project.project import Project
 from srbuild.logger import G_LOGGER
 
-from typing import List
+from typing import List, Dict
+import subprocess
 
 class Generator(object):
     # Generate a build command for the given node.
@@ -19,27 +20,33 @@ class Generator(object):
             return node.linker.link([inp.path for inp in node.inputs], node.path, node.libs, node.lib_dirs, node.flags)
         return []
 
-    def generate(self, project: Project) -> str:
+    def __init__(self, project: Project):
         """
-        Generates a configuration file based on the source files provided by the project's file manager,
-        and targets specified in each profile.
+        A generator that creates build files for the specified project, and is able to build arbitrary targets specified in the project. Intermediate build configuration files will be written to the build directory specified by the project's FileManager.
 
         Args:
-            project (Project): The project for which to generate build file. This should contain:
-                The file manager that describes all the source files of the project. files.graph should be populated and accessible.
-                Profiles, where each profile contains zero or more build targets. profile.graph should be populated and accessible for each profile.
+            project (Project): The project managed by this generator.
+        """
+        self.project = project
+
+    def generate(self):
+        """
+        Generates build configuration files based on the source files provided by the project's file manager,
+        and targets specified in each profile.
+
+        Side Effects:
+            This function will invoke the managed project's `prepare_for_build` function, which may affect its state.
 
         Returns:
             str: The generated build file.
         """
         raise NotImplementedError()
 
-    def build_command(self, config_path: str, targets: List[LinkedNode]) -> List[str]:
+    def build(self, targets: Dict[str, List[LinkedNode]]) -> subprocess.CompletedProcess:
         """
-        Returns a build command that can be run on the command line to build the specified target paths.
+        Runs a build command that will generate the specified target paths.
 
         Args:
-            config_path (str): The path to the config file that was generated.
-            targets (List[LinkedNode]): The nodes for the targets that should be built.
+            targets (Dict[str, List[LinkedNode]]): The nodes from the project's profiles' graphs corresponding to the targets that should be built.
         """
         raise NotImplementedError()

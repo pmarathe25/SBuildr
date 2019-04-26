@@ -31,8 +31,6 @@ class Project(object):
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic())
-        # Whether this project has been configured for building.
-        self.configured = False
 
     def _target(self, basename: str, sources: List[str], flags: BuildFlags, libs: List[Union[ProjectTarget, str]], compiler: compiler.Compiler, include_dirs: List[str], linker: linker.Linker, lib_dirs: List[str]) -> ProjectTarget:
 
@@ -115,7 +113,6 @@ class Project(object):
         return self.profiles[name]
 
     # Prepares the project for a build.
-    def configure(self) -> None:
+    def prepare_for_build(self) -> None:
         # Scan for all headers, and create the appropriate nodes.
         self.files.scan_all()
-        self.configured = True

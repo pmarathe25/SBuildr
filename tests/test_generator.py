@@ -33,12 +33,19 @@ def generate_build_graph(compiler, linker):
 class FakeFileManager(object):
     def __init__(self, graph):
         self.graph = graph
+        self.build_dir = PATHS["build"]
+
+    def mkdir(self, _):
+        pass
 
 class FakeProject(object):
     def __init__(self, files: FakeFileManager):
         self.files = files
         self.configured = True
         self.profiles = {}
+
+    def prepare_for_build(self):
+        pass
 
 class TestRBuild(object):
     @classmethod
@@ -59,11 +66,9 @@ class TestRBuild(object):
     @pytest.mark.parametrize("linker", [linker.gcc, linker.clang])
     def test_config_file(self, compiler, linker):
         graph = generate_build_graph(compiler, linker)
-        config = RBuildGenerator().generate(FakeProject(FakeFileManager(graph)))
-        filepath = os.path.join(PATHS["build"], "rbuild")
-        with open(filepath, "w") as f:
-            f.write(config)
-        assert subprocess.run(["rbuild", filepath])
+        gen = RBuildGenerator(FakeProject(FakeFileManager(graph)))
+        gen.generate()
+        assert subprocess.run(["rbuild", gen.config_path, "-c", gen.cache_path])
         # All paths should exist after building.
         for node in graph.values():
             assert os.path.exists(node.path)
