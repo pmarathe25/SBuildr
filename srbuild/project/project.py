@@ -32,8 +32,10 @@ class Project(object):
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic())
 
-    def _target(self, basename: str, sources: List[str], flags: BuildFlags, libs: List[Union[ProjectTarget, str]], compiler: compiler.Compiler, include_dirs: List[str], linker: linker.Linker, lib_dirs: List[str]) -> ProjectTarget:
+    def __contains__(self, target_name: str) -> bool:
+        return target_name in self.executables or target_name in self.libraries
 
+    def _target(self, name: str, basename: str, sources: List[str], flags: BuildFlags, libs: List[Union[ProjectTarget, str]], compiler: compiler.Compiler, include_dirs: List[str], linker: linker.Linker, lib_dirs: List[str]) -> ProjectTarget:
         # Convert sources to full paths
         def get_source_nodes(sources: List[str]) -> List[CompiledNode]:
             source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
@@ -70,11 +72,12 @@ class Project(object):
 
         source_nodes = get_source_nodes(sources)
         libs: List[Union[ProjectTarget, Node, str]] = get_libraries(libs)
-        target = ProjectTarget()
+        target = ProjectTarget(name=name)
         for profile_name, profile in self.profiles.items():
             # Process targets so we only give each profile its own LinkedNodes.
             # Purposely don't convert all libs to paths here, so that each profile can set up dependencies correctly.
             target_libs = [lib if not isinstance(lib, ProjectTarget) else lib[profile_name] for lib in libs]
+            G_LOGGER.debug(f"Adding target: {name}, with basename: {basename} to profile: {profile_name}")
             target[profile_name] = profile.target(basename, source_nodes, flags, target_libs, compiler, include_dirs, linker, lib_dirs)
         return target
 
@@ -89,7 +92,7 @@ class Project(object):
                     include_dirs: List[str] = [],
                     linker: linker.Linker = linker.clang,
                     lib_dirs: List[str] = []) -> ProjectTarget:
-        self.executables[name] = self._target(linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
+        self.executables[name] = self._target(name, linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
         return self.executables[name]
 
     def library(self,
@@ -101,7 +104,7 @@ class Project(object):
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
                 lib_dirs: List[str] = []) -> ProjectTarget:
-        self.libraries[name] = self._target(linker.to_lib(name), sources, flags + BuildFlags().shared(), libs, compiler, include_dirs, linker, lib_dirs)
+        self.libraries[name] = self._target(name, linker.to_lib(name), sources, flags + BuildFlags().shared(), libs, compiler, include_dirs, linker, lib_dirs)
         return self.libraries[name]
 
     # Returns a profile if it exists, otherwise creates a new one and returns it.

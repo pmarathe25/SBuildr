@@ -1,5 +1,6 @@
 from srbuild.graph.node import Node, CompiledNode, LinkedNode
 from srbuild.project.project import Project
+from srbuild.project.target import ProjectTarget
 from srbuild.logger import G_LOGGER
 
 from typing import List, Dict
@@ -36,17 +37,22 @@ class Generator(object):
 
         Side Effects:
             This function will invoke the managed project's `prepare_for_build` function, which may affect its state.
+            It will also invoke the project's file manager's mkdir function to create the build directory if it does not exist.
 
         Returns:
             str: The generated build file.
         """
         raise NotImplementedError()
 
-    def build(self, targets: Dict[str, List[LinkedNode]]) -> subprocess.CompletedProcess:
+    def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
         """
-        Runs a build command that will generate the specified target paths.
+        Runs a build command that will generate the specified targets from the specified profiles.
+
+        Side Effects:
+            This function will invoke the managed project's file manager's mkdir function to create the build subdirectory for each profile if it does not exist.
 
         Args:
-            targets (Dict[str, List[LinkedNode]]): The nodes from the project's profiles' graphs corresponding to the targets that should be built.
+            targets (List[ProjectTarget]): The targets to build.
+            profiles (List[str]): The names of the profiles to build for. If no profiles are provided, builds the specified targets for all profiles. If a target does not exist for one of the specified profiles, that target is skipped for that profile.
         """
         raise NotImplementedError()

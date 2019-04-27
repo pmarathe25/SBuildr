@@ -24,6 +24,8 @@ Dates are in YYYY-MM-DD format.
 - Implemented `Project.configure` and added `configured` attribute to `Project` to indicate whether the project is ready to build.
 - Overhauled `Generator` API so it now takes a `configure`d `Project` as an input
 - `FileManager` can now create directories, but only in its build directory.
+- `Generator` now accepts `ProjectTarget`s to build rather than `LinkedNode`s
+- Added basic implementation of `cli()` with `configure` and `build` and a basic usage example.
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

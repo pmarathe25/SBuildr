@@ -30,13 +30,10 @@ class TestIntegration(object):
         generator = RBuildGenerator(proj)
         generator.generate()
 
-        # Build one target for release, and the other for debug.
-        targets = {
-            "release": [libmath["release"]],
-            "debug": [test["debug"]]
-        }
+        # Build both targets for all profiles.
+        targets = [libmath, test]
         generator.build(targets)
         # Ensure that the targets now exist
-        for nodes in targets.values():
-            for node in nodes:
+        for target in targets:
+            for _, node in target.items():
                 assert os.path.exists(node.path)

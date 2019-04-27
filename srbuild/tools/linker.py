@@ -150,7 +150,6 @@ class Linker(object):
     # Generates a signature for a given combination of input file and options.
     # If two signatures are the same for an input file, it means the resulting file(s) would be identical.
     # The signature is everything that makes the resulting object file unique - i.e. linker, input file, link directories and linker options.
-    # TODO(0): Revise this
     def signature(self, input_paths: List[str], libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> str:
         # Order of inputs does not matter, but order of libs does. TODO: Check if that's true
         sig = [self.ldef.executable()] + list(sorted(input_paths)) + self.ldef.parse_flags(flags) + libs + lib_dirs

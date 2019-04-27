@@ -65,7 +65,7 @@ class Logger(object):
     def verbose(self, message, color=Color.GRAY):
         self.log(self.assemble_message(message, stack_depth=2, prefix="V"), severity=Logger.VERBOSE, color=color)
 
-    def debug(self, message, color=Color.GRAY):
+    def debug(self, message, color=Color.DEFAULT):
         self.log(self.assemble_message(message, stack_depth=2, prefix="D"), severity=Logger.DEBUG, color=color)
 
     def info(self, message, color=Color.GREEN):
@@ -80,6 +80,6 @@ class Logger(object):
     def critical(self, message, color=Color.RED):
         message = self.assemble_message(message, stack_depth=2, prefix="E")
         self.log(message, severity=Logger.ERROR, color=color)
-        raise Exception(message)
+        sys.exit(1)
 
 G_LOGGER = Logger()

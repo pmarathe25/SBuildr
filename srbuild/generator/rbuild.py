@@ -1,11 +1,13 @@
 from srbuild.generator.generator import Generator
 from srbuild.project.project import Project
 from srbuild.graph.node import LinkedNode
+from srbuild.project.target import ProjectTarget
 from srbuild.graph.graph import Graph
 from srbuild.logger import G_LOGGER
 
 from typing import List, Dict
 import subprocess
+import time
 import os
 
 class RBuildGenerator(Generator):
@@ -45,18 +47,30 @@ class RBuildGenerator(Generator):
         with open(self.config_path, "w") as f:
             f.write(config)
 
-    # TODO(1): Change LinkedNode to Target instead so we can always pick the correct profile.
-    def build(self, targets: Dict[str, List[LinkedNode]]) -> subprocess.CompletedProcess:
-        all_nodes = []
-        for profile_name, nodes in targets.items():
-            profile = self.project.profiles[profile_name]
+    def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
+        paths = []
+        profiles = profiles or self.project.profiles.keys()
+        for profile in profiles:
+            if profile not in self.project.profiles:
+                G_LOGGER.critical(f"Profile {profile} does not exist in the project. Available profiles: {list(self.project.profiles.keys())}")
             # Make the required build directories first.
-            self.project.files.mkdir(profile.build_dir)
-            for node in nodes:
-                if node not in profile.graph:
-                    G_LOGGER.critical(f"Node {node} was specified for {profile_name}, but it does not exist in this profile. Is it in another profile?")
-                all_nodes.append(node)
+            build_dir = self.project.profile(profile).build_dir
+            G_LOGGER.debug(f"For profile: {profile}, creating build directory: {build_dir}")
+            self.project.files.mkdir(build_dir)
+            for target in targets:
+                if profile in target:
+                    path = target[profile].path
+                    G_LOGGER.verbose(f"For target: {target}, profile: {profile}, found path: {path}")
+                    paths.append(path)
+                else:
+                    G_LOGGER.debug(f"Skipping target: {target.name} for profile: {profile}, as it does not exist.")
 
-        # Finally, build
-        cmd = ["rbuild", f"{self.config_path}"] + [node.path for node in all_nodes] + ["-c", self.cache_path]
-        return subprocess.run(cmd, capture_output=True)
+        # Finally, build.
+        cmd = ["rbuild", f"{self.config_path}"] + paths + ["-c", self.cache_path]
+        G_LOGGER.verbose(f"Build command: {' '.join(cmd)}\nTarget file paths: {paths}")
+        start = time.time()
+        status = subprocess.run(cmd, capture_output=True)
+        end = time.time()
+        if not status.returncode:
+            G_LOGGER.info(f"Built {len(targets)} targets for {len(profiles)} profiles in {end - start} seconds.")
+        return status

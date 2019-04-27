@@ -11,7 +11,7 @@ def _file_suffix(path: str, suffix: str, ext: str = None) -> str:
     split = os.path.splitext(os.path.basename(path))
     basename = split[0]
     ext = ext or split[1]
-    suffixed = f"{basename}.{suffix}" + ext if ext else ""
+    suffixed = f"{basename}.{suffix}" + (ext if ext else "")
     G_LOGGER.verbose(f"_file_suffix received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
     return suffixed
 
@@ -25,7 +25,6 @@ class Profile(object):
         self.graph = Graph()
 
     # libs can contain either Nodes from this graph, or paths to libraries, or names of libraries
-    # TODO(0): Convert Targets in libs to Nodes.
     # This cannot be called with a target_config that has not been
     def target(self, basename, source_nodes, flags, libs: List[Union[Node, str]], compiler, include_dirs, linker, lib_dirs) -> LinkedNode:
         # Per-target flags always overwrite profile flags.
