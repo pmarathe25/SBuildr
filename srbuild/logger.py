@@ -4,6 +4,9 @@ import enum
 import sys
 import os
 
+def plural(text: str, num: int):
+    return f"{num} {text}{'s' if num > 1 else ''}"
+
 def split_path(path) -> List[str]:
     """
     Splits the given path into all its components.
@@ -21,7 +24,7 @@ class Color(enum.Enum):
     PURPLE = "95m"
     RED = "31m"
 
-class Logger(object):
+class Verbosity(enum.IntEnum):
     VERBOSE = 0
     DEBUG = 10
     INFO = 20
@@ -29,18 +32,19 @@ class Logger(object):
     ERROR = 40
     CRITICAL = 50
 
-    def __init__(self, severity=INFO, path_depth=3):
+class Logger(object):
+    def __init__(self, verbosity=Verbosity.INFO, path_depth=3):
         """
         Logger.
 
         Optional Args:
-            severity (Logger.Severity): Messages below this severity are ignored.
+            verbosity (Logger.Severity): Messages below this verbosity are ignored.
             path_depth (int): The depth of the displayed path. If this is set to -1, the absolute path is displayed.
         """
-        self.severity = severity
+        self.verbosity = verbosity
         self.path_depth = path_depth
 
-    def assemble_message(self, message, stack_depth, prefix) -> str:
+    def assemble_message(self, message, stack_depth, prefix="") -> str:
         # Disable logging when running with -O.
         if not __debug__:
             return ""
@@ -57,29 +61,29 @@ class Logger(object):
             filename = os.path.join(*split_path(filename)[-self.path_depth:])
             return f"{prefix} [{filename}:{sys._getframe(stack_depth).f_lineno}] {message}"
 
-    def log(self, message, severity, color=Color.DEFAULT):
+    def log(self, message, verbosity=Verbosity.INFO, color=Color.DEFAULT):
         # Disable logging when running with -O.
-        if __debug__ and severity >= self.severity:
+        if __debug__ and verbosity >= self.verbosity:
             print("\033[1;{:}{:}\033[0m".format(color.value, message))
 
     def verbose(self, message, color=Color.GRAY):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="V"), severity=Logger.VERBOSE, color=color)
+        self.log(self.assemble_message(message, stack_depth=2, prefix="V"), verbosity=Verbosity.VERBOSE, color=color)
 
     def debug(self, message, color=Color.DEFAULT):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="D"), severity=Logger.DEBUG, color=color)
+        self.log(self.assemble_message(message, stack_depth=2, prefix="D"), verbosity=Verbosity.DEBUG, color=color)
 
     def info(self, message, color=Color.GREEN):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="I"), severity=Logger.INFO, color=color)
+        self.log(self.assemble_message(message, stack_depth=2, prefix="I"), verbosity=Verbosity.INFO, color=color)
 
     def warning(self, message, color=Color.PURPLE):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="W"), severity=Logger.WARNING, color=color)
+        self.log(self.assemble_message(message, stack_depth=2, prefix="W"), verbosity=Verbosity.WARNING, color=color)
 
     def error(self, message, color=Color.RED):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), severity=Logger.ERROR, color=color)
+        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), verbosity=Verbosity.ERROR, color=color)
 
     def critical(self, message, color=Color.RED):
         message = self.assemble_message(message, stack_depth=2, prefix="E")
-        self.log(message, severity=Logger.ERROR, color=color)
+        self.log(message, verbosity=Verbosity.ERROR, color=color)
         sys.exit(1)
 
 G_LOGGER = Logger()

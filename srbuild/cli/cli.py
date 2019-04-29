@@ -1,13 +1,28 @@
 from srbuild.generator.rbuild import RBuildGenerator
 from srbuild.project.project import Project
 from srbuild.logger import G_LOGGER
+import srbuild.logger as logger
 
+import subprocess
 import argparse
+import sys
+import os
 
 # TODO: Docstrings
 # Sets up the the command-line interface for the given project/generator combination.
-def cli(project: Project, GeneratorType: type = RBuildGenerator):
+# When no profile(s) are specified, default_profile will be used.
+def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profile="debug"):
     generator = GeneratorType(project)
+
+    # Returns the captured output
+    # TODO: Subprocess management needs to be centralized somewhere.
+    def check_returncode(result: subprocess.CompletedProcess) -> str:
+        terminal_width, _ = os.get_terminal_size(0)
+        output = f"\n\n{' Captured stdout '.center(terminal_width, '=')}\n{result.stdout.decode(sys.stdout.encoding)}\n\n{' Captured stderr '.center(terminal_width, '=')}\n{result.stderr.decode(sys.stdout.encoding)}"
+        if result.returncode:
+            G_LOGGER.critical(f"Build failed with:{output}")
+        return output
+
 
     def configure(args):
         G_LOGGER.info(f"Generating configuration files in build directory: {project.files.build_dir}")
@@ -31,18 +46,24 @@ def cli(project: Project, GeneratorType: type = RBuildGenerator):
         targets = targets or (list(project.libraries.values()) + list(project.executables.values()))
         G_LOGGER.info(f"Building targets: {[target.name for target in targets]}")
         G_LOGGER.debug(f"Targets: {targets}")
-        result = generator.build(targets)
-        if result.returncode:
-            import os, sys
-            terminal_width, _ = os.get_terminal_size(0)
-            G_LOGGER.critical(f"Build failed with:\n\n{' Captured stdout '.center(terminal_width, '=')}\n{result.stdout.decode(sys.stdout.encoding)}\n\n{' Captured stderr '.center(terminal_width, '=')}\n{result.stderr.decode(sys.stdout.encoding)}")
+        check_returncode(generator.build(targets))
 
     def run(args):
-        # TODO(2): Finish run implementation
-        pass
+        # TODO(2): Finish implementation
+        # TODO: Run for the specified profile.
+        if args.target not in project.executables:
+            G_LOGGER.critical(f"Could not find target: {args.target} in project executables. Note: Available targets are: {list(project.executables.keys())}")
+        target = project.executables[args.target]
+        # Build for this profile. TODO: Replace this with correct profile.
+        check_returncode(generator.build([target], profiles=[default_profile]))
+        G_LOGGER.log(check_returncode(subprocess.run([target[default_profile].path], capture_output=True)))
 
     def install(args):
-        # TODO(3): Finish install implementation
+        # TODO(3): Finish implementation
+        pass
+
+    def clean(args):
+        # TODO(3): Finish implementation
         pass
 
     # Set up argument parsers.
@@ -59,18 +80,23 @@ def cli(project: Project, GeneratorType: type = RBuildGenerator):
     build_parser.add_argument("target", nargs='*', help="Targets to build Builds all targets by default", default=[])
     build_parser.set_defaults(func=build)
     # Run
+    # TODO: This should accept --profile as arguments. Add each to a mutually exclusive group.
     run_parser = subparsers.add_parser("run", help="Run a project executable", description="Run a project executable")
+    run_parser.add_argument("target", help="Target corresponding to an executable")
     run_parser.set_defaults(func=run)
     # Install
     install_parser = subparsers.add_parser("install", help="Install a project target", description="Install a project target")
     install_parser.set_defaults(func=install)
+    # Clean
+    clean_parser = subparsers.add_parser("clean", help="Clean project targets", description="Clean one or more project targets")
+    clean_parser.set_defaults(func=clean)
 
     # Dispatch
     args, _ = parser.parse_known_args()
     if args.very_verbose:
-        G_LOGGER.severity = G_LOGGER.VERBOSE
+        G_LOGGER.verbosity = logger.Verbosity.VERBOSE
     elif args.verbose:
-        G_LOGGER.severity = G_LOGGER.DEBUG
+        G_LOGGER.verbosity = logger.Verbosity.DEBUG
 
 
     if hasattr(args, "func"):

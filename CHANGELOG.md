@@ -26,6 +26,7 @@ Dates are in YYYY-MM-DD format.
 - `FileManager` can now create directories, but only in its build directory.
 - `Generator` now accepts `ProjectTarget`s to build rather than `LinkedNode`s
 - Added basic implementation of `cli()` with `configure` and `build` and a basic usage example.
+- Added `run` implementation that operates on the default profile.
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

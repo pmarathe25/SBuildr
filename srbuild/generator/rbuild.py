@@ -1,9 +1,9 @@
 from srbuild.generator.generator import Generator
+from srbuild.project.target import ProjectTarget
+from srbuild.logger import G_LOGGER, plural
 from srbuild.project.project import Project
 from srbuild.graph.node import LinkedNode
-from srbuild.project.target import ProjectTarget
 from srbuild.graph.graph import Graph
-from srbuild.logger import G_LOGGER
 
 from typing import List, Dict
 import subprocess
@@ -39,8 +39,9 @@ class RBuildGenerator(Generator):
                     cmd = self._node_command(node)
                     if cmd:
                         config_file += "run"
-                    for arg in cmd:
-                        config_file += f' "{arg}"'
+                        for arg in cmd:
+                            config_file += f' "{arg}"'
+                        config_file += '\n'
             return config_file
 
         self.project.prepare_for_build()
@@ -74,11 +75,12 @@ class RBuildGenerator(Generator):
                     G_LOGGER.debug(f"Skipping target: {target.name} for profile: {profile}, as it does not exist.")
 
         # Finally, build.
+        # TODO: Move this into parent.
         cmd = ["rbuild", f"{self.config_path}"] + paths + ["-c", self.cache_path]
         G_LOGGER.verbose(f"Build command: {' '.join(cmd)}\nTarget file paths: {paths}")
         start = time.time()
         status = subprocess.run(cmd, capture_output=True)
         end = time.time()
         if not status.returncode:
-            G_LOGGER.info(f"Built {len(targets)} targets for {len(profiles)} profiles in {end - start} seconds.")
+            G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profiles))} in {end - start} seconds.")
         return status

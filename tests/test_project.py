@@ -1,13 +1,14 @@
 from srbuild.project.file_manager import FileManager
 from srbuild.project.project import Project
 from srbuild.logger import G_LOGGER
+import srbuild.logger as logger
 
 from test_tools import PATHS, TESTS_ROOT, ROOT
 
 import glob
 import os
 
-G_LOGGER.severity = G_LOGGER.VERBOSE
+G_LOGGER.verbosity = logger.Verbosity.VERBOSE
 
 class TestProject(object):
     def test_inits_to_curdir(self):
