@@ -21,18 +21,26 @@ class RBuildGenerator(Generator):
         self.cache_path = os.path.join(self.project.files.build_dir, RBuildGenerator.CACHE_FILENAME)
 
     def generate(self):
+        # Map each node to it's integer id. This is unique per rbuild file.
+        node_ids = {}
+        id = 0
+
         def config_for_graph(graph: Graph) -> str:
+            nonlocal node_ids, id
             config_file = f""
             for layer in graph.layers():
                 for node in layer:
-                    config_file += f"path {node.path}\n"
-                    for dep in node.inputs:
-                        config_file += f"dep {dep.path}\n"
+                    node_ids[node] = id
+                    config_file += f"path {node.path} #{id}\n"
+                    id += 1
+                    # For dependecies, we need to convert to node_ids
+                    if node.inputs:
+                        config_file += f"deps {' '.join([str(node_ids[node]) for node in node.inputs])}\n"
                     cmd = self._node_command(node)
                     if cmd:
-                        config_file += f"run {cmd[0]}\n"
-                        for arg in cmd[1:]:
-                            config_file += f"arg {arg}\n"
+                        config_file += "run"
+                    for arg in cmd:
+                        config_file += f' "{arg}"'
             return config_file
 
         self.project.prepare_for_build()

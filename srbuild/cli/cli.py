@@ -33,9 +33,7 @@ def cli(project: Project, GeneratorType: type = RBuildGenerator):
         G_LOGGER.debug(f"Targets: {targets}")
         result = generator.build(targets)
         if result.returncode:
-            import os
-            import sys
-
+            import os, sys
             terminal_width, _ = os.get_terminal_size(0)
             G_LOGGER.critical(f"Build failed with:\n\n{' Captured stdout '.center(terminal_width, '=')}\n{result.stdout.decode(sys.stdout.encoding)}\n\n{' Captured stderr '.center(terminal_width, '=')}\n{result.stderr.decode(sys.stdout.encoding)}")
 
