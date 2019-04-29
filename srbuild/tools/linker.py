@@ -1,7 +1,6 @@
 from srbuild.tools.flags import BuildFlags
-from srbuild.tools import compiler
+from srbuild.tools import compiler, utils
 from srbuild.logger import G_LOGGER
-import srbuild.utils as utils
 
 from typing import List, Union
 import abc
