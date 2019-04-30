@@ -46,7 +46,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profile="
     # Given target names, returns the corresponding targets.
     def _select_targets(tgt_names: List[str]) -> List[ProjectTarget]:
         targets = []
-        for tgt_name in args.target:
+        for tgt_name in tgt_names:
             if tgt_name not in project:
                 G_LOGGER.critical(f"Could not find tgt_name: {tgt_name} in project.")
             if tgt_name in project.libraries:
