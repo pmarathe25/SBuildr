@@ -68,7 +68,7 @@ class TestRBuild(object):
         graph = generate_build_graph(compiler, linker)
         gen = RBuildGenerator(FakeProject(FakeFileManager(graph)))
         gen.generate()
-        assert subprocess.run(["rbuild", gen.config_path, "-c", gen.cache_path])
+        assert subprocess.run(["rbuild", gen.config_file])
         # All paths should exist after building.
         for node in graph.values():
             assert os.path.exists(node.path)

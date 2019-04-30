@@ -4,6 +4,7 @@ from srbuild.project.target import ProjectTarget
 from srbuild.logger import G_LOGGER
 import srbuild.logger as logger
 
+from typing import List
 import subprocess
 import argparse
 import sys
