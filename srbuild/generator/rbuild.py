@@ -12,13 +12,10 @@ import os
 
 class RBuildGenerator(Generator):
     CONFIG_FILENAME = "rbuild"
-    CACHE_FILENAME = f"{CONFIG_FILENAME}.cache"
 
     def __init__(self, project: Project):
         super().__init__(project)
-        # The cache should be adjacent to the config path
-        self.config_path = os.path.join(self.project.files.build_dir, RBuildGenerator.CONFIG_FILENAME)
-        self.cache_path = os.path.join(self.project.files.build_dir, RBuildGenerator.CACHE_FILENAME)
+        self.config_file = os.path.join(self.project.files.build_dir, RBuildGenerator.CONFIG_FILENAME)
 
     def generate(self):
         # Map each node to it's integer id. This is unique per rbuild file.
@@ -53,10 +50,15 @@ class RBuildGenerator(Generator):
             config += config_for_graph(profile.graph)
 
         self.project.files.mkdir(self.project.files.build_dir)
-        with open(self.config_path, "w") as f:
+        with open(self.config_file, "w") as f:
             f.write(config)
 
+    def needs_configure(self) -> bool:
+        # The generator's build configuration file must exist and be at least as new as the project's config file.
+        return not os.path.exists(self.config_file) or os.path.getmtime(self.config_file) < os.path.getmtime(self.project.config_file)
+
     def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
+        start = time.time()
         paths = []
         profiles = profiles or self.project.profiles.keys()
         for profile in profiles:
@@ -76,7 +78,7 @@ class RBuildGenerator(Generator):
 
         # Finally, build.
         # TODO: Move this into parent.
-        cmd = ["rbuild", f"{self.config_path}"] + paths + ["-c", self.cache_path]
+        cmd = ["rbuild", f"{self.config_file}"] + paths
         G_LOGGER.verbose(f"Build command: {' '.join(cmd)}\nTarget file paths: {paths}")
         start = time.time()
         status = subprocess.run(cmd, capture_output=True)

@@ -21,7 +21,8 @@ class Project(object):
             dirs (Set[str]): The directories that are part of the project.
         """
         # The assumption is that the caller of the init function is the SRBuild file for the build.
-        root_dir = root if root else os.path.abspath(os.path.dirname(inspect.stack()[1][0].f_code.co_filename))
+        self.config_file = inspect.stack()[1][0].f_code.co_filename
+        root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
         self.files = FileManager(root_dir, build_dir, dirs)
@@ -105,12 +106,15 @@ class Project(object):
                 linker: linker.Linker = linker.clang,
                 lib_dirs: List[str] = []) -> ProjectTarget:
         self.libraries[name] = self._target(name, linker.to_lib(name), sources, flags + BuildFlags().shared(), libs, compiler, include_dirs, linker, lib_dirs)
+        self.libraries[name].is_lib = True
         return self.libraries[name]
 
     # Returns a profile if it exists, otherwise creates a new one and returns it.
     def profile(self, name, flags: BuildFlags=BuildFlags(), build_subdir: str=None) -> Profile:
         if name not in self.profiles:
             build_subdir = build_subdir or name
+            if os.path.isabs(build_subdir):
+                G_LOGGER.critical(f"Build subdirectory for profile {name} should not be a path, but was set to {build_subdir}")
             build_dir = os.path.join(self.files.build_dir, build_subdir)
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir)
         return self.profiles[name]

@@ -26,7 +26,11 @@ Dates are in YYYY-MM-DD format.
 - `FileManager` can now create directories, but only in its build directory.
 - `Generator` now accepts `ProjectTarget`s to build rather than `LinkedNode`s
 - Added basic implementation of `cli()` with `configure` and `build` and a basic usage example.
-- Added `run` implementation that operates on the default profile.
+- Added `run` implementation in `cli()` that operates on the default profile.
+- Added `rm` to `FileManager` so that it can remove paths located in the build directory.
+- Added the nuclear option to `clean` in `cli()`
+- Verbosity is now set during import, so that pre-subparser logging messages are displayed correctly.
+- RBuildGenerator updated to work with rbuild 0.3.0.
 
 ## SRBuild v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

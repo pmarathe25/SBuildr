@@ -44,6 +44,15 @@ class Generator(object):
         """
         raise NotImplementedError()
 
+    def needs_configure(self) -> bool:
+        """
+        Whether the project needs to be configured using this generator. If this returns False, it means the project is ready to build.
+
+        Returns:
+            bool: Whether the project needs to be configured using this generator before building.
+        """
+        raise NotImplementedError()
+
     def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
         """
         Runs a build command that will generate the specified targets from the specified profiles.

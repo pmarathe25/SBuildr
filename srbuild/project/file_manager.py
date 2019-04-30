@@ -3,6 +3,7 @@ from srbuild.graph.graph import Graph
 from srbuild.logger import G_LOGGER
 
 from typing import Set, Dict, Tuple, List
+import shutil
 import glob
 import os
 import re
@@ -32,6 +33,7 @@ class FileManager(object):
         self.root_dir = os.path.abspath(root_dir)
         if not os.path.isdir(self.root_dir):
             G_LOGGER.critical(f"Root Directory: {self.root_dir} does not exist, or is not a directory.")
+        # TODO: Maybe change this to `writable_dirs`
         # build_dir is the only location to which FileManager is allowed to write.
         self.build_dir = self.abspath(build_dir) if build_dir else os.path.join(root_dir, "build")
         exclude_dirs.add(self.build_dir)
@@ -57,6 +59,14 @@ class FileManager(object):
     def mkdir(self, dir_path: str) -> bool:
         if _is_in_directory(dir_path, self.build_dir):
             os.makedirs(dir_path, exist_ok=True)
+            return True
+        return False
+
+    # Remove files and directories, but only if they are within the build directory.
+    # Returns whether the path was successfully removed.
+    def rm(self, path: str) -> bool:
+        if _is_in_directory(path, self.build_dir):
+            shutil.rmtree(path)
             return True
         return False
 

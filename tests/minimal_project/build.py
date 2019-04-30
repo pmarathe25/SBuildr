@@ -11,6 +11,7 @@ import srbuild
 
 project = srbuild.Project()
 libmath = project.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
+libmath = project.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
 test = project.executable("test", sources=["test.cpp"], libs=["stdc++", libmath])
 
 srbuild.cli(project)
