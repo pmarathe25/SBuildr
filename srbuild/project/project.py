@@ -25,7 +25,9 @@ class Project(object):
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
+        # TODO: This will change once FileManager takes writable_dirs.
         self.files = FileManager(root_dir, build_dir, dirs)
+        self.build_dir = self.files.build_dir
         self.executables: Dict[str, ProjectTarget] = {}
         self.libraries: Dict[str, ProjectTarget] = {}
         self.profiles: Dict[str, Profile] = {}
@@ -57,7 +59,7 @@ class Project(object):
 
             fixed_libs = []
             for lib in libs:
-                # Targets are handled by each profile individually
+                # Targets are handled for each profile individually
                 if not isinstance(lib, ProjectTarget):
                     candidates = self.files.find(lib)
                     if is_lib_path(lib):
@@ -66,7 +68,7 @@ class Project(object):
                         # Add the library to the file manager as an external path
                         lib = self.files.external(lib)
                     elif candidates:
-                        G_LOGGER.warning(f"For library: {lib}, found matching paths: {candidates}. However, {lib} appears to be a library name rather than a path to a library. If you meant to use the path, please provide a longer path to disambiguate.")
+                        G_LOGGER.warning(f"For library: {lib}, found matching paths: {candidates}. However, {lib} appears to be a library name rather than a path to a library. If you meant to use a path, please provide a longer path to disambiguate.")
                 fixed_libs.append(lib)
             G_LOGGER.debug(f"Using fixed libs: {fixed_libs}")
             return fixed_libs

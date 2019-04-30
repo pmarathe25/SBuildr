@@ -63,10 +63,13 @@ class FileManager(object):
         return False
 
     # Remove files and directories, but only if they are within the build directory.
-    # Returns whether the path was successfully removed.
+    # Returns whether the path was located in the build directory..
     def rm(self, path: str) -> bool:
         if _is_in_directory(path, self.build_dir):
-            shutil.rmtree(path)
+            try:
+                shutil.rmtree(path)
+            except FileNotFoundError:
+                G_LOGGER.warning(f"Path: {path} has already been removed, skipping.")
             return True
         return False
 
@@ -83,6 +86,7 @@ class FileManager(object):
     # If the file exists but is not in this FileManager's tracked directories, returns an empty list.
     # The returned list is in order of proximity to the root. The first element is closest to the root.
     def find(self, filename: str) -> List[str]:
+        # TODO: endswith is not a good way to do this.
         candidates = set([path for path in self.files if path.endswith(filename)])
         # Prefer shorter paths, i.e. closer to the root.
         candidates = list(sorted(candidates, key=lambda elem: len(elem)))
