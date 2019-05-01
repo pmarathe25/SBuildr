@@ -21,7 +21,7 @@ class Project(object):
             dirs (Set[str]): The directories that are part of the project.
         """
         # The assumption is that the caller of the init function is the SRBuild file for the build.
-        self.config_file = inspect.stack()[1][0].f_code.co_filename
+        self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
@@ -37,6 +37,11 @@ class Project(object):
 
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
+
+    # Prepares the project for a build.
+    def prepare_for_build(self) -> None:
+        # Scan for all headers, and create the appropriate nodes.
+        self.files.scan_all()
 
     def _target(self, name: str, basename: str, sources: List[str], flags: BuildFlags, libs: List[Union[ProjectTarget, str]], compiler: compiler.Compiler, include_dirs: List[str], linker: linker.Linker, lib_dirs: List[str]) -> ProjectTarget:
         # Convert sources to full paths
@@ -121,7 +126,7 @@ class Project(object):
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir)
         return self.profiles[name]
 
-    # Prepares the project for a build.
-    def prepare_for_build(self) -> None:
-        # Scan for all headers, and create the appropriate nodes.
-        self.files.scan_all()
+    def install(self, target: ProjectTarget, dir: str):
+        if os.path.isfile(dir):
+            G_LOGGER.critical(f"Cannot currently install to a file. Please specify a directory instead.")
+        target.install_dir = self.files.abspath(dir)

@@ -4,9 +4,10 @@ from srbuild.project.target import ProjectTarget
 from srbuild.logger import G_LOGGER
 import srbuild.logger as logger
 
-from typing import List
+from typing import List, Tuple
 import subprocess
 import argparse
+import shutil
 import sys
 import os
 
@@ -42,62 +43,74 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profile="
         terminal_width, _ = os.get_terminal_size(0)
         output = f"\n{' Captured stdout '.center(terminal_width, '=')}\n{result.stdout.decode(sys.stdout.encoding)}\n{' Captured stderr '.center(terminal_width, '=')}\n{result.stderr.decode(sys.stdout.encoding)}"
         if result.returncode:
-            G_LOGGER.critical(f"Build failed with:{output}")
+            G_LOGGER.critical(f"Failed with:{output}")
         return output
 
     # Given target names, returns the corresponding targets.
-    def _select_targets(tgt_names: List[str]) -> List[ProjectTarget]:
+    # Falls back to returning all targets.
+    def _select_targets(args) -> List[ProjectTarget]:
         targets = []
-        for tgt_name in tgt_names:
+        for tgt_name in args.targets:
             if tgt_name not in project:
-                G_LOGGER.critical(f"Could not find tgt_name: {tgt_name} in project.")
+                G_LOGGER.critical(f"Could not find target: {tgt_name} in project.")
             if tgt_name in project.libraries:
-                G_LOGGER.verbose(f"Found library for tgt_name: {tgt_name}")
+                G_LOGGER.verbose(f"Found library for target: {tgt_name}")
                 targets.append(project.libraries[tgt_name])
             if tgt_name in project.executables:
-                G_LOGGER.verbose(f"Found executable for tgt_name: {tgt_name}")
+                G_LOGGER.verbose(f"Found executable for target: {tgt_name}")
                 targets.append(project.executables[tgt_name])
             if tgt_name in project.executables and tgt_name in project.libraries:
                 G_LOGGER.warning(f"Target: {tgt_name} refers to both an executable and a library. Selecting both.")
-        return targets
+        return targets or (list(project.libraries.values()) + list(project.executables.values()))
 
     # Given argparse's args struct, parses out profile flags, and returns a list of profile names included.
+    # Falls back to returning the default profile.
     def _select_profile_names(args) -> List[str]:
-        return [prof_name for prof_name in project.profiles.keys() if getattr(args, prof_name)]
+        return [prof_name for prof_name in project.profiles.keys() if getattr(args, prof_name)] or [default_profile]
 
-    def configure(args):
-        G_LOGGER.info(f"Generating configuration files in build directory: {project.files.build_dir}")
-        generator.generate()
-
-    @needs_configure
-    def build(args):
-        # By default, build all targets for the default profile..
-        targets = _select_targets(args.targets) or (list(project.libraries.values()) + list(project.executables.values()))
-        prof_names = _select_profile_names(args) or [default_profile]
-        G_LOGGER.info(f"Building targets: {[target.name + (' (lib)' if target.is_lib else ' (exe)') for target in targets]} for profiles: {prof_names}")
+    def _build_targets(targets: List[ProjectTarget], prof_names: List[str]):
+        G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {prof_names}")
         G_LOGGER.debug(f"Targets: {targets}")
         _check_returncode(generator.build(targets, profiles=prof_names))
 
+    def configure(args):
+        generator.generate()
+
+    @needs_configure
+    def build(args) -> Tuple[List[ProjectTarget], List[str]]:
+        targets = _select_targets(args)
+        prof_names = _select_profile_names(args)
+        _build_targets(targets, prof_names)
+
     @needs_configure
     def run(args):
-        # TODO(2): Finish implementation
-        # TODO: Run for the specified profile.
         if args.target not in project.executables:
             G_LOGGER.critical(f"Could not find target: {args.target} in project executables. Note: Available targets are: {list(project.executables.keys())}")
         target = project.executables[args.target]
-        prof_name = default_profile
-        prof_names = _select_profile_names(args)
-        if prof_names:
-            # Only one profile can be specified to run.
-            assert len(prof_names) == 1
-            prof_name = prof_names[0]
-        _check_returncode(generator.build([target], profiles=[prof_name]))
-        G_LOGGER.info(f"Running target: {args.target}, for profile: {prof_name}:\n{target[prof_name].path}")
-        G_LOGGER.log(_check_returncode(subprocess.run([target[prof_name].path], capture_output=True)))
+        [prof_name] = _select_profile_names(args)
+        _build_targets([target], [prof_name])
+        G_LOGGER.info(f"Running target: {targets.name}, for profile: {prof_names}:\n{targets[prof_names].path}")
+        G_LOGGER.log(_check_returncode(subprocess.run([targets[prof_names].path], capture_output=True)))
 
+    # TODO: FIXME: This will not work if user does not have permission to write to path
     @needs_configure
     def install(args):
-        # TODO(1): Finish implementation
+        # Select all registered installation targets by default.
+        registered_targets = [target for target in (list(project.executables.values()) + list(project.libraries.values())) if target.install_dir]
+        targets = _select_targets(args) if args.targets else registered_targets
+        [prof_name] = _select_profile_names(args)
+        _build_targets(targets, [prof_name])
+        for target in targets:
+            # Create the required directory, then install
+            if not target.install_dir:
+                G_LOGGER.critical(f"Could not find an installation entry for target: {target.name}. Have you specified one with project.install()? Note: Installation entries: {registered_targets}")
+            os.makedirs(target.install_dir, exist_ok=True)
+            path = os.path.join(target.install_dir, target[prof_name].name)
+            G_LOGGER.info(f"Installing target: {target.name}, for profile: {prof_name} to {path}")
+            shutil.copyfile(target[prof_name].path, path)
+
+    # TODO: Uninstall
+    def uninstall(args):
         pass
 
     def clean(args):
@@ -109,7 +122,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profile="
             G_LOGGER.info(f"Initiating Nuclear Protocol!")
         else:
             # By default, cleans all targets for the default profile.
-            prof_names = _select_profile_names(args) or [default_profile]
+            prof_names = _select_profile_names(args)
             to_remove = [project.profiles[prof_name].build_dir for prof_name in prof_names]
             G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
         # Remove
@@ -121,6 +134,10 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profile="
     parser.add_argument("-v", "--verbose", help="Enable verbose logging output", action="store_true")
     parser.add_argument("-vv", "--very-verbose", help="Enable very verbose logging output", action="store_true")
 
+    def _add_profile_args(parser_like, verb: str):
+        for prof_name in project.profiles.keys():
+            parser_like.add_argument(f"--{prof_name}", help=f"{verb} targets using the {prof_name} profile", action="store_true")
+
     # By setting defaults, each subparser automatically invokes a function to execute it's actions.
     subparsers = parser.add_subparsers()
     # Configure
@@ -129,37 +146,36 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profile="
 
     # Build
     build_parser = subparsers.add_parser("build", help="Build project targets", description="Build one or more project targets")
-    build_parser.add_argument("targets", nargs='*', help="Targets to build. Builds all targets for the default profile by default", default=[])
-    for prof_name in project.profiles.keys():
-        build_parser.add_argument(f"--{prof_name}", help=f"Build targets using the {prof_name} profile", action="store_true")
+    build_parser.add_argument("targets", nargs='*', help="Targets to build. By default, builds all targets for the default profile.", default=[])
+    _add_profile_args(build_parser, "Build")
     build_parser.set_defaults(func=build)
 
     # Run
     run_parser = subparsers.add_parser("run", help="Run a project executable", description="Run a project executable")
     run_parser.add_argument("target", help="Target corresponding to an executable")
     run_profile_group = run_parser.add_mutually_exclusive_group()
-    for prof_name in project.profiles.keys():
-        run_profile_group.add_argument(f"--{prof_name}", help=f"Run the {prof_name} profile's target", action="store_true")
+    _add_profile_args(run_profile_group, "Run")
     run_parser.set_defaults(func=run)
 
     # Install
-    install_parser = subparsers.add_parser("install", help="Install a project target", description="Install a project target")
+    install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets")
+    install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all targets for the default profile.", default=[])
     install_parser.set_defaults(func=install)
+    install_profile_group = install_parser.add_mutually_exclusive_group()
+    _add_profile_args(install_profile_group, "Install")
 
     # Clean
-    clean_parser = subparsers.add_parser("clean", help="Clean project targets", description="Clean one or more project targets. If no arguments are provided, cleans all targets for the default profile.")
+    clean_parser = subparsers.add_parser("clean", help="Clean project targets", description="Clean one or more project targets. By default, cleans all targets for the default profile.")
     clean_parser.add_argument("--nuke", help="The nuclear option. Removes the entire build directory, including all targets for all profiles, meaning that the project must be reconfigured before subsequent builds.", action="store_true")
-    for prof_name in project.profiles.keys():
-        clean_parser.add_argument(f"--{prof_name}", help=f"Cleans targets of the {prof_name} profile", action="store_true")
+    _add_profile_args(clean_parser, "Clean")
     clean_parser.set_defaults(func=clean)
 
-    # Dispatch
     args, unknown = parser.parse_known_args()
     # If there are unknown arguments, make the parser display an error.
     # Done this way because a parser option provided after a subparser will
     # result in an unknown arg that isn't really unknown.
     if unknown:
         parser.parse_args(unknown)
-
+    # Dispatch
     if hasattr(args, "func"):
         args.func(args)

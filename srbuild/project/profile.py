@@ -51,5 +51,5 @@ class Profile(object):
         input_paths = [node.path for node in object_nodes]
         linked_sig = linker.signature(input_paths, libs, lib_dirs, flags)
         linked_path = os.path.join(self.build_dir, _file_suffix(basename, linked_sig))
-        linked_node = LinkedNode(linked_path, object_nodes + lib_nodes, linker, libs, lib_dirs, flags)
+        linked_node = LinkedNode(linked_path, object_nodes + lib_nodes, linker, libs, lib_dirs, flags, name=basename)
         return self.graph.add(linked_node)

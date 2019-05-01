@@ -30,6 +30,7 @@ Dates are in YYYY-MM-DD format.
 - Verbosity is now set during import, so that pre-subparser logging messages are displayed correctly.
 - RBuildGenerator updated to work with rbuild 0.3.0.
 - `cli()` now accepts profile options for subparsers.
+- Added `install` to `cli()`
 
 ## v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

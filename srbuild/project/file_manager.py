@@ -76,6 +76,8 @@ class FileManager(object):
     # Converts path to an absolute path. First checks if it exists relative to the root directory,
     # otherwise falls back to cwd.
     def abspath(self, path: str) -> str:
+        if os.path.isabs(path):
+            return path
         in_root_path = os.path.abspath(os.path.join(self.root_dir, path))
         if os.path.exists(in_root_path):
             return in_root_path

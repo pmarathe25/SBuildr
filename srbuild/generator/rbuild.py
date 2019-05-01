@@ -49,13 +49,17 @@ class RBuildGenerator(Generator):
         for profile in self.project.profiles.values():
             config += config_for_graph(profile.graph)
 
+        G_LOGGER.info(f"Generating configuration files in build directory: {project.files.build_dir}")
         self.project.files.mkdir(self.project.files.build_dir)
         with open(self.config_file, "w") as f:
+            G_LOGGER.debug(f"Writing {self.config_file}")
             f.write(config)
 
     def needs_configure(self) -> bool:
         # The generator's build configuration file must exist and be at least as new as the project's config file.
-        return not os.path.exists(self.config_file) or os.path.getmtime(self.config_file) < os.path.getmtime(self.project.config_file)
+        if os.path.getmtime(self.config_file) < os.path.getmtime(self.project.config_file):
+            G_LOGGER.warning(f"Project configuration file ({self.project.config_file}) is newer than RBuildGenerator's configuration file ({self.config_file}). You may need to reconfigure.")
+        return not os.path.exists(self.config_file)
 
     def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
         start = time.time()
