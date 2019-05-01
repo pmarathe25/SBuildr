@@ -69,7 +69,7 @@ class FileManager(object):
             try:
                 shutil.rmtree(path)
             except FileNotFoundError:
-                G_LOGGER.warning(f"Path: {path} has already been removed, skipping.")
+                G_LOGGER.warning(f"Path: {path} does not exist, skipping.")
             return True
         return False
 

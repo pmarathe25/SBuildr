@@ -1,7 +1,7 @@
 # SRBuild Changelog
 Dates are in YYYY-MM-DD format.
 
-## SRBuild vNext
+## vNext ()
 - Renamed to SRBuild.
 - Disables logging when python is run with -O. This can provide some speed improvements.
 - Added CompilerDef/LinkerDef to isolate behavior specific to individual compilers/linkers. Compiler/Linker can now operate in a platform-agnostic way.
@@ -19,10 +19,8 @@ Dates are in YYYY-MM-DD format.
 - Smarter `find` function in `FileManager`. Additionally, `source` uses `find` to make sure sources exist.
 - Added `external` to `FileManager` to be able to track files external to the project.
 - `FileManager`'s `find` will now accept absolute paths that are outside the project.
-- `Profile` now has runnable `target` function (untested).
 - Improved handling of libraries in `Project`
-- Implemented `Project.configure` and added `configured` attribute to `Project` to indicate whether the project is ready to build.
-- Overhauled `Generator` API so it now takes a `configure`d `Project` as an input
+- Overhauled `Generator` API
 - `FileManager` can now create directories, but only in its build directory.
 - `Generator` now accepts `ProjectTarget`s to build rather than `LinkedNode`s
 - Added basic implementation of `cli()` with `configure` and `build` and a basic usage example.
@@ -33,5 +31,5 @@ Dates are in YYYY-MM-DD format.
 - RBuildGenerator updated to work with rbuild 0.3.0.
 - `cli()` now accepts profile options for subparsers.
 
-## SRBuild v0.1.0 (2019-02-16)
+## v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.
