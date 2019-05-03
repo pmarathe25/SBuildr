@@ -68,6 +68,7 @@ class FileManager(object):
         if _is_in_directory(path, self.build_dir):
             try:
                 shutil.rmtree(path)
+                G_LOGGER.info(f"Removed: {path}")
             except FileNotFoundError:
                 G_LOGGER.warning(f"Path: {path} does not exist, skipping.")
             return True

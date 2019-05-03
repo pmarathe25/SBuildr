@@ -6,8 +6,6 @@ from typing import List, Union
 import abc
 import os
 
-# TODO: Detect whether libstdc++ or libc++ is available on the system.
-
 # Responsible for translating srbuild.tools.flags.BuildFlags to actual command-line flags.
 # This class defines everything about each linker by supplying a unified interface.
 # That means that Linker can blindly use any LinkerDef to generate valid build commands.
@@ -140,7 +138,6 @@ class GCCDef(LinuxLinkerDef):
     def executable() -> str:
         return "gcc"
 
-# TODO: Use ldconfig to locate libraries.
 # Responsible for generating commands that will link the given source files into a shared library or executable.
 class Linker(object):
     def __init__(self, ldef: Union[type, LinkerDef]):
@@ -150,7 +147,7 @@ class Linker(object):
     # If two signatures are the same for an input file, it means the resulting file(s) would be identical.
     # The signature is everything that makes the resulting object file unique - i.e. linker, input file, link directories and linker options.
     def signature(self, input_paths: List[str], libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> str:
-        # Order of inputs does not matter, but order of libs does. TODO: Check if that's true
+        # Order of inputs does not matter, but order of libs does.
         sig = [self.ldef.executable()] + list(sorted(input_paths)) + self.ldef.parse_flags(flags) + libs + lib_dirs
         return utils.str_hash(sig)
 

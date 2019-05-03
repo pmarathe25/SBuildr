@@ -64,7 +64,6 @@ class RBuildGenerator(Generator):
         return False
 
     def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
-        start = time.time()
         paths = []
         profiles = profiles or self.project.profiles.keys()
         for profile in profiles:
@@ -83,9 +82,9 @@ class RBuildGenerator(Generator):
                     G_LOGGER.debug(f"Skipping target: {target.name} for profile: {profile}, as it does not exist.")
 
         # Finally, build.
-        # TODO: Move this into parent.
         cmd = ["rbuild", f"{self.config_file}"] + paths
         G_LOGGER.verbose(f"Build command: {' '.join(cmd)}\nTarget file paths: {paths}")
+        # TODO: Move this into parent.
         start = time.time()
         status = subprocess.run(cmd, capture_output=True)
         end = time.time()

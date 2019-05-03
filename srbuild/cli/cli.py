@@ -26,7 +26,6 @@ elif args.verbose:
 # TODO: Docstrings
 # Sets up the the command-line interface for the given project/generator combination.
 # When no profile(s) are specified, default_profile will be used.
-# TODO: Make default profile a list, and [] should correspond to all profiles.
 def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=["debug", "release"]):
     generator = GeneratorType(project)
 
@@ -112,10 +111,10 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                 if prof_name in target:
                     install_path = target[prof_name].install_path
                     if install_path:
-                        os.makedirs(os.path.dirname(install_path), exist_ok=True)
-                        G_LOGGER.info(f"Installing target: {target}, for profile: {prof_name} to {install_path}")
                         try:
+                            os.makedirs(os.path.dirname(install_path), exist_ok=True)
                             shutil.copyfile(target[prof_name].path, install_path)
+                            G_LOGGER.info(f"Installed target: {target}, for profile: {prof_name} to {install_path}")
                         except PermissionError:
                             G_LOGGER.critical(f"Could not write to {install_path}. Do you have sufficient privileges?")
                     else:
@@ -153,7 +152,6 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
         # Remove
         for path in to_remove:
-            G_LOGGER.info(f"\tRemoving {path}")
             project.files.rm(path)
 
     parser = argparse.ArgumentParser(description="Builds this project")
