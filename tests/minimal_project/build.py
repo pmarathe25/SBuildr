@@ -12,7 +12,8 @@ import srbuild
 project = srbuild.Project()
 libmath = project.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
 libtest = project.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
-install_dir = os.path.join(CURDIR, "build")
+# install_dir = os.path.join(CURDIR, "build")
+install_dir = "/usr/local/"
 project.install(libtest, dir=install_dir)
 test = project.executable("test", sources=["test.cpp"], libs=["stdc++", libtest])
 

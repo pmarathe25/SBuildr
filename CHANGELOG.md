@@ -31,6 +31,9 @@ Dates are in YYYY-MM-DD format.
 - RBuildGenerator updated to work with rbuild 0.3.0.
 - `cli()` now accepts profile options for subparsers.
 - Added `install` to `cli()`
+- Added `uninstall` and `help` to `cli()`
+- Added suffixes for profiles. These will be applied to files when they are installed.
+- Targets now support per-profile install paths
 
 ## v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

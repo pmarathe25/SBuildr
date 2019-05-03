@@ -55,6 +55,7 @@ class CompiledNode(Node):
             G_LOGGER.critical(f"Cannot create a CompiledNode with more than one source. This node already has one input: {self.inputs}")
         super().add_input(node)
 
+# In LinkedNodes, the name field contains the user friendly name (i.e. without linker signature)
 class LinkedNode(Node):
     def __init__(self, path: str, inputs: List[Node], linker: linker.Linker, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), name=""):
         super().__init__(path, inputs, name)
@@ -62,3 +63,4 @@ class LinkedNode(Node):
         self.libs = libs
         self.lib_dirs = lib_dirs
         self.flags = flags
+        self.install_path = None

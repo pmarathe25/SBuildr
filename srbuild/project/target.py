@@ -7,7 +7,6 @@ class ProjectTarget(dict):
         super().__init__(self, *args, **kwargs)
         self.name = name
         self.is_lib = False
-        self.install_dir = None
 
     def __str__(self):
         return f"{self.name} {'(lib)' if self.is_lib else '(exe)'}"

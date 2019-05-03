@@ -33,7 +33,7 @@ class Project(object):
         self.profiles: Dict[str, Profile] = {}
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
-        self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic())
+        self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic(), file_suffix="_debug")
 
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
@@ -117,16 +117,19 @@ class Project(object):
         return self.libraries[name]
 
     # Returns a profile if it exists, otherwise creates a new one and returns it.
-    def profile(self, name, flags: BuildFlags=BuildFlags(), build_subdir: str=None) -> Profile:
+    def profile(self, name, flags: BuildFlags=BuildFlags(), build_subdir: str=None, file_suffix="") -> Profile:
         if name not in self.profiles:
             build_subdir = build_subdir or name
             if os.path.isabs(build_subdir):
                 G_LOGGER.critical(f"Build subdirectory for profile {name} should not be a path, but was set to {build_subdir}")
             build_dir = os.path.join(self.files.build_dir, build_subdir)
-            self.profiles[name] = Profile(flags=flags, build_dir=build_dir)
+            self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
     def install(self, target: ProjectTarget, dir: str):
         if os.path.isfile(dir):
             G_LOGGER.critical(f"Cannot currently install to a file. Please specify a directory instead.")
-        target.install_dir = self.files.abspath(dir)
+        dir_path = self.files.abspath(dir)
+        for profile, node in target.items():
+            node.install_path = os.path.join(dir_path, node.name)
+            G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {node.install_path}")
