@@ -34,6 +34,7 @@ Dates are in YYYY-MM-DD format.
 - Added `uninstall` and `help` to `cli()`
 - Added suffixes for profiles. These will be applied to files when they are installed.
 - Targets now support per-profile install paths
+- `install` now supports file paths in addition to `ProjectTarget`s
 
 ## v0.1.0 (2019-02-16)
 - Initial version, basic compiler functionality.

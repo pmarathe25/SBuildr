@@ -100,10 +100,29 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
         G_LOGGER.info(f"Running target: {target}, for profile: {prof_name}:\n{target[prof_name].path}")
         G_LOGGER.log(_check_returncode(subprocess.run([target[prof_name].path], capture_output=True)))
 
+    # Copies src to dst
+    def _copy_file(src, dst):
+        try:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copyfile(src, dst)
+        except PermissionError:
+            G_LOGGER.critical(f"Could not write to {dst}. Do you have sufficient privileges?")
+
+    def _prune_install_targets(args):
+        install_files, targets = [], []
+        for tgt in args.targets:
+            if tgt in project:
+                targets.append(tgt)
+            else:
+                install_files.append(tgt)
+        args.targets = targets
+        install_files = install_files or list(project.installs.keys())
+        return install_files, _select_targets(args)
+
     @needs_configure
     def install(args):
-        # Select all targets by default.
-        targets = _select_targets(args)
+        # Filter out the non-targets (i.e. files), and select all targets by default.
+        install_files, targets = _prune_install_targets(args)
         prof_names = _select_profile_names(args)
         _build_targets(targets, prof_names)
         for target in targets:
@@ -111,19 +130,23 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                 if prof_name in target:
                     install_path = target[prof_name].install_path
                     if install_path:
-                        try:
-                            os.makedirs(os.path.dirname(install_path), exist_ok=True)
-                            shutil.copyfile(target[prof_name].path, install_path)
-                            G_LOGGER.info(f"Installed target: {target}, for profile: {prof_name} to {install_path}")
-                        except PermissionError:
-                            G_LOGGER.critical(f"Could not write to {install_path}. Do you have sufficient privileges?")
+                        _copy_file(target[prof_name].path, install_path)
+                        G_LOGGER.info(f"Installed target: {target}, for profile: {prof_name} to {install_path}")
                     else:
                         G_LOGGER.warning(f"No installation path is specified for target: {target} for profile: {prof_name}")
                 else:
-                    G_LOGGER.warning(f"Target: {target} does not exist for profile: {prof_name}")
+                    G_LOGGER.warning(f"Target: {target} does not exist for profile: {prof_name}, will not install.")
+
+        for install_file in install_files:
+            if not install_file in project.installs:
+                G_LOGGER.critical(f"{install_file} is neither a ProjectTarget, nor a registered path. Note: Registered paths: {list(project.installs.keys())}")
+            if not os.path.exists(install_file):
+                G_LOGGER.critical(f"Installation target: {install_file} was registered, but the path does not exist.")
+            _copy_file(install_file, project.installs[install_file])
+            G_LOGGER.info(f"Installed path: {install_file} to {project.installs[install_file]}")
 
     def uninstall(args):
-        targets = _select_targets(args)
+        install_files, targets = _prune_install_targets(args)
         prof_names = _select_profile_names(args)
         if not args.force:
             G_LOGGER.warning(f"Uninstall dry-run, will not remove files without -f/--force.")
@@ -137,6 +160,19 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                             os.remove(install_path)
                         else:
                             G_LOGGER.info(f"Would remove: {install_path}")
+                else:
+                    G_LOGGER.warning(f"Target: {target} does not exist for profile: {prof_name}, will not uninstall.")
+
+        for install_file in install_files:
+            if install_file not in project.installs:
+                G_LOGGER.critical(f"{install_file} is neither a ProjectTarget, nor a registered path. Note: Registered paths: {list(project.installs.keys())}")
+            path = project.installs[install_file]
+            if os.path.exists(path):
+                if args.force:
+                    G_LOGGER.info(f"Removing {path}")
+                    os.remove(path)
+                else:
+                    G_LOGGER.info(f"Would remove: {path}")
 
     def clean(args):
         # TODO(3): Finish implementation, add per-target cleaning.
@@ -189,14 +225,14 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
 
     # Install
     install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets")
-    install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all targets for the default profiles.", default=[])
+    install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all paths and targets for the default profiles.", default=[])
     _add_profile_args(install_parser, "Install")
     install_parser.set_defaults(func=install)
 
     # Uninstall
     uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall project targets", description="Uninstall one or more project targets")
     uninstall_parser.add_argument("-f", "--force", help="Remove targets. Without this flag, uninstall will only do a dry-run", action="store_true")
-    uninstall_parser.add_argument("targets", nargs='*', help="Targets to uninstall. By default, uninstalls all targets for the default profiles.", default=[])
+    uninstall_parser.add_argument("targets", nargs='*', help="Targets to uninstall. By default, uninstalls all paths and targets for the default profiles.", default=[])
     _add_profile_args(uninstall_parser, "Uninstall")
     uninstall_parser.set_defaults(func=uninstall)
 

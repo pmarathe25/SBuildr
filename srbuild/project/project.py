@@ -31,6 +31,8 @@ class Project(object):
         self.executables: Dict[str, ProjectTarget] = {}
         self.libraries: Dict[str, ProjectTarget] = {}
         self.profiles: Dict[str, Profile] = {}
+        # Extra files installed by this project.
+        self.installs: Dict[str, str] = {}
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic(), file_suffix="_debug")
@@ -126,10 +128,19 @@ class Project(object):
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
-    def install(self, target: ProjectTarget, dir: str):
+    def install(self, target: Union[ProjectTarget, str], dir: str):
         if os.path.isfile(dir):
             G_LOGGER.critical(f"Cannot currently install to a file. Please specify a directory instead.")
         dir_path = self.files.abspath(dir)
-        for profile, node in target.items():
-            node.install_path = os.path.join(dir_path, node.name)
-            G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {node.install_path}")
+        if isinstance(target, ProjectTarget):
+            for profile, node in target.items():
+                node.install_path = os.path.join(dir_path, node.name)
+                G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {node.install_path}")
+        else:
+            candidates = self.files.find(target)
+            if len(candidates) == 0:
+                G_LOGGER.critical(f"Could not find installation target: {target}")
+            if len(candidates) > 1:
+                G_LOGGER.critical(f"For installation target: {target}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate.")
+            path = candidates[0]
+            self.installs[path] = os.path.join(dir_path, os.path.basename(path))

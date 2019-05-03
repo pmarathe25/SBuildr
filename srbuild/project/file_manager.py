@@ -88,16 +88,16 @@ class FileManager(object):
     # Finds filename in self.files. Always returns absolute paths.
     # If the file exists but is not in this FileManager's tracked directories, returns an empty list.
     # The returned list is in order of proximity to the root. The first element is closest to the root.
-    def find(self, filename: str) -> List[str]:
+    def find(self, path: str) -> List[str]:
         # TODO: endswith is not a good way to do this.
-        candidates = set([path for path in self.files if path.endswith(filename)])
+        candidates = set([fpath for fpath in self.files if fpath.endswith(path)])
         # Prefer shorter paths, i.e. closer to the root.
         candidates = list(sorted(candidates, key=lambda elem: len(elem)))
         # Also check if this exists when converted to an absolute path.
-        # Since this may not be relative to the root_dir, it is the lowest priority.
-        path = self.abspath(filename)
-        if os.path.isfile(path) and path not in candidates:
-            candidates.append(path)
+        # This should be the highest priority.
+        path = self.abspath(path)
+        if os.path.exists(path) and path not in candidates:
+            candidates.insert(0, path)
         return candidates
 
     # Adds an external path to the source graph.
