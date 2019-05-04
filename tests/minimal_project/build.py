@@ -15,6 +15,7 @@ libtest = project.library("test", sources=["factorial.cpp", "fibonacci.cpp"], li
 install_dir = os.path.join(CURDIR, "build")
 project.install(libtest, dir=install_dir)
 project.install("utils.hpp", dir=install_dir)
-test = project.executable("test", sources=["test.cpp"], libs=["stdc++", libtest])
+test = project.test("test", sources=["test.cpp"], libs=["stdc++", libtest])
+test = project.executable("test_e", sources=["test.cpp"], libs=["stdc++", libtest])
 
 srbuild.cli(project)

@@ -123,15 +123,15 @@ class FileManager(object):
 
     # Finds all required include directories for a given managed file. Adds it to the graph if missing.
     def scan(self, node: str) -> None:
-        # Finds the file path for the file included in `path` by the `included` token.
+        # Finds the file path for the file included in `include_path` by the `included_token` token.
         # This always returns an absolute path, since self.find always returns absolute paths.
-        def disambiguate_included_file(included: str, path: str) -> str:
+        def disambiguate_included_file(included_token: str, include_path: str) -> str:
             # TODO: Handle paths that start with ../
             # Such paths should always be relative to the file itself, otherwise it's an error.
-            if path.startswith(os.pardir):
+            if include_path.startswith(os.pardir):
                 raise NotImplementedError(f"FileManager does not currently support includes containing {os.pardir}")
 
-            candidates = self.find(included)
+            candidates = self.find(included_token)
             if len(candidates) == 0:
                 return None
 
@@ -139,9 +139,11 @@ class FileManager(object):
             def _file_proximity(path_a: str, path_b: str) -> int:
                 return len(os.path.split(os.path.commonpath([path_a, path_b])))
 
-            # Return the path that is closest to the file
-            closest_path = max(candidates, key=lambda candidate: _file_proximity(candidate, path))
-            G_LOGGER.debug(f"For {path}, determined that {closest_path} best matches include for {included}. If this is not the case, please provide a longer path in the include to disambiguate, or manually provide the correct include directories. Note, candidates were: {candidates}")
+            # Return the path that is closest to the including file
+            closest_path = max(candidates, key=lambda candidate: _file_proximity(candidate, include_path))
+
+            if len(candidates) > 1:
+                G_LOGGER.warning(f"For {include_path}, found multiple possible headers, but determined that {closest_path} best matches include for {included_token}. If this is not the case, please provide a longer path in the include to disambiguate, or manually provide the correct include directories. Note, candidates were: {candidates}")
             return closest_path
 
         # TODO: Handle relative paths in included here.

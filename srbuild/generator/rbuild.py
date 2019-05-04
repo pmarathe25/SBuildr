@@ -64,6 +64,11 @@ class RBuildGenerator(Generator):
         return False
 
     def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
+        # Early exit if no targets were provided
+        if not targets:
+            G_LOGGER.debug(f"No targets specified, skipping build.")
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"No targets specified")
+
         paths = []
         profiles = profiles or self.project.profiles.keys()
         for profile in profiles:

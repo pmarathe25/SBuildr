@@ -28,9 +28,14 @@ class Project(object):
         # TODO: This will change once FileManager takes writable_dirs.
         self.files = FileManager(root_dir, build_dir, dirs)
         self.build_dir = self.files.build_dir
-        self.executables: Dict[str, ProjectTarget] = {}
-        self.libraries: Dict[str, ProjectTarget] = {}
+        # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
+        # user-defined target for that profile.
         self.profiles: Dict[str, Profile] = {}
+        # ProjectTargets combine linked nodes from one or more profiles for each user-defined target.
+        # Each ProjectTarget maps profile names to their corresponding linked node for that target.
+        self.executables: Dict[str, ProjectTarget] = {}
+        self.tests: Dict[str, ProjectTarget] = {}
+        self.libraries: Dict[str, ProjectTarget] = {}
         # Extra files installed by this project.
         self.installs: Dict[str, str] = {}
         # Add default profiles
@@ -104,6 +109,18 @@ class Project(object):
                     lib_dirs: List[str] = []) -> ProjectTarget:
         self.executables[name] = self._target(name, linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
         return self.executables[name]
+
+    def test(self,
+                name: str,
+                sources: List[str],
+                flags: BuildFlags = BuildFlags(),
+                libs: List[Union[ProjectTarget, str]] = [],
+                compiler: compiler.Compiler = compiler.clang,
+                include_dirs: List[str] = [],
+                linker: linker.Linker = linker.clang,
+                lib_dirs: List[str] = []) -> ProjectTarget:
+        self.tests[name] = self._target(name, linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
+        return self.tests[name]
 
     def library(self,
                 name: str,

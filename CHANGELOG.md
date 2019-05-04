@@ -1,6 +1,9 @@
 # SRBuild Changelog
 Dates are in YYYY-MM-DD format.
 
+## vNext ()
+- Added `test` to `cli()` and `Project` to provide a convenient test runner. 
+
 ## v0.2.2 (2019-05-03)
 - Fixes an issue with absolute paths in `#include`s not being handled correctly.
 

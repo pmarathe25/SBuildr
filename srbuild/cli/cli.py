@@ -36,11 +36,14 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             return func(*args, **kwargs)
         return wrapper
 
+    def _wrap_str(inp: str, wrap: str='='):
+        terminal_width, _ = shutil.get_terminal_size()
+        return inp.center(terminal_width, wrap)
+
     # Returns the captured output
     # TODO: Subprocess management needs to be centralized somewhere.
     def _check_returncode(result: subprocess.CompletedProcess) -> str:
-        terminal_width, _ = shutil.get_terminal_size()
-        output = f"\n{' Captured stdout '.center(terminal_width, '=')}\n{result.stdout.decode(sys.stdout.encoding)}\n{' Captured stderr '.center(terminal_width, '=')}\n{result.stderr.decode(sys.stdout.encoding)}"
+        output = f"{_wrap_str(' Captured stdout ')}\n{result.stdout.decode(sys.stdout.encoding)}\n{_wrap_str(' Captured stderr ')}\n{result.stderr.decode(sys.stdout.encoding)}"
         if result.returncode:
             G_LOGGER.critical(f"Failed with:{output}")
         return output
@@ -51,7 +54,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
         targets = []
         for tgt_name in args.targets:
             if tgt_name not in project:
-                G_LOGGER.critical(f"Could not find target: {tgt_name} in project.")
+                G_LOGGER.critical(f"Could not find target: {tgt_name} in project.\n\tAvailable libraries:\n\t\t{list(project.libraries.keys())}\n\tAvailable executables:\n\t\t{list(project.executables.keys())}")
             if tgt_name in project.libraries:
                 G_LOGGER.verbose(f"Found library for target: {tgt_name}")
                 targets.append(project.libraries[tgt_name])
@@ -61,6 +64,14 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             if tgt_name in project.executables and tgt_name in project.libraries:
                 G_LOGGER.warning(f"Target: {tgt_name} refers to both an executable and a library. Selecting both.")
         return targets or (list(project.libraries.values()) + list(project.executables.values()))
+
+    def _select_test_targets(args) -> List[ProjectTarget]:
+        targets = []
+        for test_name in args.targets:
+            if test_name not in project.tests:
+                G_LOGGER.critical(f"Could not find test: {test_name} in project.\n\tAvailable tests:\n\t\t{list(project.tests.keys())}")
+            targets.append(project.tests[test_name])
+        return targets or list(project.tests.values())
 
     # Given argparse's args struct, parses out profile flags, and returns a list of profile names included.
     # Falls back to returning the default profile.
@@ -74,12 +85,17 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
 
     def help_targets(args):
         targets = _select_targets(args)
+        G_LOGGER.info(f"\n{_wrap_str(' Targets ')}")
         for target in targets:
-            G_LOGGER.info(f"{target}. Available Profiles:")
+            G_LOGGER.info(f"Target: {target}. Available Profiles:")
             for prof, node in target.items():
                 G_LOGGER.info(f"\tProfile: {prof}. Path: {node.path}.")
                 if node.install_path:
                     G_LOGGER.info(f"\t\tInstalls to: {node.install_path}")
+        G_LOGGER.info(f"\n{_wrap_str(' Paths ')}")
+        for path, install_path in project.installs.items():
+            G_LOGGER.info(f"Path: {path}")
+            G_LOGGER.info(f"\t\tInstalls to: {install_path}")
 
     def configure(args):
         generator.generate()
@@ -97,8 +113,27 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
         target = project.executables[args.target]
         prof_name = _select_profile_names(args)[0]
         _build_targets([target], [prof_name])
-        G_LOGGER.info(f"Running target: {target}, for profile: {prof_name}:\n{target[prof_name].path}")
+        G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}: {target[prof_name].path}", color=logger.Color.GREEN)
         G_LOGGER.log(_check_returncode(subprocess.run([target[prof_name].path], capture_output=True)))
+
+    @needs_configure
+    def test(args):
+        tests = _select_test_targets(args)
+        prof_names = _select_profile_names(args)
+        if not tests:
+            G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
+            return
+        # Otherwise, build and run the specified tests
+        _build_targets(tests, prof_names)
+        for prof_name in prof_names:
+            G_LOGGER.log(f"\n{_wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
+            for test_target in tests:
+                G_LOGGER.log(f"\nRunning test: {test_target}, for profile: {prof_name}: {test_target[prof_name].path}", color=logger.Color.GREEN)
+                status = subprocess.run([test_target[prof_name].path])
+                if status.returncode:
+                    G_LOGGER.log(f"\nFAILED {test_target}, for profile: {prof_name}:\n{test_target[prof_name].path}", color=logger.Color.PURPLE)
+                else:
+                    G_LOGGER.log(f"PASSED {test_target}", color=logger.Color.GREEN)
 
     # Copies src to dst
     def _copy_file(src, dst):
@@ -222,6 +257,12 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     run_profile_group = run_parser.add_mutually_exclusive_group()
     _add_profile_args(run_profile_group, "Run")
     run_parser.set_defaults(func=run)
+
+    # Test
+    test_parser = subparsers.add_parser("test", help="Run project tests", description="Run one or more project tests")
+    test_parser.add_argument("targets", nargs='*', help="Targets to test. By default, tests all targets for the default profiles.", default=[])
+    _add_profile_args(test_parser, "Test")
+    test_parser.set_defaults(func=test)
 
     # Install
     install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets")
