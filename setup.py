@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 import srbuild
 
@@ -17,7 +17,7 @@ setup(
     python_requires=">=3",
     url="https://github.com/pmarathe25/SRBuild",
     zip_safe=True,
-    packages=["srbuild"],
+    packages=find_packages(),
     license="GNU GPLv3",
     classifiers=[
         "License :: OSI Approved :: MIT License",

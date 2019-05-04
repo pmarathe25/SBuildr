@@ -1,6 +1,9 @@
 # SRBuild Changelog
 Dates are in YYYY-MM-DD format.
 
+## v0.2.1 (2019-05-03)
+- Fixes errors in `setup.py` that prevented files from being packaged.
+
 ## v0.2.0 (2019-05-03)
 - Renamed to SRBuild.
 - Disables logging when python is run with -O. This can provide some speed improvements.
