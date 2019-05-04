@@ -7,3 +7,6 @@ wheel:
 
 clean:
 	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SRBuild.egg-info
+
+upload: wheel
+	python -m twine upload dist/*

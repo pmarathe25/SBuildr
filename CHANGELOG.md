@@ -1,7 +1,7 @@
 # SRBuild Changelog
 Dates are in YYYY-MM-DD format.
 
-## vNext ()
+## v0.2.0 (2019-05-03)
 - Renamed to SRBuild.
 - Disables logging when python is run with -O. This can provide some speed improvements.
 - Added CompilerDef/LinkerDef to isolate behavior specific to individual compilers/linkers. Compiler/Linker can now operate in a platform-agnostic way.
