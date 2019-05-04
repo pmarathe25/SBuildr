@@ -1,6 +1,9 @@
 # SRBuild Changelog
 Dates are in YYYY-MM-DD format.
 
+## v0.2.2 (2019-05-03)
+- Fixes an issue with absolute paths in `#include`s not being handled correctly.
+
 ## v0.2.1 (2019-05-03)
 - Fixes errors in `setup.py` that prevented files from being packaged.
 

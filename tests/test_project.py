@@ -71,8 +71,8 @@ class TestFileManager(object):
         test_cpp = manager.source(PATHS["test.cpp"])
         manager.scan_all()
         # Headers
-        # Includes utils.hpp, but using a path starting with minimal_project/
-        assert factorial_hpp.include_dirs == sorted([TESTS_ROOT])
+        # Includes utils.hpp, but using an absolute path.
+        assert factorial_hpp.include_dirs == sorted([])
         # Includes utils.hpp, but using a path starting with include/
         assert fibonacci_hpp.include_dirs == sorted([ROOT])
         # CPP files

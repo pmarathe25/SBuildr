@@ -146,13 +146,16 @@ class FileManager(object):
 
         # TODO: Handle relative paths in included here.
         # TODO: FIXME: This will not work if the include has escaped characters in it.
-        def get_path_include_dir(path: str, included: str) -> str:
-            # path is the full path of the included file.
-            # included is the token used to include the file.
-            include_dir = path[:-len(included)]
+        def get_path_include_dir(included_path: str, included_token: str) -> str:
+            # included_path is the full path of the included file.
+            # included_token is the token used to include the file.
+            # Absolute paths do not require include directories.
+            if os.path.isabs(included_token):
+                return None
+            include_dir = included_path[:-len(included_token)]
             if not os.path.isdir(include_dir):
                 # It would be completely ridiculous if this actually displays ever.
-                G_LOGGER.critical(f"While attempting to find include dir to use for {path} (Note: included in {path}), found that {include_dir} does not exist!")
+                G_LOGGER.critical(f"While attempting to find include dir to use for {included_path} (Note: included in {path}), found that {include_dir} does not exist!")
             return os.path.abspath(include_dir)
 
         # Find all included files in this file. If they are in the project, recurse over them.
@@ -168,8 +171,9 @@ class FileManager(object):
                 G_LOGGER.verbose(f"For included token {included}, found path: {included_path}")
                 # The include dir for a path for path depends on how exactly the path was included in path.
                 include_dir = get_path_include_dir(included_path, included)
-                G_LOGGER.verbose(f"For path {included_path}, using include dir: {include_dir}")
-                include_dirs.add(include_dir)
+                if include_dir:
+                    G_LOGGER.verbose(f"For path {included_path}, using include dir: {include_dir}")
+                    include_dirs.add(include_dir)
                 # Also recurse over any include directories needed for the path itself
                 included_path_node = self.source(included_path)
                 if not included_path_node.include_dirs:
