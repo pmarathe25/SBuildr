@@ -136,12 +136,14 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                     G_LOGGER.log(f"PASSED {test_target}", color=logger.Color.GREEN)
 
     # Copies src to dst
-    def _copy_file(src, dst):
+    def _copy_file(src, dst) -> bool:
         try:
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copyfile(src, dst)
+            return True
         except PermissionError:
-            G_LOGGER.critical(f"Could not write to {dst}. Do you have sufficient privileges?")
+            G_LOGGER.error(f"Could not write to {dst}. Do you have sufficient privileges?")
+            return False
 
     def _prune_install_targets(args):
         install_files, targets = [], []
@@ -165,8 +167,8 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                 if prof_name in target:
                     install_path = target[prof_name].install_path
                     if install_path:
-                        _copy_file(target[prof_name].path, install_path)
-                        G_LOGGER.info(f"Installed target: {target}, for profile: {prof_name} to {install_path}")
+                        if _copy_file(target[prof_name].path, install_path):
+                            G_LOGGER.info(f"Installed target: {target}, for profile: {prof_name} to {install_path}")
                     else:
                         G_LOGGER.warning(f"No installation path is specified for target: {target} for profile: {prof_name}")
                 else:
@@ -177,8 +179,8 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                 G_LOGGER.critical(f"{install_file} is neither a ProjectTarget, nor a registered path. Note: Registered paths: {list(project.installs.keys())}")
             if not os.path.exists(install_file):
                 G_LOGGER.critical(f"Installation target: {install_file} was registered, but the path does not exist.")
-            _copy_file(install_file, project.installs[install_file])
-            G_LOGGER.info(f"Installed path: {install_file} to {project.installs[install_file]}")
+            if _copy_file(install_file, project.installs[install_file]):
+                G_LOGGER.info(f"Installed path: {install_file} to {project.installs[install_file]}")
 
     def uninstall(args):
         install_files, targets = _prune_install_targets(args)

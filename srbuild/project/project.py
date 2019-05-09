@@ -145,6 +145,8 @@ class Project(object):
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
+    # TODO: Docstrings
+    # FIXME: This should be able to install to a file now.
     def install(self, target: Union[ProjectTarget, str], dir: str):
         if os.path.isfile(dir):
             G_LOGGER.critical(f"Cannot currently install to a file. Please specify a directory instead.")
