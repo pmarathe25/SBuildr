@@ -44,13 +44,19 @@ class Profile(object):
 
         # For any libraries that are Nodes, add as inputs to the final LinkedNode.
         # For any libraries that are names, pass them along to the linker as-is.
-        lib_nodes: List[Node] = [lib for lib in libs if isinstance(lib, Node)]
-        # Next, convert all libs to paths or names.
-        libs: List[str] = [lib if not isinstance(lib, Node) else lib.path for lib in libs]
+        lib_nodes: List[Node] = []
+        lib_names: List[str] = []
+        for lib in libs:
+            if isinstance(lib, Node):
+                lib_nodes.append(lib)
+            else:
+                lib_names.append(lib)
+        G_LOGGER.verbose(f"Sorted libraries into nodes: {lib_nodes}, and names: {lib_names}")
         # Finally, add the actual linked node
-        input_paths = [node.path for node in object_nodes]
-        linked_sig = linker.signature(input_paths, libs, lib_dirs, flags)
+        input_nodes = object_nodes + lib_nodes
+        input_paths = [node.path for node in input_nodes]
+        linked_sig = linker.signature(input_paths, lib_names, lib_dirs, flags)
         linked_path = os.path.join(self.build_dir, _file_suffix(basename, f".{linked_sig}"))
         display_name = _file_suffix(basename, self.suffix)
-        linked_node = LinkedNode(linked_path, object_nodes + lib_nodes, linker, libs, lib_dirs, flags, name=display_name)
+        linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, lib_dirs, flags, name=display_name)
         return self.graph.add(linked_node)

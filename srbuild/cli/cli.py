@@ -45,7 +45,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     def _check_returncode(result: subprocess.CompletedProcess) -> str:
         output = f"{_wrap_str(' Captured stdout ')}\n{result.stdout.decode(sys.stdout.encoding)}\n{_wrap_str(' Captured stderr ')}\n{result.stderr.decode(sys.stdout.encoding)}"
         if result.returncode:
-            G_LOGGER.critical(f"Failed with:{output}")
+            G_LOGGER.critical(f"Failed with:\n{output}")
         return output
 
     # Given target names, returns the corresponding targets.
