@@ -1,7 +1,7 @@
-from srbuild.graph.node import Node, CompiledNode, LinkedNode
-from srbuild.tools.flags import BuildFlags
-from srbuild.graph.graph import Graph
-from srbuild.logger import G_LOGGER
+from sbuildr.graph.node import Node, CompiledNode, LinkedNode
+from sbuildr.tools.flags import BuildFlags
+from sbuildr.graph.graph import Graph
+from sbuildr.logger import G_LOGGER
 
 from typing import List, Union, Dict
 import os

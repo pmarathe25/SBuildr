@@ -1,8 +1,8 @@
-from srbuild.generator.rbuild import RBuildGenerator
-from srbuild.project.project import Project
-from srbuild.project.target import ProjectTarget
-from srbuild.logger import G_LOGGER
-import srbuild.logger as logger
+from sbuildr.generator.rbuild import RBuildGenerator
+from sbuildr.project.project import Project
+from sbuildr.project.target import ProjectTarget
+from sbuildr.logger import G_LOGGER
+import sbuildr.logger as logger
 
 from typing import List, Tuple
 import subprocess

@@ -1,5 +1,5 @@
-from srbuild.graph.graph import Graph
-from srbuild.graph.node import Node
+from sbuildr.graph.graph import Graph
+from sbuildr.graph.node import Node
 
 def linear_graph():
     # Constructs a linear graph:

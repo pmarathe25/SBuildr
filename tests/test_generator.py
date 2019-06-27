@@ -1,8 +1,8 @@
-from srbuild.graph.node import Node, SourceNode, CompiledNode, LinkedNode
-from srbuild.graph.graph import Graph
-from srbuild.generator.rbuild import RBuildGenerator
-from srbuild.tools import compiler, linker
-from srbuild.tools.flags import BuildFlags
+from sbuildr.graph.node import Node, SourceNode, CompiledNode, LinkedNode
+from sbuildr.graph.graph import Graph
+from sbuildr.generator.rbuild import RBuildGenerator
+from sbuildr.tools import compiler, linker
+from sbuildr.tools.flags import BuildFlags
 from test_tools import PATHS, ROOT, TESTS_ROOT
 import subprocess
 import shutil

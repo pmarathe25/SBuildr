@@ -1,4 +1,4 @@
-from srbuild.logger import G_LOGGER
+from sbuildr.logger import G_LOGGER
 from typing import Union, List
 import enum
 import copy

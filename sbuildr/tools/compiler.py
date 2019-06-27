@@ -1,12 +1,12 @@
-from srbuild.tools.flags import BuildFlags
-from srbuild.logger import G_LOGGER
-from srbuild.tools import utils
+from sbuildr.tools.flags import BuildFlags
+from sbuildr.logger import G_LOGGER
+from sbuildr.tools import utils
 
 from typing import List, Union
 import copy
 import abc
 
-# Responsible for translating srbuild.tools.flags.BuildFlags to actual command-line flags.
+# Responsible for translating sbuildr.tools.flags.BuildFlags to actual command-line flags.
 # This class defines everything about each compiler by supplying a unified interface.
 # That means that Compiler can blindly use any CompilerDef to generate valid build commands.
 class CompilerDef(abc.ABC):

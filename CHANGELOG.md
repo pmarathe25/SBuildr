@@ -1,4 +1,4 @@
-# SRBuild Changelog
+# SBuildR Changelog
 Dates are in YYYY-MM-DD format.
 
 ## v0.2.4 ()
@@ -14,7 +14,7 @@ Dates are in YYYY-MM-DD format.
 - Fixes errors in `setup.py` that prevented files from being packaged.
 
 ## v0.2.0 (2019-05-03)
-- Renamed to SRBuild.
+- Renamed to SBuildR.
 - Disables logging when python is run with -O. This can provide some speed improvements.
 - Added CompilerDef/LinkerDef to isolate behavior specific to individual compilers/linkers. Compiler/Linker can now operate in a platform-agnostic way.
 - Added BuildFlags to make compiler/linker flags platform agnostic from the user's perspective.

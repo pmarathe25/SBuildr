@@ -1,12 +1,12 @@
-from srbuild.tools.flags import BuildFlags
-from srbuild.tools import compiler, utils
-from srbuild.logger import G_LOGGER
+from sbuildr.tools.flags import BuildFlags
+from sbuildr.tools import compiler, utils
+from sbuildr.logger import G_LOGGER
 
 from typing import List, Union
 import abc
 import os
 
-# Responsible for translating srbuild.tools.flags.BuildFlags to actual command-line flags.
+# Responsible for translating sbuildr.tools.flags.BuildFlags to actual command-line flags.
 # This class defines everything about each linker by supplying a unified interface.
 # That means that Linker can blindly use any LinkerDef to generate valid build commands.
 class LinkerDef(abc.ABC):

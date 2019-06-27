@@ -1,4 +1,4 @@
-from srbuild.graph.node import Node
+from sbuildr.graph.node import Node
 from typing import List, Dict, Set
 
 # TODO: Docstrings

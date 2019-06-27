@@ -1,6 +1,6 @@
-from srbuild.graph.node import Node, SourceNode
-from srbuild.graph.graph import Graph
-from srbuild.logger import G_LOGGER
+from sbuildr.graph.node import Node, SourceNode
+from sbuildr.graph.graph import Graph
+from sbuildr.logger import G_LOGGER
 
 from typing import Set, Dict, Tuple, List
 import shutil

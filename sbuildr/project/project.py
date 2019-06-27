@@ -1,11 +1,11 @@
-from srbuild.graph.node import Node, CompiledNode, LinkedNode
-from srbuild.project.file_manager import FileManager
-from srbuild.project.profile import Profile
-from srbuild.tools import compiler, linker
-from srbuild.tools.flags import BuildFlags
-from srbuild.project.target import ProjectTarget
-from srbuild.graph.graph import Graph
-from srbuild.logger import G_LOGGER
+from sbuildr.graph.node import Node, CompiledNode, LinkedNode
+from sbuildr.project.file_manager import FileManager
+from sbuildr.project.profile import Profile
+from sbuildr.tools import compiler, linker
+from sbuildr.tools.flags import BuildFlags
+from sbuildr.project.target import ProjectTarget
+from sbuildr.graph.graph import Graph
+from sbuildr.logger import G_LOGGER
 
 from typing import List, Set, Union, Dict, Tuple
 from collections import OrderedDict
@@ -20,7 +20,7 @@ class Project(object):
         Vars:
             dirs (Set[str]): The directories that are part of the project.
         """
-        # The assumption is that the caller of the init function is the SRBuild file for the build.
+        # The assumption is that the caller of the init function is the SBuildR file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed

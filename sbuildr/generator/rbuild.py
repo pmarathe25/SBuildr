@@ -1,9 +1,9 @@
-from srbuild.generator.generator import Generator
-from srbuild.project.target import ProjectTarget
-from srbuild.logger import G_LOGGER, plural
-from srbuild.project.project import Project
-from srbuild.graph.node import LinkedNode
-from srbuild.graph.graph import Graph
+from sbuildr.generator.generator import Generator
+from sbuildr.project.target import ProjectTarget
+from sbuildr.logger import G_LOGGER, plural
+from sbuildr.project.project import Project
+from sbuildr.graph.node import LinkedNode
+from sbuildr.graph.graph import Graph
 
 from typing import List, Dict
 import subprocess

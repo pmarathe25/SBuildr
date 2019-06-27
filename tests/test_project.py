@@ -1,7 +1,7 @@
-from srbuild.project.file_manager import FileManager
-from srbuild.project.project import Project
-from srbuild.logger import G_LOGGER
-import srbuild.logger as logger
+from sbuildr.project.file_manager import FileManager
+from sbuildr.project.project import Project
+from sbuildr.logger import G_LOGGER
+import sbuildr.logger as logger
 
 from test_tools import PATHS, TESTS_ROOT, ROOT
 

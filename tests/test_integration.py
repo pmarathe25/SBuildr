@@ -1,5 +1,5 @@
-from srbuild.project.project import Project
-from srbuild.generator.rbuild import RBuildGenerator
+from sbuildr.project.project import Project
+from sbuildr.generator.rbuild import RBuildGenerator
 
 from test_tools import PATHS, TESTS_ROOT, ROOT
 

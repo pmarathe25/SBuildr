@@ -1,7 +1,7 @@
-from srbuild.graph.node import Node, CompiledNode, LinkedNode
-from srbuild.project.project import Project
-from srbuild.project.target import ProjectTarget
-from srbuild.logger import G_LOGGER
+from sbuildr.graph.node import Node, CompiledNode, LinkedNode
+from sbuildr.project.project import Project
+from sbuildr.project.target import ProjectTarget
+from sbuildr.logger import G_LOGGER
 
 from typing import List, Dict
 import subprocess

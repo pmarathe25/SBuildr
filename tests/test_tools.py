@@ -1,5 +1,5 @@
-from srbuild.tools import compiler, linker
-from srbuild.tools.flags import BuildFlags
+from sbuildr.tools import compiler, linker
+from sbuildr.tools.flags import BuildFlags
 from typing import List
 import subprocess
 import pytest
