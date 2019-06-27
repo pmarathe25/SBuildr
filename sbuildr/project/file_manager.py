@@ -26,10 +26,9 @@ def _is_in_directory(path: str, dir: str):
 def _is_in_directories(path: str, dirs: Set[str]):
     return any([_is_in_directory(path, dir) for dir in dirs])
 
-# TODO: Docstrings
 class FileManager(object):
     # The root directory is used for relative paths. The build directory is automatically excluded from searches.
-    def __init__(self, root_dir: str, build_dir: str, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
+    def __init__(self, root_dir: str, build_dir: str=None, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
         self.root_dir = os.path.abspath(root_dir)
         if not os.path.isdir(self.root_dir):
             G_LOGGER.critical(f"Root Directory: {self.root_dir} does not exist, or is not a directory.")
@@ -40,7 +39,7 @@ class FileManager(object):
         self.files = []
 
         # Remove directories that are within exclude_dirs after converting all directories to abspaths.
-        dirs = [self.abspath(dir) for dir in dirs] or set([root_dir])
+        dirs = set([self.abspath(dir) for dir in dirs]) | set([root_dir])
         G_LOGGER.verbose(f"Directories after converting to absolute paths: {dirs}")
         self.dirs = set([dir for dir in dirs if not _is_in_directories(dir, exclude_dirs)])
         G_LOGGER.verbose(f"Directories after removing ignored: {self.dirs}")
@@ -84,7 +83,6 @@ class FileManager(object):
             return in_root_path
         return os.path.abspath(path)
 
-    # TODO: Docstrings
     # Finds filename in self.files. Always returns absolute paths.
     # If the file exists but is not in this FileManager's tracked directories, returns an empty list.
     # The returned list is in order of proximity to the root. The first element is closest to the root.

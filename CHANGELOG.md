@@ -1,8 +1,9 @@
 # SBuildR Changelog
 Dates are in YYYY-MM-DD format.
 
-## v0.2.4 ()
-- Fixed an issue with duplicate libraries when linking.
+## v0.3.0 (2019-06-26)
+- Fixes an issue with duplicate libraries when linking.
+- Added documentation for public API functions.
 
 ## v0.2.3 (2019-05-04)
 - Added `test` to `cli()` and `Project` to provide a convenient test runner.

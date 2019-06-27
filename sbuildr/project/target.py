@@ -4,6 +4,12 @@ from typing import NewType, Dict
 # A Dict[str, LinkedNode] that maps profile names to the LinkedNodes for a target
 class ProjectTarget(dict):
     def __init__(self, name, *args, **kwargs):
+        """
+        Represents a single target in a project.
+
+        Vars:
+            name (str): The name of this target.
+        """
         super().__init__(self, *args, **kwargs)
         self.name = name
         self.is_lib = False

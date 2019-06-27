@@ -37,3 +37,7 @@ class TestIntegration(object):
         for target in targets:
             for _, node in target.items():
                 assert os.path.exists(node.path)
+
+    def test_public_imports(self):
+        import sbuildr
+        from sbuildr import compiler, linker, BuildFlags, Project, Profile

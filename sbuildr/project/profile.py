@@ -18,8 +18,18 @@ def _file_suffix(path: str, suffix: str, ext: str = None) -> str:
 # Each profile has a Graph for linked/compiled targets. The source tree (i.e. FileManager) is shared.
 # Profiles can have default properties that are applied to each target within.
 # TODO: Add compiler/linker as a property of Profile.
+# TODO: Suffixes are not applied to the internal files. They are only used on the CLI, and during installation of files. Possible solution would be to symlink to the actual file (whose name would include a hash of the compiler/linker options).
 class Profile(object):
-    def __init__(self, flags: BuildFlags, build_dir: str, suffix):
+    def __init__(self, flags: BuildFlags, build_dir: str, suffix: str):
+        """
+        Represents a profile in a project. A profile is essentially a set of options applied to targets in the project.
+        For example, a profile can be used to specify that all targets should be built with debug information, and that they should have a "_debug" suffix.
+
+        Args:
+            flags (sbuildr.BuildFlags): The flags to use for this profile. These will be applied to all targets for this profile. Per-target flags always take precedence.
+            build_dir (str): An absolute path to the build directory to use.
+            suffix (str): A file suffix to attach to all artifacts generated for this profile.
+        """
         self.flags = flags
         self.build_dir = build_dir
         self.graph = Graph()

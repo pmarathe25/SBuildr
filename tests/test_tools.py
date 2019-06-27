@@ -79,7 +79,7 @@ class TestLinkers(TestCompilers):
     def build_libtest(compiler, linker):
         fibonacci = TestLinkers.compile(compiler, PATHS["fibonacci.cpp"])
         factorial = TestLinkers.compile(compiler, PATHS["factorial.cpp"])
-        return TestLinkers.link(linker, [fibonacci, factorial, "-lstdc++"], "libtest.so", flags=BuildFlags().shared())
+        return TestLinkers.link(linker, [fibonacci, factorial, "-lstdc++"], "libtest.so", flags=BuildFlags()._enable_shared())
 
     @pytest.mark.parametrize("compiler", [compiler.gcc, compiler.clang])
     @pytest.mark.parametrize("linker", [linker.gcc, linker.clang])

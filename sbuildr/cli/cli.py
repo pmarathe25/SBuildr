@@ -23,10 +23,17 @@ if args.very_verbose:
 elif args.verbose:
     G_LOGGER.verbosity = logger.Verbosity.DEBUG
 
-# TODO: Docstrings
 # Sets up the the command-line interface for the given project/generator combination.
 # When no profile(s) are specified, default_profile will be used.
 def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=["debug", "release"]):
+    """
+    Adds the SBuildR command-line interface to the Python script invoking this function. For detailed usage information, you can run the Python code invoking this function with ``--help``.
+
+    Args:
+        project (sbuildr.Project): The project that the CLI will interface with.
+        GeneratorType (type): The type of generator to use for generating configuration files. Since SBuildR is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.generator.RBuildGenerator``) can be used for fast incremental builds.
+        default_profiles (List[str]): Names of default profiles. These are the profiles the CLI will target when none are explicitly specified via the command-line.
+    """
     generator = GeneratorType(project)
 
     def needs_configure(func, *args, **kwargs):

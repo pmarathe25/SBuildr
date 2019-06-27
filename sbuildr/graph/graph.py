@@ -1,7 +1,6 @@
 from sbuildr.graph.node import Node
 from typing import List, Dict, Set
 
-# TODO: Docstrings
 class Graph(dict):
     def __init__(self, nodes: Set[Node]=set()):
         self.update({node.path: node for node in nodes})

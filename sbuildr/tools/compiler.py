@@ -114,7 +114,6 @@ class Compiler(object):
         return utils.str_hash(sig)
 
     # Generates the command required to compile the input file with the specified options.
-    # TODO: Docstring here
     def compile(self, input_path: str, output_path: str, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> List[str]:
         compiler_flags = self.cdef.parse_flags(flags)
         includes = [self.cdef.include(dir) for dir in include_dirs]

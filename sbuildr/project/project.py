@@ -13,12 +13,17 @@ import inspect
 import os
 
 class Project(object):
-    def __init__(self, root: str="", dirs: Set[str]=set(), build_dir: str=""):
+    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None):
         """
-        Represents a project.
+        Represents a project. Projects include two default profiles with the following configuration:
+            ``release``: ``BuildFlags().O(3).std(17).march("native").fpic()``
+            ``debug``: ``BuildFlags().O(0).std(17).debug().fpic()``, attaches file suffix "_debug"
+        These can be overridden using the ``profile()`` function.
 
-        Vars:
-            dirs (Set[str]): The directories that are part of the project.
+        Args:
+            root (str): The path to the root directory for this project. All directories and files within the root directory are considered during searches for files. If no root directory is provided, defaults to the containing directory of the script calling this constructor.
+            dirs (Set[str]): Additional directories outside the root directory that are part of the project. These directories and all contents will be considered during searches for files.
+            build_dir (str): The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
         """
         # The assumption is that the caller of the init function is the SBuildR file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
@@ -50,7 +55,17 @@ class Project(object):
         # Scan for all headers, and create the appropriate nodes.
         self.files.scan_all()
 
-    def _target(self, name: str, basename: str, sources: List[str], flags: BuildFlags, libs: List[Union[ProjectTarget, str]], compiler: compiler.Compiler, include_dirs: List[str], linker: linker.Linker, lib_dirs: List[str]) -> ProjectTarget:
+    def _target(self,
+                name: str,
+                basename: str,
+                sources: List[str],
+                flags: BuildFlags,
+                libs: List[Union[ProjectTarget,
+                str]],
+                compiler: compiler.Compiler,
+                include_dirs: List[str],
+                linker: linker.Linker,
+                lib_dirs: List[str]) -> ProjectTarget:
         # Convert sources to full paths
         def get_source_nodes(sources: List[str]) -> List[CompiledNode]:
             source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
@@ -62,7 +77,6 @@ class Project(object):
         # If the library is provided as a path, we also add it as a node to the file manager
         # so that we can properly rebuild when it is updated (even if it's external).
         def get_libraries(libs: List[Union[ProjectTarget, str]]) -> List[Union[ProjectTarget, Node, str]]:
-
             # Determines whether lib looks like a path, or like a library name.
             def is_lib_path(lib: str) -> bool:
                 has_path_components = os.path.sep in lib
@@ -96,7 +110,6 @@ class Project(object):
             target[profile_name] = profile.target(basename, source_nodes, flags, target_libs, compiler, include_dirs, linker, lib_dirs)
         return target
 
-    # TODO: Docstrings
     # Both of these functions will modify name before passing it to profile so that the filename is correct.
     def executable(self,
                     name: str,
@@ -107,6 +120,22 @@ class Project(object):
                     include_dirs: List[str] = [],
                     linker: linker.Linker = linker.clang,
                     lib_dirs: List[str] = []) -> ProjectTarget:
+        """
+        Adds an executable target to all profiles within this project.
+
+        Args:
+            name (str): The name of the target. This should NOT include platform-dependent extensions.
+            sources (List[str]): A list of names or paths of source files to include in this target.
+            flags (sbuildr.BuildFlags): Compiler and linker flags. See sbuildr.BuildFlags for details.
+            libs (List[Union[ProjectTarget, str]]): A list containing either 'ProjectTarget's or strings (which may be either library names or paths to libraries) against which to link. Paths must be absolute paths, so as to disambiguate from library names.
+            compiler (sbuildr.compiler.Compiler): The compiler to use for this target. Defaults to clang.
+            include_dirs (List[str]): A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
+            linker (sbuildr.linker.Linker): The linker to use for this target. Defaults to clang.
+            lib_dirs (List[str]): A list of paths for directories containing libraries needed by this target.
+
+        Returns:
+            ProjectTarget
+        """
         self.executables[name] = self._target(name, linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
         return self.executables[name]
 
@@ -119,6 +148,22 @@ class Project(object):
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
                 lib_dirs: List[str] = []) -> ProjectTarget:
+        """
+        Adds an executable target to all profiles within this project. Test targets can be automatically built and run by using the ``test`` command on the CLI.
+
+        Args:
+            name (str): The name of the target. This should NOT include platform-dependent extensions.
+            sources (List[str]): A list of names or paths of source files to include in this target.
+            flags (sbuildr.BuildFlags): Compiler and linker flags. See sbuildr.BuildFlags for details.
+            libs (List[Union[ProjectTarget, str]]): A list containing either 'ProjectTarget's or strings (which may be either library names or paths to libraries) against which to link. Paths must be absolute paths, so as to disambiguate from library names.
+            compiler (sbuildr.compiler.Compiler): The compiler to use for this target. Defaults to clang.
+            include_dirs (List[str]): A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
+            linker (sbuildr.linker.Linker): The linker to use for this target. Defaults to clang.
+            lib_dirs (List[str]): A list of paths for directories containing libraries needed by this target.
+
+        Returns:
+            ProjectTarget
+        """
         self.tests[name] = self._target(name, linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
         return self.tests[name]
 
@@ -131,12 +176,41 @@ class Project(object):
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
                 lib_dirs: List[str] = []) -> ProjectTarget:
-        self.libraries[name] = self._target(name, linker.to_lib(name), sources, flags + BuildFlags().shared(), libs, compiler, include_dirs, linker, lib_dirs)
+        """
+        Adds a library target to all profiles within this project.
+
+        Args:
+            name (str): The name of the target. This should NOT include platform-dependent extensions.
+            sources (List[str]): A list of names or paths of source files to include in this target.
+            flags (sbuildr.BuildFlags): Compiler and linker flags. See sbuildr.BuildFlags for details.
+            libs (List[Union[ProjectTarget, str]]): A list containing either 'ProjectTarget's or strings (which may be either library names or paths to libraries) against which to link. Paths must be absolute paths, so as to disambiguate from library names.
+            compiler (sbuildr.compiler.Compiler): The compiler to use for this target. Defaults to clang.
+            include_dirs (List[str]): A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
+            linker (sbuildr.linker.Linker): The linker to use for this target. Defaults to clang.
+            lib_dirs (List[str]): A list of paths for directories containing libraries needed by this target.
+
+        Returns:
+            ProjectTarget
+        """
+        self.libraries[name] = self._target(name, linker.to_lib(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, lib_dirs)
         self.libraries[name].is_lib = True
         return self.libraries[name]
 
     # Returns a profile if it exists, otherwise creates a new one and returns it.
-    def profile(self, name, flags: BuildFlags=BuildFlags(), build_subdir: str=None, file_suffix="") -> Profile:
+    # TODO: build_subdir should be able to handle absolute paths too. The profile build directory can be outside the main build directory. However, the file manager's writable directories would need to updated.
+    def profile(self, name: str, flags: BuildFlags=BuildFlags(), build_subdir: str=None, file_suffix: str="") -> Profile:
+        """
+        Returns or creates a profile with the specified parameters.
+
+        Args:
+            name (str): The name of this profile.
+            flags (sbuildr.BuildFlags): The flags to use for this profile. These will be applied to all targets for this profile. Per-target flags always take precedence.
+            build_subdir (str): The name of the build subdirectory to use. This should NOT be a path, as it will always be created as a subdirectory of the project's build directory.
+            file_suffix (str): A file suffix to attach to all artifacts generated for this profile. For example, the default debug profile attaches a ``_debug`` suffix to all library and executable names.
+
+        Returns:
+            Profile
+        """
         if name not in self.profiles:
             build_subdir = build_subdir or name
             if os.path.isabs(build_subdir):
@@ -145,9 +219,16 @@ class Project(object):
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
-    # TODO: Docstrings
     # FIXME: This should be able to install to a file now.
     def install(self, target: Union[ProjectTarget, str], dir: str):
+        """
+        Specifies that a project target or file should be installed to the provided directory.
+        When running the ``install`` command on the CLI, the targets and files specified via this function will be copied to their respective destination directories.
+
+        Args:
+            target (Union[ProjectTarget, str]): A project target or path to a file to install.
+            dir (str): The path to the installation directory.
+        """
         if os.path.isfile(dir):
             G_LOGGER.critical(f"Cannot currently install to a file. Please specify a directory instead.")
         dir_path = self.files.abspath(dir)
