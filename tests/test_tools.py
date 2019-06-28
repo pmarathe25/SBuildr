@@ -6,26 +6,25 @@ import pytest
 import shutil
 import os
 
-TESTS_ROOT = os.path.abspath(os.path.dirname(__file__))
+TESTS_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "examples"))
 ROOT = os.path.join(TESTS_ROOT, "minimal_project")
 PATHS = {
     "include": os.path.join(ROOT, "include"),
-    "factorial.hpp": os.path.join(ROOT, "include", "factorial.hpp"),
-    "fibonacci.hpp": os.path.join(ROOT, "include", "fibonacci.hpp"),
-    "utils.hpp": os.path.join(ROOT, "include", "utils.hpp"),
+    "src": os.path.join(ROOT, "src"),
+    "factorial.hpp": os.path.join(ROOT, "src", "factorial.hpp"),
+    "fibonacci.hpp": os.path.join(ROOT, "src", "fibonacci.hpp"),
+    "utils.hpp": os.path.join(ROOT, "src", "utils.hpp"),
     "factorial.cpp": os.path.join(ROOT, "src", "factorial.cpp"),
     "fibonacci.cpp": os.path.join(ROOT, "src", "fibonacci.cpp"),
     "test": os.path.join(ROOT, "test"),
-    "test/test": os.path.join(ROOT, "test", "test"),
-    "test.hpp": os.path.join(ROOT, "test", "test.hpp"),
-    "test.cpp": os.path.join(ROOT, "test", "test.cpp"),
+    "test.cpp": os.path.join(ROOT, "tests", "test.cpp"),
     # Output files
     "build": os.path.join(ROOT, "build"),
 }
 
 def compile_cmd(compiler, input_path: str, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):
     flags += BuildFlags().O(3).std(17).march("native").fpic()
-    include_dirs = include_dirs or [PATHS["include"], PATHS["test"], ROOT, TESTS_ROOT]
+    include_dirs = include_dirs or [PATHS["include"], PATHS["src"], PATHS["test"], ROOT, TESTS_ROOT]
     # Get output path
     base = os.path.splitext(os.path.basename(input_path))[0]
     output_path = os.path.join(PATHS["build"], f"{base}.o")

@@ -28,7 +28,7 @@ class TestProject(object):
 
     def test_executable_api(self):
         proj = Project(root=ROOT)
-        test = proj.executable("test", sources=["test/test.cpp"], libs=["stdc++"])
+        test = proj.executable("test", sources=["tests/test.cpp"], libs=["stdc++"])
         self.check_target(proj, test)
 
     def test_library_api(self):
@@ -58,7 +58,7 @@ class TestFileManager(object):
 
     def test_can_find_sources(self):
         manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
-        node = manager.source("test/test.cpp")
+        node = manager.source("tests/test.cpp")
         assert node.path == PATHS["test.cpp"]
 
     def test_source(self):
@@ -67,25 +67,23 @@ class TestFileManager(object):
         fibonacci_hpp = manager.source(PATHS["fibonacci.hpp"])
         factorial_cpp = manager.source(PATHS["factorial.cpp"])
         fibonacci_cpp = manager.source(PATHS["fibonacci.cpp"])
-        test_hpp = manager.source(PATHS["test.hpp"])
         test_cpp = manager.source(PATHS["test.cpp"])
         manager.scan_all()
         # Headers
-        # Includes utils.hpp, but using an absolute path.
-        assert factorial_hpp.include_dirs == sorted([])
-        # Includes utils.hpp, but using a path starting with include/
+        # Includes utils.hpp..
+        assert factorial_hpp.include_dirs == sorted([PATHS["src"]])
+        # Includes utils.hpp, but using a path starting with src/
         assert fibonacci_hpp.include_dirs == sorted([ROOT])
         # CPP files
         # Includes factorial.hpp
-        assert factorial_cpp.include_dirs == sorted(set([PATHS["include"]] + factorial_hpp.include_dirs))
+        assert factorial_cpp.include_dirs == sorted(set([PATHS["src"]] + factorial_hpp.include_dirs))
         # Includes fibonacci.hpp
-        assert fibonacci_cpp.include_dirs == sorted(set([PATHS["include"]] + fibonacci_hpp.include_dirs))
+        assert fibonacci_cpp.include_dirs == sorted(set([PATHS["src"]] + fibonacci_hpp.include_dirs))
         # Test files
         # Includes utils.hpp
-        assert test_hpp.include_dirs == sorted([PATHS["include"]])
-        # Includes utils.hpp, test.hpp, factorial.hpp and fibonacci.hpp
+        # Includes utils.hpp, factorial.hpp and fibonacci.hpp
         # Also includes iostream, which the logger should mention as not found.
-        assert test_cpp.include_dirs == sorted(set([PATHS["include"], PATHS["test"]] + test_hpp.include_dirs + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
+        assert test_cpp.include_dirs == sorted(set([PATHS["src"]] + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
         # Make sure that the source graph has been populated
-        for file in ["factorial.hpp", "fibonacci.hpp", "test.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
+        for file in ["factorial.hpp", "fibonacci.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
             assert manager.graph.contains_path(PATHS[file])

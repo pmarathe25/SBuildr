@@ -6,15 +6,15 @@ import copy
 # This is required to make the build system truly platform-agnostic.
 # The same high-level options should work everywhere.
 class BuildFlags(object):
-    def __init__(self):
-        """
-        Abstract description of compiler and linker flags. These are interpreted by SBuildr's compiler and linker interfaces and converted to concrete command-line flags.
+    """
+    Abstract description of compiler and linker flags. These are interpreted by SBuildr's compiler and linker interfaces and converted to concrete command-line flags.
 
-        It is possible to add two BuildFlags, in which case the right-hand side takes precedence when flags are set for both instances. For example,
-            ``BuildFlags.O(3).fpic() + BuildFlags.O(0)``
-            would result in a value equivalent to:
-            ``BuildFlags.O(0).fpic()``
-        """
+    It is possible to add two BuildFlags, in which case the right-hand side takes precedence when flags are set for both instances. For example,
+    ``BuildFlags.O(3).fpic() + BuildFlags.O(0)``
+    would result in a value equivalent to:
+    ``BuildFlags.O(0).fpic()``
+    """
+    def __init__(self):
         self._o: str = None
         self._std: str = None
         self._march: str = None
@@ -33,11 +33,9 @@ class BuildFlags(object):
         """
         Sets the optimization level.
 
-        Args:
-            level (Union[int, str]): An integer or string indicating the optimization level. For example, to disable optimization, this would be set to ``0`` or ``"0"``.
+        :param level: An integer or string indicating the optimization level. For example, to disable optimization, this would be set to ``0`` or ``"0"``.
 
-        Returns:
-            self
+        :returns: self
         """
         self._o = str(level).strip()
         return self
@@ -46,11 +44,9 @@ class BuildFlags(object):
         """
         Sets the C++ standard.
 
-        Args:
-            year (Union[int, str]): An integer or string indicating the last two digits of the year of the corresponding C++ standard. For example, to use C++11, this would be set to ``11`` or ``"11"``.
+        :param year: An integer or string indicating the last two digits of the year of the corresponding C++ standard. For example, to use C++11, this would be set to ``11`` or ``"11"``.
 
-        Returns:
-            self
+        :returns: self
         """
         self._std = str(year).strip()
         return self
@@ -59,11 +55,9 @@ class BuildFlags(object):
         """
         Sets the microarchitecture.
 
-        Args:
-            type (str): A string describing the CPU microarchitecture.
+        :param type: A string describing the CPU microarchitecture.
 
-        Returns:
-            self
+        :returns: self
         """
         self._march = str(type).strip()
         return self
@@ -72,11 +66,9 @@ class BuildFlags(object):
         """
         Enables or disables generation of position independent code.
 
-        Args:
-            use (bool): Whether to generate position independent code.
+        :param use: Whether to generate position independent code.
 
-        Returns:
-            self
+        :returns: self
         """
         self._fpic = use
         return self
@@ -85,11 +77,9 @@ class BuildFlags(object):
         """
         Enables or disables generation of debug information.
 
-        Args:
-            use (bool): Whether to generate debug information.
+        :param use: Whether to generate debug information.
 
-        Returns:
-            self
+        :returns: self
         """
         self._debug = use
         return self
@@ -100,11 +90,9 @@ class BuildFlags(object):
         """
         Allows for providing raw options.
 
-        Args:
-            opts (List[str]): A list of options, as strings. These are passed on to the compiler and linker without modification.
+        :param opts: A list of options, as strings. These are passed on to the compiler and linker without modification.
 
-        Returns:
-            self
+        :returns: self
         """
         self._raw = opts
         return self

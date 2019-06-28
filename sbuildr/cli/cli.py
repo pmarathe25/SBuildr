@@ -29,17 +29,17 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     """
     Adds the SBuildr command-line interface to the Python script invoking this function. For detailed usage information, you can run the Python code invoking this function with ``--help``.
 
-    Args:
-        project (sbuildr.Project): The project that the CLI will interface with.
-        GeneratorType (type): The type of generator to use for generating configuration files. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.generator.RBuildGenerator``) can be used for fast incremental builds.
-        default_profiles (List[str]): Names of default profiles. These are the profiles the CLI will target when none are explicitly specified via the command-line.
+    :param project: The project that the CLI will interface with.
+    :param GeneratorType: The type of generator to use for generating configuration files. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.generator.RBuildGenerator``) can be used for fast incremental builds.
+    :param default_profiles: Names of default profiles. These are the profiles the CLI will target when none are explicitly specified via the command-line.
     """
     generator = GeneratorType(project)
 
     def needs_configure(func, *args, **kwargs):
         def wrapper(*args, **kwargs):
             if generator.needs_configure():
-                G_LOGGER.critical(f"'{func.__name__}' requires the project to be configured, but project has either not been configured yet, or configuration is outdated. Please run `configure`.")
+                G_LOGGER.warning(f"'{func.__name__}' requires the project to be configured, but project has either not been configured yet, or configuration is outdated. Running configuration now.")
+                configure(*args, **kwargs)
             return func(*args, **kwargs)
         return wrapper
 
@@ -291,6 +291,10 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     clean_parser.add_argument("--nuke", help="The nuclear option. Removes the entire build directory, including all targets for all profiles, meaning that the project must be reconfigured before subsequent builds.", action="store_true")
     _add_profile_args(clean_parser, "Clean")
     clean_parser.set_defaults(func=clean)
+
+    # Display help if no arguments are provided.
+    if len(sys.argv) < 2:
+        parser.print_help()
 
     args, unknown = parser.parse_known_args()
     # If there are unknown arguments, make the parser display an error.

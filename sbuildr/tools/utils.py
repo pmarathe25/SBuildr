@@ -8,7 +8,7 @@ def str_hash(obj) -> str:
     Returns a string representation of the hash of a string constructed from the specified object.
 
     Args:
-        obj (object): The object to hash.
+        :param obj: The object to hash.
 
     Returns:
         str: The resulting hash.

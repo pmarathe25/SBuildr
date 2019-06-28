@@ -38,8 +38,8 @@ class Logger(object):
         Logger.
 
         Optional Args:
-            verbosity (Logger.Severity): Messages below this verbosity are ignored.
-            path_depth (int): The depth of the displayed path. If this is set to -1, the absolute path is displayed.
+            :param verbosity: Messages below this verbosity are ignored.
+            :param path_depth: The depth of the displayed path. If this is set to -1, the absolute path is displayed.
         """
         self.verbosity = verbosity
         self.path_depth = path_depth

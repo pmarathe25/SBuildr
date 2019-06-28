@@ -143,6 +143,9 @@ class Linker(object):
     def __init__(self, ldef: Union[type, LinkerDef]):
         self.ldef = ldef
 
+    def __str__(self):
+        return self.ldef.executable()
+
     # Generates a signature for a given combination of input file and options.
     # If two signatures are the same for an input file, it means the resulting file(s) would be identical.
     # The signature is everything that makes the resulting object file unique - i.e. linker, input file, link directories and linker options.

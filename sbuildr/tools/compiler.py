@@ -105,6 +105,9 @@ class Compiler(object):
     def __init__(self, cdef: Union[type, CompilerDef]):
         self.cdef = cdef
 
+    def __str__(self):
+        return self.cdef.executable()
+
     # The signature is everything that makes the resulting object file unique
     # - i.e. compiler, include directories and compile options.
     # If two signatures are the same for an input file, it means the resulting object file(s) would be identical.

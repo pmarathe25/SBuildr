@@ -15,11 +15,10 @@ def generate_build_graph(compiler, linker):
     utils_h = SourceNode(PATHS["utils.hpp"])
     factorial_h = SourceNode(PATHS["factorial.hpp"], [utils_h])
     fibonacci_h = SourceNode(PATHS["fibonacci.hpp"], [utils_h])
-    test_h = SourceNode(PATHS["test.hpp"], [utils_h])
     # Source files
-    factorial_cpp = SourceNode(PATHS["factorial.cpp"], [factorial_h], include_dirs=[PATHS["include"], PATHS["test"], ROOT, TESTS_ROOT])
-    fibonacci_cpp = SourceNode(PATHS["fibonacci.cpp"], [fibonacci_h], include_dirs=[PATHS["include"], PATHS["test"], ROOT, TESTS_ROOT])
-    test_cpp = SourceNode(PATHS["test.cpp"], [test_h], include_dirs=[PATHS["include"], PATHS["test"], ROOT, TESTS_ROOT])
+    factorial_cpp = SourceNode(PATHS["factorial.cpp"], [factorial_h], include_dirs=[PATHS["include"], PATHS["src"], PATHS["test"], ROOT, TESTS_ROOT])
+    fibonacci_cpp = SourceNode(PATHS["fibonacci.cpp"], [fibonacci_h], include_dirs=[PATHS["include"], PATHS["src"], PATHS["test"], ROOT, TESTS_ROOT])
+    test_cpp = SourceNode(PATHS["test.cpp"], [], include_dirs=[PATHS["include"], PATHS["src"], PATHS["test"], ROOT, TESTS_ROOT])
     # Object files
     factorial_o = CompiledNode(os.path.join(PATHS["build"], "factorial.o"), input=factorial_cpp, compiler=compiler, flags=flags)
     fibonacci_o = CompiledNode(os.path.join(PATHS["build"], "fibonacci.o"), input=fibonacci_cpp, compiler=compiler, flags=flags)
@@ -27,7 +26,7 @@ def generate_build_graph(compiler, linker):
     # Library and executable
     libmath = LinkedNode(os.path.join(PATHS["build"], "libmath.so"), [factorial_o, fibonacci_o], linker=linker, flags=flags+BuildFlags()._enable_shared(), libs=["stdc++"])
     test = LinkedNode(os.path.join(PATHS["build"], "test"), [test_o, libmath], linker=linker, flags=flags, libs=["stdc++"])
-    return Graph([utils_h, factorial_h, fibonacci_h, test_h, factorial_cpp, fibonacci_cpp, test_cpp, factorial_o, fibonacci_o, test_o, libmath, test])
+    return Graph([utils_h, factorial_h, fibonacci_h, factorial_cpp, fibonacci_cpp, test_cpp, factorial_o, fibonacci_o, test_o, libmath, test])
 
 # Create dummy structs to satisfy the API
 class FakeFileManager(object):
