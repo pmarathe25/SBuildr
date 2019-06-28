@@ -25,7 +25,7 @@ class Project(object):
             dirs (Set[str]): Additional directories outside the root directory that are part of the project. These directories and all contents will be considered during searches for files.
             build_dir (str): The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
         """
-        # The assumption is that the caller of the init function is the SBuildR file for the build.
+        # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed

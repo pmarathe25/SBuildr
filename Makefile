@@ -9,7 +9,7 @@ install: wheel
 	python -m pip install dist/*.whl --user --upgrade
 
 clean:
-	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SBuildR.egg-info
+	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SBuildr.egg-info
 
 upload: wheel
 	python -m twine upload dist/*

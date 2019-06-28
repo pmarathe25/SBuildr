@@ -8,7 +8,7 @@ import copy
 class BuildFlags(object):
     def __init__(self):
         """
-        Abstract description of compiler and linker flags. These are interpreted by SBuildR's compiler and linker interfaces and converted to concrete command-line flags.
+        Abstract description of compiler and linker flags. These are interpreted by SBuildr's compiler and linker interfaces and converted to concrete command-line flags.
 
         It is possible to add two BuildFlags, in which case the right-hand side takes precedence when flags are set for both instances. For example,
             ``BuildFlags.O(3).fpic() + BuildFlags.O(0)``
