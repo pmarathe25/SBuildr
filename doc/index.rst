@@ -1,0 +1,2 @@
+.. automodule:: sbuildr
+    :members:
