@@ -4,4 +4,4 @@ from sbuildr.tools.flags import BuildFlags
 from sbuildr.tools import compiler, linker
 from sbuildr.cli.cli import cli
 from sbuildr.logger import G_LOGGER
-__version__ = "0.3.0"
+__version__ = "0.3.1"

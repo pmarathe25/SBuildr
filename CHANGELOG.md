@@ -1,21 +1,24 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
+## v0.3.1 (2019-06-27)
+- Added `minimal_project` as an example in the `examples/` directory
+- Added Sphinx configuration files for doc generation.
+
 ## v0.3.0 (2019-06-26)
-- Fixes an issue with duplicate libraries when linking.
+- Fixed an issue with duplicate libraries when linking.
 - Added documentation for public API functions.
 
 ## v0.2.3 (2019-05-04)
 - Added `test` to `cli()` and `Project` to provide a convenient test runner.
 
 ## v0.2.2 (2019-05-03)
-- Fixes an issue with absolute paths in `#include`s not being handled correctly.
+- Fixed an issue with absolute paths in `#include`s not being handled correctly.
 
 ## v0.2.1 (2019-05-03)
-- Fixes errors in `setup.py` that prevented files from being packaged.
+- Fixed errors in `setup.py` that prevented files from being packaged.
 
 ## v0.2.0 (2019-05-03)
-- Renamed to SBuildr.
 - Disables logging when python is run with -O. This can provide some speed improvements.
 - Added CompilerDef/LinkerDef to isolate behavior specific to individual compilers/linkers. Compiler/Linker can now operate in a platform-agnostic way.
 - Added BuildFlags to make compiler/linker flags platform agnostic from the user's perspective.
