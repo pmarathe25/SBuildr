@@ -22,6 +22,8 @@ project = 'SBuildr'
 copyright = '2019, Pranav Marathe'
 author = 'Pranav Marathe'
 
+master_doc = 'index'
+
 # The full version, including alpha/beta/rc tags
 release = '0.3.0'
 
