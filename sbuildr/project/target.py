@@ -8,7 +8,7 @@ class ProjectTarget(dict):
         Represents a single target in a project.
 
         Vars:
-            name (str): The name of this target.
+            :param name: The name of this target.
         """
         super().__init__(self, *args, **kwargs)
         self.name = name

@@ -26,7 +26,7 @@ class Generator(object):
         A generator that creates build files for the specified project, and is able to build arbitrary targets specified in the project. Intermediate build configuration files will be written to the build directory specified by the project's FileManager.
 
         Args:
-            project (Project): The project managed by this generator.
+            :param project: The project managed by this generator.
         """
         self.project = project
 
@@ -61,7 +61,7 @@ class Generator(object):
             This function will invoke the managed project's file manager's mkdir function to create the build subdirectory for each profile if it does not exist.
 
         Args:
-            targets (List[ProjectTarget]): The targets to build.
-            profiles (List[str]): The names of the profiles to build for. If no profiles are provided, builds the specified targets for all profiles. If a target does not exist for one of the specified profiles, that target is skipped for that profile.
+            :param targets: The targets to build.
+            :param profiles: The names of the profiles to build for. If no profiles are provided, builds the specified targets for all profiles. If a target does not exist for one of the specified profiles, that target is skipped for that profile.
         """
         raise NotImplementedError()

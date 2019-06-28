@@ -1,20 +1,16 @@
-.. SBuildr documentation master file, created by
-   sphinx-quickstart on Thu Jun 27 20:06:19 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to SBuildr's documentation!
-===================================
+.. mdinclude:: ./README.md
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+    :hidden:
+    
+    self
 
+.. toctree::
+    :caption: API Reference
+    :maxdepth: 2
+    :hidden:
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+    docs/project
+    docs/profile
+    docs/flags
+    docs/cli
