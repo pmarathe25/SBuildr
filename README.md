@@ -4,6 +4,12 @@ A stupid, simple python-based meta-build system for C++ projects.
 
 ## Installation
 
+### Prerequisites
+
+1. [RBuild](https://github.com/pmarathe25/RBuild)
+    - Install [Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
+    - Run `cargo install rbuild`
+
 ### Installing from PyPI
 `pip install sbuildr`
 
