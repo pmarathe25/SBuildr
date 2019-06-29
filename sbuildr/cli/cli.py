@@ -52,7 +52,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     def _check_returncode(result: subprocess.CompletedProcess) -> str:
         output = f"{_wrap_str(' Captured stdout ')}\n{result.stdout.decode(sys.stdout.encoding)}\n{_wrap_str(' Captured stderr ')}\n{result.stderr.decode(sys.stdout.encoding)}"
         if result.returncode:
-            G_LOGGER.critical(f"Failed with:\n{output}")
+            G_LOGGER.critical(f"Failed with:\n{output}\nReconfiguring the project or running a clean build may resolve this.")
         return output
 
     # Given target names, returns the corresponding targets.
@@ -124,7 +124,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
         G_LOGGER.log(_check_returncode(subprocess.run([target[prof_name].path], capture_output=True)))
 
     @needs_configure
-    def test(args):
+    def tests(args):
         tests = _select_test_targets(args)
         prof_names = _select_profile_names(args)
         if not tests:
@@ -268,10 +268,10 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     run_parser.set_defaults(func=run)
 
     # Test
-    test_parser = subparsers.add_parser("test", help="Run project tests", description="Run one or more project tests")
-    test_parser.add_argument("targets", nargs='*', help="Targets to test. By default, tests all targets for the default profiles.", default=[])
-    _add_profile_args(test_parser, "Test")
-    test_parser.set_defaults(func=test)
+    tests_parser = subparsers.add_parser("tests", help="Run project tests", description="Run one or more project tests")
+    tests_parser.add_argument("targets", nargs='*', help="Targets to test. By default, tests all targets for the default profiles.", default=[])
+    _add_profile_args(tests_parser, "Test")
+    tests_parser.set_defaults(func=tests)
 
     # Install
     install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets")

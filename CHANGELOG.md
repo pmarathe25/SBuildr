@@ -1,6 +1,10 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
+## vNext ()
+- Changes `test` command to `tests`
+- Adds suggestion to reconfigure project on build failure.
+
 ## v0.3.2 (2019-06-29)
 - Adds prerequisites section to README
 
