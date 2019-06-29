@@ -1,6 +1,9 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
+## v0.3.2 (2019-06-29)
+- Adds prerequisites section to README
+
 ## v0.3.1 (2019-06-27)
 - Added `minimal_project` as an example in the `examples/` directory
 - Added Sphinx configuration files for doc generation.
