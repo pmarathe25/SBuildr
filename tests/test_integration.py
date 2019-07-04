@@ -32,10 +32,15 @@ class TestIntegration(object):
 
         # Build both targets for all profiles.
         targets = [libmath, test]
-        generator.build(targets)
+        nodes = []
+        for target in targets:
+            nodes.extend(target.values())
+
+        generator.build(nodes)
+
         # Ensure that the targets now exist
         for target in targets:
-            for _, node in target.items():
+            for node in target.values():
                 assert os.path.exists(node.path)
 
     def test_public_imports(self):

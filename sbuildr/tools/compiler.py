@@ -122,7 +122,7 @@ class Compiler(object):
         includes = [self.cdef.include(dir) for dir in include_dirs]
         # The full command, including the output file and the compile-only flag.
         cmd = [self.cdef.executable(), input_path] + compiler_flags + includes + [self.cdef.compile_only(), self.cdef.output(output_path)]
-        G_LOGGER.debug(f"Compile Command: {' '.join(cmd)}")
+        G_LOGGER.verbose(f"Compile Command: {' '.join(cmd)}")
         return cmd
 
 clang = Compiler(ClangDef)

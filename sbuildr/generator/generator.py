@@ -53,7 +53,7 @@ class Generator(object):
         """
         raise NotImplementedError()
 
-    def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
+    def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> (subprocess.CompletedProcess, float):
         """
         Runs a build command that will generate the specified targets from the specified profiles.
 
@@ -63,5 +63,7 @@ class Generator(object):
         Args:
             :param targets: The targets to build.
             :param profiles: The names of the profiles to build for. If no profiles are provided, builds the specified targets for all profiles. If a target does not exist for one of the specified profiles, that target is skipped for that profile.
+
+        :returns: :class:`Tuple[subprocess.CompletedProcess, float]` The return code of the build command and the time required to execute the build command.
         """
         raise NotImplementedError()

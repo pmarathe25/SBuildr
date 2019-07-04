@@ -211,6 +211,9 @@ class Project(object):
         return self.profiles[name]
 
     # FIXME: This should be able to install to a file now.
+    # TODO: Enable version numbers.
+    # TODO: project.installs should be a dict of Nodes -> (install paths, version). Then the generator.build()
+    # function should accept nodes rather than ProjectTarget. Use `external` to create nodes for files.
     def install(self, target: Union[ProjectTarget, str], dir: str):
         """
         Specifies that a project target or file should be installed to the provided directory.
@@ -221,6 +224,7 @@ class Project(object):
         """
         if os.path.isfile(dir):
             G_LOGGER.critical(f"Cannot currently install to a file. Please specify a directory instead.")
+
         dir_path = self.files.abspath(dir)
         if isinstance(target, ProjectTarget):
             for profile, node in target.items():

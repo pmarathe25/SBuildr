@@ -1,7 +1,7 @@
 from sbuildr.generator.rbuild import RBuildGenerator
 from sbuildr.project.project import Project
 from sbuildr.project.target import ProjectTarget
-from sbuildr.logger import G_LOGGER
+from sbuildr.logger import G_LOGGER, plural
 import sbuildr.logger as logger
 
 from typing import List, Tuple
@@ -88,7 +88,24 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     def _build_targets(targets: List[ProjectTarget], prof_names: List[str]):
         G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {prof_names}")
         G_LOGGER.debug(f"Targets: {targets}")
-        _check_returncode(generator.build(targets, profiles=prof_names))
+        nodes = []
+        # Create all required profile build directories and populate nodes.
+        for prof_name in prof_names:
+            if prof_name not in project.profiles:
+                G_LOGGER.critical(f"Profile {prof_name} does not exist in the project. Available profiles: {list(project.profiles.keys())}")
+            project.files.mkdir(project.profiles[prof_name].build_dir)
+            # Populate nodes.
+            for target in targets:
+                if prof_name in target:
+                    node = target[prof_name]
+                    G_LOGGER.verbose(f"For target: {target}, profile: {prof_name}, found path: {node.path}")
+                    nodes.append(node)
+                else:
+                    G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
+
+        status, time_elapsed = generator.build(nodes)
+        _check_returncode(status)
+        G_LOGGER.info(f"Built {plural('target', len(nodes))} for {plural('profile', len(prof_names))} in {time_elapsed} seconds.")
 
     def help_targets(args):
         targets = _select_targets(args)

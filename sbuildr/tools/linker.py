@@ -163,8 +163,8 @@ class Linker(object):
         libs = [lib if os.path.isabs(lib) else self.ldef.lib(lib) for lib in libs]
         # The full command.
         cmd = [self.ldef.executable()] + input_paths + libs + linker_flags + lib_dirs + [self.ldef.output(output_path)]
-        G_LOGGER.verbose(f"Linking: input_paths: {input_paths}, libs: {libs}, linker_flags: {linker_flags}, lib_dirs: {lib_dirs}")
-        G_LOGGER.debug(f"Link Command: {' '.join(cmd)}")
+        G_LOGGER.debug(f"Linking: input_paths: {input_paths}, libs: {libs}, linker_flags: {linker_flags}, lib_dirs: {lib_dirs}")
+        G_LOGGER.verbose(f"Link Command: {' '.join(cmd)}")
         return cmd
 
     def to_lib(self, name: str) -> str:

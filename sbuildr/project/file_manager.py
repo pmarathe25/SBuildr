@@ -53,6 +53,7 @@ class FileManager(object):
         # Keep track of all files relevant to building the project.
         self.graph = Graph()
 
+    # Recursively creates all parent directories required to create dir_path.
     # Returns whether the directory was created inside the build directory.
     # If it is not a subdirectory of the build directory, returns False.
     def mkdir(self, dir_path: str) -> bool:

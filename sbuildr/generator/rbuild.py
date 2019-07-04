@@ -1,8 +1,7 @@
 from sbuildr.generator.generator import Generator
-from sbuildr.project.target import ProjectTarget
-from sbuildr.logger import G_LOGGER, plural
+from sbuildr.logger import G_LOGGER
 from sbuildr.project.project import Project
-from sbuildr.graph.node import LinkedNode
+from sbuildr.graph.node import Node
 from sbuildr.graph.graph import Graph
 
 from typing import List, Dict
@@ -63,28 +62,22 @@ class RBuildGenerator(Generator):
             G_LOGGER.warning(f"Project configuration file ({self.project.config_file}) is newer than RBuildGenerator's configuration file ({self.config_file}). You may need to reconfigure.")
         return False
 
-    def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> subprocess.CompletedProcess:
+    def build(self, nodes: List[Node]) -> (subprocess.CompletedProcess, float):
         # Early exit if no targets were provided
-        if not targets:
+        if not nodes:
             G_LOGGER.debug(f"No targets specified, skipping build.")
             return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"No targets specified")
 
+        # TODO: This should be in common generator class.
+        # First create all directories.
         paths = []
-        profiles = profiles or self.project.profiles.keys()
-        for profile in profiles:
-            if profile not in self.project.profiles:
-                G_LOGGER.critical(f"Profile {profile} does not exist in the project. Available profiles: {list(self.project.profiles.keys())}")
-            # Make the required build directories first.
-            build_dir = self.project.profile(profile).build_dir
-            G_LOGGER.debug(f"For profile: {profile}, creating build directory: {build_dir}")
-            self.project.files.mkdir(build_dir)
-            for target in targets:
-                if profile in target:
-                    path = target[profile].path
-                    G_LOGGER.verbose(f"For target: {target}, profile: {profile}, found path: {path}")
-                    paths.append(path)
-                else:
-                    G_LOGGER.debug(f"Skipping target: {target.name} for profile: {profile}, as it does not exist.")
+        dirs = set()
+        for node in nodes:
+            paths.append(node.path)
+            dirs.add(os.path.dirname(node.path))
+
+        for dir in dirs:
+            self.project.files.mkdir(dir)
 
         # Finally, build.
         cmd = ["rbuild", f"{self.config_file}"] + paths
@@ -93,6 +86,4 @@ class RBuildGenerator(Generator):
         start = time.time()
         status = subprocess.run(cmd, capture_output=True)
         end = time.time()
-        if not status.returncode:
-            G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profiles))} in {end - start} seconds.")
-        return status
+        return status, end - start
