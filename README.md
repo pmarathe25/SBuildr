@@ -63,11 +63,12 @@ sbuildr.cli(project)
 ```
 
 The call to the `cli()` function allows us to use the script to build interactively in a shell.
-For example, to run all tests registered for this project, you can run: `./build.py test`
-
-This will configure the project, build all dependencies, and finally run tests.
+For example, to run all tests registered for this project, you can run: `./build.py test`. This will configure the project, build all dependencies, and finally run tests.
 
 To view all available commands, you can run `./build.py --help`
+
+## API Documentation
+For more information, see the [API Documentation](https://sbuildr.readthedocs.io/en/stable/)
 
 ## Known Limitations
 - SBuildr's header scanning functionality does not take into account preprocessor `#ifdef`s. This means that an `#include` in a `false` branch will still be used as a dependency during builds. Header scanning will also not work for paths containing escaped characters.
