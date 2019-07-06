@@ -91,6 +91,13 @@ class TestIntegration(object):
         cli(proj)
         assert not os.path.exists(install_path)
 
+    # Installation when no installation targets are specified.
+    def test_empty_install(self):
+        proj = Project(root=ROOT)
+
+        sys.argv = ["", "install"]
+        cli(proj)
+
     # TODO: Need coverage of install/uninstall for non-project-targets.
 
     def test_public_imports(self):

@@ -66,7 +66,7 @@ class RBuildGenerator(Generator):
         # Early exit if no targets were provided
         if not nodes:
             G_LOGGER.debug(f"No targets specified, skipping build.")
-            return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"No targets specified")
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"No targets specified"), 0
 
         # TODO: This should be in common generator class.
         # First create all directories.

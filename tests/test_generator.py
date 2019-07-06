@@ -71,3 +71,10 @@ class TestRBuild(object):
         # All paths should exist after building.
         for node in graph.values():
             assert os.path.exists(node.path)
+
+    # Call build without specifying nodes
+    def test_build_empty(self):
+        graph = generate_build_graph(compiler.clang, linker.clang)
+        gen = RBuildGenerator(FakeProject(FakeFileManager(graph)))
+        gen.generate()
+        status, time_elapsed = gen.build([])

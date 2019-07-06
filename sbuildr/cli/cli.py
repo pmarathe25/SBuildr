@@ -289,14 +289,14 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
 
     # Install
     install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets")
-    install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all paths and targets for the default profiles.", default=[])
+    install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all targets and paths specified.", default=[])
     _add_profile_args(install_parser, "Install")
     install_parser.set_defaults(func=install)
 
     # Uninstall
     uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall project targets", description="Uninstall one or more project targets")
     uninstall_parser.add_argument("-f", "--force", help="Remove targets. Without this flag, uninstall will only do a dry-run", action="store_true")
-    uninstall_parser.add_argument("targets", nargs='*', help="Targets to uninstall. By default, uninstalls all paths and targets for the default profiles.", default=[])
+    uninstall_parser.add_argument("targets", nargs='*', help="Targets to uninstall. By default, uninstalls all targets and paths specified.", default=[])
     _add_profile_args(uninstall_parser, "Uninstall")
     uninstall_parser.set_defaults(func=uninstall)
 

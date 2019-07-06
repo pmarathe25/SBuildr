@@ -24,7 +24,7 @@ wheel:
 	python setup.py bdist_wheel
 
 install: wheel
-	python -m pip install dist/*.whl --user --upgrade
+	python -m pip install dist/*.whl --user --upgrade --force-reinstall
 
 clean:
 	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SBuildr.egg-info
