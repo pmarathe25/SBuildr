@@ -1,7 +1,7 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
-## vNext ()
+## v0.4.0 (2019-07-06)
 - Changes `test` command to `tests`
 - Adds suggestion to reconfigure project on build failure.
 - The generator build command now accepts `Node` rather than `ProjectTarget`s.
