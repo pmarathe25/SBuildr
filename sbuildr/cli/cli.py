@@ -227,8 +227,11 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                     G_LOGGER.warning(f"Target: {node.name} is not designated as an installation target, will not uninstall.")
                 install_path = install_dict[node]
                 if args.force:
-                    G_LOGGER.info(f"Removing {install_path}")
-                    os.remove(install_path)
+                    if os.path.exists(install_path):
+                        G_LOGGER.info(f"Removing {install_path}")
+                        os.remove(install_path)
+                    else:
+                        G_LOGGER.warning(f"{node.name} has not been installed (would be installed to {install_path}), skipping.")
                 else:
                     G_LOGGER.info(f"Would remove: {install_path}")
 
