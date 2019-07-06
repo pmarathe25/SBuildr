@@ -63,4 +63,3 @@ class LinkedNode(Node):
         self.libs = libs
         self.lib_dirs = lib_dirs
         self.flags = flags
-        self.install_path = None

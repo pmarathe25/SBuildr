@@ -5,6 +5,7 @@ Dates are in YYYY-MM-DD format.
 - Changes `test` command to `tests`
 - Adds suggestion to reconfigure project on build failure.
 - The generator build command now accepts `Node` rather than `ProjectTarget`s.
+- Greatly simplifies install/uninstall `cli` functions.
 
 ## v0.3.2 (2019-06-29)
 - Adds prerequisites section to README

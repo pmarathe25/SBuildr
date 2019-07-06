@@ -8,7 +8,7 @@ from sbuildr.graph.graph import Graph
 from sbuildr.logger import G_LOGGER
 
 from typing import List, Set, Union, Dict, Tuple
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import inspect
 import os
 
@@ -23,7 +23,7 @@ class Project(object):
     :param dirs: Additional directories outside the root directory that are part of the project. These directories and all contents will be considered during searches for files.
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
     """
-    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None):
+    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, version: str=None):
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
@@ -32,6 +32,8 @@ class Project(object):
         # TODO: This will change once FileManager takes writable_dirs.
         self.files = FileManager(root_dir, build_dir, dirs)
         self.build_dir = self.files.build_dir
+        # Set version to empty string if not provided. This is used for library suffixes.
+        self.version = "" if version is None else version
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
         # user-defined target for that profile.
         self.profiles: Dict[str, Profile] = {}
@@ -40,8 +42,11 @@ class Project(object):
         self.executables: Dict[str, ProjectTarget] = {}
         self.tests: Dict[str, ProjectTarget] = {}
         self.libraries: Dict[str, ProjectTarget] = {}
-        # Extra files installed by this project.
-        self.installs: Dict[str, str] = {}
+        # Files installed by this project. Maps Nodes to installation paths.
+        self.installs: Dict[Node, str] = {}
+        # For targets, map profiles to nodes to be installed as well.
+        self.profile_installs: Dict[str, List[Node]] = defaultdict(list)
+        self.external_installs: Dict[Node, str] = {}
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic(), file_suffix="_debug")
@@ -210,31 +215,41 @@ class Project(object):
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
-    # FIXME: This should be able to install to a file now.
-    # TODO: Enable version numbers.
-    # TODO: project.installs should be a dict of Nodes -> (install paths, version). Then the generator.build()
-    # function should accept nodes rather than ProjectTarget. Use `external` to create nodes for files.
-    def install(self, target: Union[ProjectTarget, str], dir: str):
+    def install(self, target: Union[ProjectTarget, str], path: str, profile: str="release") -> str:
         """
-        Specifies that a project target or file should be installed to the provided directory.
+        Specifies that a project target or file should be installed to the provided path or directory.
         When running the ``install`` command on the CLI, the targets and files specified via this function will be copied to their respective destination directories.
 
         :param target: A project target or path to a file to install.
-        :param dir: The path to the installation directory.
-        """
-        if os.path.isfile(dir):
-            G_LOGGER.critical(f"Cannot currently install to a file. Please specify a directory instead.")
+        :param path: The desired installation path. May be a directory or path.
+        :param profile: The profile whose target to install. Defaults to "release". This is unused if ``target`` is a file path.
 
-        dir_path = self.files.abspath(dir)
+        :returns: The path to which the target or file will be installed.
+        """
+        path = self.files.abspath(path)
+
+        def generate_install_path(filename: str):
+            if os.path.isdir(path):
+                return os.path.join(path, filename)
+            return path
+
         if isinstance(target, ProjectTarget):
-            for profile, node in target.items():
-                node.install_path = os.path.join(dir_path, node.name)
-                G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {node.install_path}")
+            if profile not in target:
+                G_LOGGER.critical(f"Could not find profile: {profile} in target: {target}. Available profiles for this target are: {list(target.keys())}")
+            node = target[profile]
+            self.profile_installs[profile].append(node)
+            install_path = generate_install_path(node.name)
+            self.installs[node] = install_path
+            G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {self.installs[node]}")
         else:
             candidates = self.files.find(target)
             if len(candidates) == 0:
                 G_LOGGER.critical(f"Could not find installation target: {target}")
             if len(candidates) > 1:
                 G_LOGGER.critical(f"For installation target: {target}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate.")
-            path = candidates[0]
-            self.installs[path] = os.path.join(dir_path, os.path.basename(path))
+            node = self.files.external(candidates[0])
+            # For files, node.name is guaranteed to be the file basename
+            install_path = generate_install_path(node.name)
+            self.external_installs[node] = install_path
+            G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {self.external_installs[node]}")
+        return install_path

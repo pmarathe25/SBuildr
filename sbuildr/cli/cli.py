@@ -1,7 +1,8 @@
 from sbuildr.generator.rbuild import RBuildGenerator
-from sbuildr.project.project import Project
 from sbuildr.project.target import ProjectTarget
+from sbuildr.project.project import Project
 from sbuildr.logger import G_LOGGER, plural
+from sbuildr.graph.node import Node
 import sbuildr.logger as logger
 
 from typing import List, Tuple
@@ -55,6 +56,9 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             G_LOGGER.critical(f"Failed with:\n{output}\nReconfiguring the project or running a clean build may resolve this.")
         return output
 
+    def _all_targets() -> List[ProjectTarget]:
+        return list(project.libraries.values()) + list(project.executables.values())
+
     # Given target names, returns the corresponding targets.
     # Falls back to returning all targets.
     def _select_targets(args) -> List[ProjectTarget]:
@@ -70,7 +74,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                 targets.append(project.executables[tgt_name])
             if tgt_name in project.executables and tgt_name in project.libraries:
                 G_LOGGER.warning(f"Target: {tgt_name} refers to both an executable and a library. Selecting both.")
-        return targets or (list(project.libraries.values()) + list(project.executables.values()))
+        return targets
 
     def _select_test_targets(args) -> List[ProjectTarget]:
         targets = []
@@ -83,11 +87,9 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     # Given argparse's args struct, parses out profile flags, and returns a list of profile names included.
     # Falls back to returning the default profile.
     def _select_profile_names(args) -> List[str]:
-        return [prof_name for prof_name in project.profiles.keys() if getattr(args, prof_name)] or default_profiles
+        return [prof_name for prof_name in project.profiles.keys() if getattr(args, prof_name)]
 
-    def _build_targets(targets: List[ProjectTarget], prof_names: List[str]):
-        G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {prof_names}")
-        G_LOGGER.debug(f"Targets: {targets}")
+    def _select_nodes(targets: List[ProjectTarget], prof_names: List[str]) -> List[Node]:
         nodes = []
         # Create all required profile build directories and populate nodes.
         for prof_name in prof_names:
@@ -102,13 +104,22 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                     nodes.append(node)
                 else:
                     G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
+        return nodes
 
+    def _build_nodes(nodes: List[Node]) -> float:
         status, time_elapsed = generator.build(nodes)
         _check_returncode(status)
-        G_LOGGER.info(f"Built {plural('target', len(nodes))} for {plural('profile', len(prof_names))} in {time_elapsed} seconds.")
+        return time_elapsed
+
+    def _build_targets(targets: List[ProjectTarget], prof_names: List[str]):
+        G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {prof_names}")
+        G_LOGGER.debug(f"Targets: {targets}")
+
+        time_elapsed = _build_nodes(_select_nodes(targets, prof_names))
+        G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(prof_names))} in {time_elapsed} seconds.")
 
     def help_targets(args):
-        targets = _select_targets(args)
+        targets = _select_targets(args) or _all_targets()
         G_LOGGER.info(f"\n{_wrap_str(' Targets ')}")
         for target in targets:
             G_LOGGER.info(f"Target: {target}. Available Profiles:")
@@ -126,16 +137,16 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
 
     @needs_configure
     def build(args) -> Tuple[List[ProjectTarget], List[str]]:
-        targets = _select_targets(args)
-        prof_names = _select_profile_names(args)
+        targets = _select_targets(args) or _all_targets()
+        prof_names = _select_profile_names(args) or default_profiles
         _build_targets(targets, prof_names)
 
     @needs_configure
     def run(args):
         if args.target not in project.executables:
-            G_LOGGER.critical(f"Could not find target: {args.target} in project executables. Note: Available targets are: {list(project.executables.keys())}")
+            G_LOGGER.critical(f"Could not find target: {args.target} in project executables. Note: Available executables are: {list(project.executables.keys())}")
         target = project.executables[args.target]
-        prof_name = _select_profile_names(args)[0]
+        prof_name = _select_profile_names(args)[0] or default_profiles
         _build_targets([target], [prof_name])
         G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}: {target[prof_name].path}", color=logger.Color.GREEN)
         G_LOGGER.log(_check_returncode(subprocess.run([target[prof_name].path], capture_output=True)))
@@ -143,7 +154,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     @needs_configure
     def tests(args):
         tests = _select_test_targets(args)
-        prof_names = _select_profile_names(args)
+        prof_names = _select_profile_names(args) or default_profiles
         if not tests:
             G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
             return
@@ -159,6 +170,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                 else:
                     G_LOGGER.log(f"PASSED {test_target}", color=logger.Color.GREEN)
 
+    # TODO: Need a wrapper that creates symlinks for version.
     # Copies src to dst
     def _copy_file(src, dst) -> bool:
         try:
@@ -169,71 +181,56 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             G_LOGGER.error(f"Could not write to {dst}. Do you have sufficient privileges?")
             return False
 
-    def _prune_install_targets(args):
-        install_files, targets = [], []
+    def _get_install_nodes(args):
+        external_nodes, targets = [], []
         for tgt in args.targets:
             if tgt in project:
                 targets.append(tgt)
             else:
-                install_files.append(tgt)
+                external_nodes.append(tgt)
         args.targets = targets
-        install_files = install_files or list(project.installs.keys())
-        return install_files, _select_targets(args)
+        # TODO: Maybe change this to only select all external nodes if no targets are specified.
+        external_nodes = external_nodes or list(project.external_installs.keys())
+        targets = _select_targets(args)
+        # Targets may be unspecified, in which case we have to select nodes based on any specified profiles.
+        prof_names = _select_profile_names(args) or (project.profile_installs.keys())
+        nodes = _select_nodes(targets, prof_names)
+        if not nodes:
+            for prof_name in prof_names:
+                nodes.extend(project.profile_installs[prof_name])
+        return nodes, external_nodes
 
+    # Add -f flag and --upgrade behavior should be to remove older versions.
     @needs_configure
     def install(args):
-        # Filter out the non-targets (i.e. files), and select all targets by default.
-        install_files, targets = _prune_install_targets(args)
-        prof_names = _select_profile_names(args)
-        _build_targets(targets, prof_names)
-        for target in targets:
-            for prof_name in prof_names:
-                if prof_name in target:
-                    install_path = target[prof_name].install_path
-                    if install_path:
-                        if _copy_file(target[prof_name].path, install_path):
-                            G_LOGGER.info(f"Installed target: {target}, for profile: {prof_name} to {install_path}")
-                    else:
-                        G_LOGGER.warning(f"No installation path is specified for target: {target} for profile: {prof_name}")
-                else:
-                    G_LOGGER.warning(f"Target: {target} does not exist for profile: {prof_name}, will not install.")
+        nodes, external_nodes = _get_install_nodes(args)
+        _build_nodes(nodes)
 
-        for install_file in install_files:
-            if not install_file in project.installs:
-                G_LOGGER.critical(f"{install_file} is neither a ProjectTarget, nor a registered path. Note: Registered paths: {list(project.installs.keys())}")
-            if not os.path.exists(install_file):
-                G_LOGGER.critical(f"Installation target: {install_file} was registered, but the path does not exist.")
-            if _copy_file(install_file, project.installs[install_file]):
-                G_LOGGER.info(f"Installed path: {install_file} to {project.installs[install_file]}")
+        for (node_list, install_dict) in [(nodes, project.installs), (external_nodes, project.external_installs)]:
+            for node in node_list:
+                if node not in install_dict:
+                    G_LOGGER.warning(f"Could not find installation path for {node.name}, skipping.")
+                else:
+                    install_path = install_dict[node]
+                    if _copy_file(node.path, install_path):
+                        G_LOGGER.info(f"Installed file: {node.name} to {install_path}")
 
     def uninstall(args):
-        install_files, targets = _prune_install_targets(args)
-        prof_names = _select_profile_names(args)
+        nodes, external_nodes = _get_install_nodes(args)
+
         if not args.force:
             G_LOGGER.warning(f"Uninstall dry-run, will not remove files without -f/--force.")
-        for target in targets:
-            for prof_name in prof_names:
-                if prof_name in target:
-                    install_path = target[prof_name].install_path
-                    if install_path and os.path.exists(install_path):
-                        if args.force:
-                            G_LOGGER.info(f"Removing {install_path}")
-                            os.remove(install_path)
-                        else:
-                            G_LOGGER.info(f"Would remove: {install_path}")
-                else:
-                    G_LOGGER.warning(f"Target: {target} does not exist for profile: {prof_name}, will not uninstall.")
 
-        for install_file in install_files:
-            if install_file not in project.installs:
-                G_LOGGER.critical(f"{install_file} is neither a ProjectTarget, nor a registered path. Note: Registered paths: {list(project.installs.keys())}")
-            path = project.installs[install_file]
-            if os.path.exists(path):
+        for (node_list, install_dict) in [(nodes, project.installs), (external_nodes, project.external_installs)]:
+            for node in node_list:
+                if node not in install_dict:
+                    G_LOGGER.warning(f"Target: {node.name} is not designated as an installation target, will not uninstall.")
+                install_path = install_dict[node]
                 if args.force:
-                    G_LOGGER.info(f"Removing {path}")
-                    os.remove(path)
+                    G_LOGGER.info(f"Removing {install_path}")
+                    os.remove(install_path)
                 else:
-                    G_LOGGER.info(f"Would remove: {path}")
+                    G_LOGGER.info(f"Would remove: {install_path}")
 
     def clean(args):
         # TODO(3): Finish implementation, add per-target cleaning.
@@ -244,7 +241,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             G_LOGGER.info(f"Initiating Nuclear Protocol!")
         else:
             # By default, cleans all targets for the default profile.
-            prof_names = _select_profile_names(args)
+            prof_names = _select_profile_names(args) or default_profiles
             to_remove = [project.profiles[prof_name].build_dir for prof_name in prof_names]
             G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
         # Remove
