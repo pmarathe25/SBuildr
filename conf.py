@@ -14,6 +14,7 @@ import os
 import sys
 ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, ROOT_DIR)
+import sbuildr
 
 
 # -- Project information -----------------------------------------------------
@@ -25,7 +26,7 @@ author = 'Pranav Marathe'
 master_doc = 'index'
 
 # The full version, including alpha/beta/rc tags
-release = '0.3.0'
+release = sbuildr.__version__
 
 
 # -- General configuration ---------------------------------------------------
