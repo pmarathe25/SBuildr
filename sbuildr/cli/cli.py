@@ -125,11 +125,11 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             G_LOGGER.info(f"Target: {target}. Available Profiles:")
             for prof, node in target.items():
                 G_LOGGER.info(f"\tProfile: {prof}. Path: {node.path}.")
-                if node.install_path:
-                    G_LOGGER.info(f"\t\tInstalls to: {node.install_path}")
+                if node in project.installs:
+                    G_LOGGER.info(f"\t\tInstalls to: {project.installs[node]}")
         G_LOGGER.info(f"\n{_wrap_str(' Paths ')}")
-        for path, install_path in project.installs.items():
-            G_LOGGER.info(f"Path: {path}")
+        for node, install_path in project.external_installs.items():
+            G_LOGGER.info(f"Path: {node.path}")
             G_LOGGER.info(f"\t\tInstalls to: {install_path}")
 
     def configure(args):

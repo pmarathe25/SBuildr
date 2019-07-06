@@ -24,6 +24,14 @@ class TestIntegration(object):
         except FileNotFoundError:
             pass
 
+    def test_help_targets(self):
+        proj = Project(root=ROOT)
+        libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
+        test = proj.executable("test", sources=["test.cpp"], libs=["stdc++", libmath])
+
+        sys.argv = ["", "targets"]
+        cli(proj)
+
     def test_can_build_project(self):
         proj = Project(root=ROOT)
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
