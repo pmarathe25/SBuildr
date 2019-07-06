@@ -118,6 +118,7 @@ class FileManager(object):
     def scan_all(self) -> None:
         # scan() will modify the graph, so cannot iterate over values() directly
         source_nodes = [node for node in self.graph.values() if isinstance(node, SourceNode)]
+        G_LOGGER.verbose(f"Scanning source nodes: {source_nodes}")
         [self.scan(node) for node in source_nodes]
 
     # Finds all required include directories for a given managed file. Adds it to the graph if missing.

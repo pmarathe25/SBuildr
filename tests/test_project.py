@@ -71,9 +71,9 @@ class TestFileManager(object):
         manager.scan_all()
         # Headers
         # Includes utils.hpp..
-        assert factorial_hpp.include_dirs == sorted([PATHS["src"]])
+        assert factorial_hpp.include_dirs == sorted([PATHS["src"], PATHS["include"]])
         # Includes utils.hpp, but using a path starting with src/
-        assert fibonacci_hpp.include_dirs == sorted([ROOT])
+        assert fibonacci_hpp.include_dirs == sorted([ROOT, PATHS["include"]])
         # CPP files
         # Includes factorial.hpp
         assert factorial_cpp.include_dirs == sorted(set([PATHS["src"]] + factorial_hpp.include_dirs))

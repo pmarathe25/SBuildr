@@ -5,13 +5,15 @@ class Graph(dict):
     def __init__(self, nodes: Set[Node]=set()):
         self.update({node.path: node for node in nodes})
 
+    # The path must exist in the graph, and the node type must be the same.
     def __contains__(self, node: Node) -> bool:
-        return self.contains_path(node.path)
+        return self.contains_path(node.path) and type(self[node.path]) == type(node)
 
     def contains_path(self, path: str) -> bool:
         return dict.__contains__(self, path)
 
     # Adds a node if it is not already present.
+    # If the path is present already, but the node is of a different type, it is overwritten.
     def add(self, node: Node) -> Node:
         if node not in self:
             self[node.path] = node
