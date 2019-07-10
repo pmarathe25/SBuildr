@@ -56,10 +56,8 @@ class RBuildGenerator(Generator):
 
     def needs_configure(self) -> bool:
         # The generator's build configuration file must exist and should be at least as new as the project's config file.
-        if not os.path.exists(self.config_file):
+        if not os.path.exists(self.config_file) or os.path.getmtime(self.config_file) < os.path.getmtime(self.project.config_file):
             return True
-        if os.path.getmtime(self.config_file) < os.path.getmtime(self.project.config_file):
-            G_LOGGER.warning(f"Project configuration file ({self.project.config_file}) is newer than RBuildGenerator's configuration file ({self.config_file}). You may need to reconfigure.")
         return False
 
     def build(self, nodes: List[Node]) -> (subprocess.CompletedProcess, float):
