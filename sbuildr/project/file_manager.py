@@ -178,7 +178,7 @@ class FileManager(object):
                     include_dirs.add(include_dir)
                 # Also recurse over any include directories needed for the path itself
                 included_path_node = self.source(included_path)
-                if not included_path_node.include_dirs:
+                if included_path_node.include_dirs is None:
                     G_LOGGER.verbose(f"{included_path_node} does not specify include directories. Scanning file.")
                     self.scan(included_path_node)
                 include_dirs.update(included_path_node.include_dirs)

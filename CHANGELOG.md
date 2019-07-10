@@ -3,6 +3,7 @@ Dates are in YYYY-MM-DD format.
 
 ## vNext()
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).
+- Fixes a bug where a header with no project includes would be scanned multiple times during configuration.
 
 ## v0.4.0 (2019-07-06)
 - Changes `test` command to `tests`

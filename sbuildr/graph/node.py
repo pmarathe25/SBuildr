@@ -36,7 +36,7 @@ class Node(object):
         self.inputs.append(node)
 
 class SourceNode(Node):
-    def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=[], name=""):
+    def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=None, name=""):
         super().__init__(path, inputs, name)
         # All include directories required for this file.
         self.include_dirs = include_dirs
