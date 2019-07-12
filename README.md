@@ -67,6 +67,8 @@ For example, to run all tests registered for this project, you can run: `./build
 
 To view all available commands, you can run `./build.py --help`
 
+<!-- TODO: Explain profiles -->
+
 ## API Documentation
 For more information, see the [API Documentation](https://sbuildr.readthedocs.io/en/stable/)
 

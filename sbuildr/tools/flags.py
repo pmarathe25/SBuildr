@@ -22,6 +22,7 @@ class BuildFlags(object):
         # Distinguishes shared library from executable.
         self._shared: bool = None
         self._debug: bool = None
+        self._defines: Set[str] = set()
         self._raw: List[str] = []
 
     # Internal only, should not need to be called by the user.
@@ -84,6 +85,17 @@ class BuildFlags(object):
         self._debug = use
         return self
 
+    def define(self, macro) -> 'BuildFlags':
+        """
+        Defines the specified macro during compilation. This can be useful to enable/disable code paths using #ifdefs.
+
+        :param macro: The macro to define.
+
+        :returns: self
+        """
+        self._defines.add(str(macro))
+        return self
+
     # Raw options, as a list of strings.
     # TODO(2): Split into xcompiler and xlinker
     def raw(self, opts: List[str]) -> 'BuildFlags':
@@ -104,6 +116,7 @@ class BuildFlags(object):
         self._march = other._march if other._march is not None else self._march
         self._fpic = other._fpic if other._fpic is not None else self._fpic
         self._shared = other._shared if other._shared is not None else self._shared
+        self._defines |= other._defines
         self._raw += other._raw
         return self
 

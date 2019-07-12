@@ -1,4 +1,7 @@
 #include "fibonacci.hpp"
+#ifdef S_DEBUG
+#include <iostream>
+#endif
 
 int fibonacci(int n) {
     int prev2 = 0;
@@ -8,6 +11,9 @@ int fibonacci(int n) {
         prev2 = prev1;
         acc += prev1;
         prev1 = acc;
+#ifdef S_DEBUG
+        std::cout << "Fib[" << i << "] = " << acc << ", prev2 = " << prev2 << ", prev1 = " << prev1 << std::endl;
+#endif
     }
     return acc;
 }

@@ -88,6 +88,8 @@ class LinuxCompilerDef(CompilerDef):
             compiler_flags.append("-fPIC")
         if build_flags._debug:
             compiler_flags.append("-g")
+        for define in build_flags._defines:
+            compiler_flags.append(f"-D{define}")
         return compiler_flags
 
 class ClangDef(LinuxCompilerDef):

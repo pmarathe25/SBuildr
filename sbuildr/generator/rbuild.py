@@ -29,7 +29,7 @@ class RBuildGenerator(Generator):
                     node_ids[node] = id
                     config_file += f"path {node.path} #{id}\n"
                     id += 1
-                    # For dependecies, we need to convert to node_ids
+                    # For dependencies, we need to convert to node_ids
                     if node.inputs:
                         config_file += f"deps {' '.join([str(node_ids[node]) for node in node.inputs])}\n"
                     cmd = self._node_command(node)

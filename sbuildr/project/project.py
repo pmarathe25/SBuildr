@@ -12,11 +12,12 @@ from collections import OrderedDict, defaultdict
 import inspect
 import os
 
+# TODO: Create a package manager to install dependencies.
 class Project(object):
     """
     Represents a project. Projects include two default profiles with the following configuration:
     ``release``: ``BuildFlags().O(3).std(17).march("native").fpic()``
-    ``debug``: ``BuildFlags().O(0).std(17).debug().fpic()``, attaches file suffix "_debug"
+    ``debug``: ``BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG")``, attaches file suffix "_debug"
     These can be overridden using the ``profile()`` function.
 
     :param root: The path to the root directory for this project. All directories and files within the root directory are considered during searches for files. If no root directory is provided, defaults to the containing directory of the script calling this constructor.
@@ -49,7 +50,7 @@ class Project(object):
         self.external_installs: Dict[Node, str] = {}
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
-        self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic(), file_suffix="_debug")
+        self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG"), file_suffix="_debug")
 
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
