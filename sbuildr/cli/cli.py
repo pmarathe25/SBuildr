@@ -5,6 +5,7 @@ from sbuildr.logger import G_LOGGER, plural
 from sbuildr.graph.node import Node
 import sbuildr.logger as logger
 
+from collections import defaultdict
 from typing import List, Tuple
 import subprocess
 import argparse
@@ -160,15 +161,34 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             return
         # Otherwise, build and run the specified tests
         _build_targets(tests, prof_names)
+
+        class TestResult:
+            def __init__(self):
+                self.failed = 0
+                self.passed = 0
+        test_results = defaultdict(TestResult)
+        failed_targets = defaultdict(set)
         for prof_name in prof_names:
             G_LOGGER.log(f"\n{_wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
             for test_target in tests:
-                G_LOGGER.log(f"\nRunning test: {test_target}, for profile: {prof_name}: {test_target[prof_name].path}", color=logger.Color.GREEN)
+                G_LOGGER.log(f"\nRunning test: {test_target}, for profile: {prof_name}: {test_target[prof_name].path}\n", color=logger.Color.GREEN)
                 status = subprocess.run([test_target[prof_name].path])
                 if status.returncode:
-                    G_LOGGER.log(f"\nFAILED {test_target}, for profile: {prof_name}:\n{test_target[prof_name].path}", color=logger.Color.PURPLE)
+                    G_LOGGER.log(f"\nFAILED {test_target}, for profile: {prof_name}:\n{test_target[prof_name].path}", color=logger.Color.RED)
+                    test_results[prof_name].failed += 1
+                    failed_targets[prof_name].add(test_target[prof_name].name)
                 else:
-                    G_LOGGER.log(f"PASSED {test_target}", color=logger.Color.GREEN)
+                    G_LOGGER.log(f"\nPASSED {test_target}", color=logger.Color.GREEN)
+                    test_results[prof_name].passed += 1
+        # Display summary
+        G_LOGGER.log(f"\n{_wrap_str(f' Test Results Summary ')}\n", color=logger.Color.GREEN)
+        for prof_name, result in test_results.items():
+            if result.passed or result.failed:
+                G_LOGGER.log(f"Profile: {prof_name}", color=logger.Color.GREEN)
+                if result.passed:
+                    G_LOGGER.log(f"\tPASSED {plural('test', result.passed)}", color=logger.Color.GREEN)
+                if result.failed:
+                    G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", color=logger.Color.RED)
 
     # TODO: Need a wrapper that creates symlinks for version.
     # Copies src to dst
