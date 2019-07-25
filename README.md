@@ -54,8 +54,8 @@ project.install(libmath, path=os.path.join("/", "usr", "local", "lib"))
 # Set the installation location for the public header to /usr/local/include.
 project.install("math.hpp", path=os.path.join("/", "usr", "local", "include"))
 
-# Specify a test for the project using the test.cpp source file. The resulting executable will be linked
-# against the library created above.
+# Specify a test for the project using the test.cpp source file. The resulting executable will
+# be linked against the library created above.
 test = project.test("test", sources=["test.cpp"], libs=["stdc++", libmath])
 
 # Enable this script to be used interactively on the command-line

@@ -32,7 +32,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
 
     :param project: The project that the CLI will interface with.
     :param GeneratorType: The type of generator to use for generating configuration files. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.generator.RBuildGenerator``) can be used for fast incremental builds.
-    :param default_profiles: Names of default profiles. These are the profiles the CLI will target when none are explicitly specified via the command-line.
+    :param default_profiles: Names of default profiles. These are the profiles the `build`, `run`, and `clean` targets will use when none are explicitly specified via the command-line. Note that `tests` will run tests for all profiles by default.
     """
     generator = GeneratorType(project)
 
@@ -154,7 +154,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     @needs_configure
     def tests(args):
         tests = _select_test_targets(args)
-        prof_names = _select_profile_names(args) or default_profiles
+        prof_names = _select_profile_names(args) or list(project.profiles.keys())
         if not tests:
             G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
             return
@@ -286,7 +286,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
 
     # Test
     tests_parser = subparsers.add_parser("tests", help="Run project tests", description="Run one or more project tests")
-    tests_parser.add_argument("targets", nargs='*', help="Targets to test. By default, tests all targets for the default profiles.", default=[])
+    tests_parser.add_argument("targets", nargs='*', help="Targets to test. By default, tests all targets for all profiles.", default=[])
     _add_profile_args(tests_parser, "Test")
     tests_parser.set_defaults(func=tests)
 

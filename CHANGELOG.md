@@ -1,6 +1,9 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
+## vNext ()
+- `tests` in CLI now runs all profiles by default.
+
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).
 - Fixes a bug where a header with no project includes would be scanned multiple times during configuration.

@@ -223,7 +223,7 @@ class Project(object):
 
         :param target: A project target or path to a file to install.
         :param path: The desired installation path. May be a directory or path.
-        :param profile: The profile whose target to install. Defaults to "release". This is unused if ``target`` is a file path.
+        :param profile: The profile whose target to install. Defaults to "release". This parameter is unused if ``target`` is a file path.
 
         :returns: The path to which the target or file will be installed.
         """
