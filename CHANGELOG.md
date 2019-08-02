@@ -4,6 +4,8 @@ Dates are in YYYY-MM-DD format.
 ## vNext ()
 - `tests` in CLI now runs all profiles by default.
 - `tests` now displays a summary at the end.
+- Project's `install` has been modified to `interfaces` and now only accepts headers. Libraries and executables are now marked for installation by default, unless `internal=True` is specified.
+- The `cli` install/uninstall functions now allow the user to specify paths for installing executables, libraries, and headers. 
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

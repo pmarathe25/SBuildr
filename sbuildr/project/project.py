@@ -6,6 +6,7 @@ from sbuildr.tools.flags import BuildFlags
 from sbuildr.project.target import ProjectTarget
 from sbuildr.graph.graph import Graph
 from sbuildr.logger import G_LOGGER
+from sbuildr.misc import paths
 
 from typing import List, Set, Union, Dict, Tuple
 from collections import OrderedDict, defaultdict
@@ -44,10 +45,7 @@ class Project(object):
         self.tests: Dict[str, ProjectTarget] = {}
         self.libraries: Dict[str, ProjectTarget] = {}
         # Files installed by this project. Maps Nodes to installation paths.
-        self.installs: Dict[Node, str] = {}
-        # For targets, map profiles to nodes to be installed as well.
-        self.profile_installs: Dict[str, List[Node]] = defaultdict(list)
-        self.external_installs: Dict[Node, str] = {}
+        self.public_headers: Set[str] = {}
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG"), file_suffix="_debug")
@@ -65,12 +63,12 @@ class Project(object):
                 basename: str,
                 sources: List[str],
                 flags: BuildFlags,
-                libs: List[Union[ProjectTarget,
-                str]],
+                libs: List[Union[ProjectTarget, str]],
                 compiler: compiler.Compiler,
                 include_dirs: List[str],
                 linker: linker.Linker,
-                lib_dirs: List[str]) -> ProjectTarget:
+                lib_dirs: List[str],
+                internal: bool) -> ProjectTarget:
         # Convert sources to full paths
         def get_source_nodes(sources: List[str]) -> List[CompiledNode]:
             source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
@@ -106,7 +104,7 @@ class Project(object):
 
         source_nodes = get_source_nodes(sources)
         libs: List[Union[ProjectTarget, Node, str]] = get_libraries(libs)
-        target = ProjectTarget(name=name)
+        target = ProjectTarget(name=name, internal=internal)
         for profile_name, profile in self.profiles.items():
             # Process targets so we only give each profile its own LinkedNodes.
             # Purposely don't convert all libs to paths here, so that each profile can set up dependencies correctly.
@@ -124,7 +122,8 @@ class Project(object):
                     compiler: compiler.Compiler = compiler.clang,
                     include_dirs: List[str] = [],
                     linker: linker.Linker = linker.clang,
-                    lib_dirs: List[str] = []) -> ProjectTarget:
+                    lib_dirs: List[str] = [],
+                    internal = False) -> ProjectTarget:
         """
         Adds an executable target to all profiles within this project.
 
@@ -136,10 +135,11 @@ class Project(object):
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
         :param lib_dirs: A list of paths for directories containing libraries needed by this target.
+        :param internal: Whether this target is internal to the project, in which case it will not be installed.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.executables[name] = self._target(name, linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
+        self.executables[name] = self._target(name, paths.execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, internal)
         return self.executables[name]
 
     def test(self,
@@ -165,7 +165,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.tests[name] = self._target(name, linker.to_exec(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs)
+        self.tests[name] = self._target(name, paths.execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, True)
         return self.tests[name]
 
     def library(self,
@@ -176,7 +176,8 @@ class Project(object):
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
-                lib_dirs: List[str] = []) -> ProjectTarget:
+                lib_dirs: List[str] = [],
+                internal = False) -> ProjectTarget:
         """
         Adds a library target to all profiles within this project.
 
@@ -188,10 +189,11 @@ class Project(object):
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
         :param lib_dirs: A list of paths for directories containing libraries needed by this target.
+        :param internal: Whether this target is internal to the project, in which case it will not be installed.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.libraries[name] = self._target(name, linker.to_lib(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, lib_dirs)
+        self.libraries[name] = self._target(name, paths.libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, lib_dirs, internal)
         self.libraries[name].is_lib = True
         return self.libraries[name]
 
@@ -216,41 +218,22 @@ class Project(object):
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
-    def install(self, target: Union[ProjectTarget, str], path: str, profile: str="release") -> str:
+    def interfaces(self, headers: List[str]) -> List[str]:
         """
-        Specifies that a project target or file should be installed to the provided path or directory.
-        When running the ``install`` command on the CLI, the targets and files specified via this function will be copied to their respective destination directories.
+        Specifies headers that are part of this project's public interface.
+        When running the ``install`` command on the CLI, the headers specified via this function will be copied to installation directories.
 
-        :param target: A project target or path to a file to install.
-        :param path: The desired installation path. May be a directory or path.
-        :param profile: The profile whose target to install. Defaults to "release". This parameter is unused if ``target`` is a file path.
+        :param headers: A list of paths to a public headers.
 
-        :returns: The path to which the target or file will be installed.
+        :returns: The absolute paths of the discovered headers.
         """
-        path = self.files.abspath(path)
-
-        def generate_install_path(filename: str):
-            if os.path.isdir(path):
-                return os.path.join(path, filename)
-            return path
-
-        if isinstance(target, ProjectTarget):
-            if profile not in target:
-                G_LOGGER.critical(f"Could not find profile: {profile} in target: {target}. Available profiles for this target are: {list(target.keys())}")
-            node = target[profile]
-            self.profile_installs[profile].append(node)
-            install_path = generate_install_path(node.name)
-            self.installs[node] = install_path
-            G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {self.installs[node]}")
-        else:
-            candidates = self.files.find(target)
+        discovered_paths = []
+        for header in headers:
+            candidates = self.files.find(header)
             if len(candidates) == 0:
                 G_LOGGER.critical(f"Could not find installation target: {target}")
             if len(candidates) > 1:
                 G_LOGGER.critical(f"For installation target: {target}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate.")
-            node = self.files.external(candidates[0])
-            # For files, node.name is guaranteed to be the file basename
-            install_path = generate_install_path(node.name)
-            self.external_installs[node] = install_path
-            G_LOGGER.verbose(f"Set install path for {node.name} ({node.path}) to {self.external_installs[node]}")
-        return install_path
+            discovered_paths.append(candidates[0])
+        self.public_headers = set(discovered_paths)
+        return discovered_paths

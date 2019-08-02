@@ -42,7 +42,7 @@ class FileManager(object):
         # Remove directories that are within exclude_dirs after converting all directories to abspaths.
         dirs = set([self.abspath(dir) for dir in dirs]) | set([root_dir])
         G_LOGGER.verbose(f"Directories after converting to absolute paths: {dirs}")
-        
+
         self.dirs = set([dir for dir in dirs if not _is_in_directories(dir, self.exclude_dirs)])
         G_LOGGER.verbose(f"Directories after removing ignored: {self.dirs}")
         for dir in self.dirs:

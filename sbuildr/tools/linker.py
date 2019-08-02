@@ -66,28 +66,6 @@ class LinkerDef(abc.ABC):
         pass
 
     @staticmethod
-    def to_lib(name: str) -> str:
-        """
-        Given the name of a library, specifies the basename of the corresponding file.
-        For example, on Linux, to_lib("stdc++") would return "libstdc++.so"
-
-        Returns:
-            str: The basename of the library.
-        """
-        pass
-
-    @staticmethod
-    def to_exec(name: str) -> str:
-        """
-        Given the name of a executable, specifies the basename of the corresponding file.
-        For example, on Windows, to_exec("test") would return "test.exe"
-
-        Returns:
-            str: The basename of the library.
-        """
-        pass
-
-    @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
         """
         Parses build flags and returns the required command-line arguments.
@@ -112,14 +90,6 @@ class LinuxLinkerDef(LinkerDef):
     @staticmethod
     def lib(name: str) -> str:
         return f"-l{name}"
-
-    @staticmethod
-    def to_lib(name: str) -> str:
-        return f"lib{name}.so"
-
-    @staticmethod
-    def to_exec(name: str) -> str:
-        return name
 
     @staticmethod
     def parse_flags(build_flags: BuildFlags) -> List[str]:
@@ -166,13 +136,6 @@ class Linker(object):
         G_LOGGER.debug(f"Linking: input_paths: {input_paths}, libs: {libs}, linker_flags: {linker_flags}, lib_dirs: {lib_dirs}")
         G_LOGGER.verbose(f"Link Command: {' '.join(cmd)}")
         return cmd
-
-    def to_lib(self, name: str) -> str:
-        return self.ldef.to_lib(name)
-
-    def to_exec(self, name: str) -> str:
-        return self.ldef.to_exec(name)
-
 
 clang = Linker(ClangDef)
 gcc = Linker(GCCDef)

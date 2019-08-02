@@ -10,6 +10,7 @@ TESTS_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 
 ROOT = os.path.join(TESTS_ROOT, "minimal_project")
 PATHS = {
     "include": os.path.join(ROOT, "include"),
+    "math.hpp": os.path.join(ROOT, "include", "math.hpp"),
     "src": os.path.join(ROOT, "src"),
     "factorial.hpp": os.path.join(ROOT, "src", "factorial.hpp"),
     "fibonacci.hpp": os.path.join(ROOT, "src", "fibonacci.hpp"),

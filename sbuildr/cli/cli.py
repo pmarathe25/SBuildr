@@ -4,6 +4,7 @@ from sbuildr.project.project import Project
 from sbuildr.logger import G_LOGGER, plural
 from sbuildr.graph.node import Node
 import sbuildr.logger as logger
+from sbuildr.misc import paths
 
 from collections import defaultdict
 from typing import List, Tuple
@@ -61,7 +62,6 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
         return list(project.libraries.values()) + list(project.executables.values())
 
     # Given target names, returns the corresponding targets.
-    # Falls back to returning all targets.
     def _select_targets(args) -> List[ProjectTarget]:
         targets = []
         for tgt_name in args.targets:
@@ -123,15 +123,11 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
         targets = _select_targets(args) or _all_targets()
         G_LOGGER.info(f"\n{_wrap_str(' Targets ')}")
         for target in targets:
-            G_LOGGER.info(f"Target: {target}. Available Profiles:")
+            G_LOGGER.info(f"Target: {target} {'(internal)' if target.internal else ''}. Available Profiles:")
             for prof, node in target.items():
                 G_LOGGER.info(f"\tProfile: {prof}. Path: {node.path}.")
-                if node in project.installs:
-                    G_LOGGER.info(f"\t\tInstalls to: {project.installs[node]}")
-        G_LOGGER.info(f"\n{_wrap_str(' Paths ')}")
-        for node, install_path in project.external_installs.items():
-            G_LOGGER.info(f"Path: {node.path}")
-            G_LOGGER.info(f"\t\tInstalls to: {install_path}")
+        G_LOGGER.info(f"\n{_wrap_str(' Public Interface ')}")
+        G_LOGGER.info(f"Headers: {project.public_headers}")
 
     def configure(args):
         generator.generate()
@@ -166,6 +162,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
             def __init__(self):
                 self.failed = 0
                 self.passed = 0
+
         test_results = defaultdict(TestResult)
         failed_targets = defaultdict(set)
         for prof_name in prof_names:
@@ -191,69 +188,94 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
                     G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", color=logger.Color.RED)
 
     # TODO: Need a wrapper that creates symlinks for version.
-    # Copies src to dst
+    # Copies src to dst. dst may be either a complete path or containing directory.
     def _copy_file(src, dst) -> bool:
         try:
             os.makedirs(os.path.dirname(dst), exist_ok=True)
-            shutil.copyfile(src, dst)
+            shutil.copy2(src, dst)
             return True
         except PermissionError:
             G_LOGGER.error(f"Could not write to {dst}. Do you have sufficient privileges?")
             return False
 
     def _get_install_nodes(args):
-        external_nodes, targets = [], []
+        headers, targets = [], []
         for tgt in args.targets:
             if tgt in project:
                 targets.append(tgt)
             else:
-                external_nodes.append(tgt)
+                headers.append(tgt)
         args.targets = targets
-        # TODO: Maybe change this to only select all external nodes if no targets are specified.
-        external_nodes = external_nodes or list(project.external_installs.keys())
-        targets = _select_targets(args)
-        # Targets may be unspecified, in which case we have to select nodes based on any specified profiles.
-        prof_names = _select_profile_names(args) or (project.profile_installs.keys())
-        nodes = _select_nodes(targets, prof_names)
-        if not nodes:
-            for prof_name in prof_names:
-                nodes.extend(project.profile_installs[prof_name])
-        return nodes, external_nodes
+        headers = headers or list(project.public_headers)
+        targets = [tgt for tgt in (_select_targets(args) or _all_targets()) if not tgt.internal]
+        G_LOGGER.verbose(f"Selected public targets: {targets}")
+        prof_names = _select_profile_names(args) or ["release"]
+        return targets, headers, prof_names
 
-    # Add -f flag and --upgrade behavior should be to remove older versions.
+    def _header_install_path(args, header: str):
+        return os.path.join(args.headers, os.path.basename(header))
+
+    # TODO: Add -f flag and --upgrade behavior should be to remove older versions.
     @needs_configure
     def install(args):
-        nodes, external_nodes = _get_install_nodes(args)
-        _build_nodes(nodes)
+        targets, headers, prof_names = _get_install_nodes(args)
+        _build_targets(targets, prof_names)
+        G_LOGGER.verbose(f"Installing targets: {targets} for profiles: {prof_names}")
+        G_LOGGER.verbose(f"Installing headers: {headers}")
 
-        for (node_list, install_dict) in [(nodes, project.installs), (external_nodes, project.external_installs)]:
-            for node in node_list:
-                if node not in install_dict:
-                    G_LOGGER.warning(f"Could not find installation path for {node.name}, skipping.")
-                else:
-                    install_path = install_dict[node]
-                    if _copy_file(node.path, install_path):
-                        G_LOGGER.info(f"Installed file: {node.name} to {install_path}")
+        for prof_name in prof_names:
+            for target in targets:
+                install_dir = args.libraries if target.is_lib else args.executables
+                node = target[prof_name]
+                install_path = os.path.join(install_dir, node.name)
+                if _copy_file(node.path, install_path):
+                    G_LOGGER.info(f"Installed target: {node.name} to {install_path}")
+
+        for header in headers:
+            candidates = project.files.find(header)
+            if len(candidates) == 0:
+                G_LOGGER.critical(f"Could not find installation header: {header}")
+            if len(candidates) > 1:
+                G_LOGGER.critical(f"For installation header: {header}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate.")
+            header = candidates[0]
+            install_path = _header_install_path(args, header)
+            if _copy_file(header, install_path):
+                G_LOGGER.info(f"Installed header: {header} to {install_path}")
+
 
     def uninstall(args):
-        nodes, external_nodes = _get_install_nodes(args)
+        targets, headers, prof_names = _get_install_nodes(args)
+        G_LOGGER.verbose(f"Uninstalling targets: {targets} for profiles: {prof_names}")
+        G_LOGGER.verbose(f"Uninstalling headers: {headers}")
+
+        install_paths = []
+        for prof_name in prof_names:
+            for target in targets:
+                install_dir = args.libraries if target.is_lib else args.executables
+                node = target[prof_name]
+                install_paths.append(os.path.join(install_dir, node.name))
+
+        for header in headers:
+            candidates = project.files.find(header)
+            if len(candidates) == 0:
+                G_LOGGER.critical(f"Could not find installation header: {header}")
+            if len(candidates) > 1:
+                G_LOGGER.critical(f"For uninstallation header: {header}, found multiple candidates: {candidates}. Please provide a longer path to disambiguate.")
+            header = candidates[0]
+            install_paths.append(_header_install_path(args, header))
 
         if not args.force:
             G_LOGGER.warning(f"Uninstall dry-run, will not remove files without -f/--force.")
 
-        for (node_list, install_dict) in [(nodes, project.installs), (external_nodes, project.external_installs)]:
-            for node in node_list:
-                if node not in install_dict:
-                    G_LOGGER.warning(f"Target: {node.name} is not designated as an installation target, will not uninstall.")
-                install_path = install_dict[node]
-                if args.force:
-                    if os.path.exists(install_path):
-                        G_LOGGER.info(f"Removing {install_path}")
-                        os.remove(install_path)
-                    else:
-                        G_LOGGER.warning(f"{node.name} has not been installed (would be installed to {install_path}), skipping.")
-                else:
-                    G_LOGGER.info(f"Would remove: {install_path}")
+        for install_path in install_paths:
+            if not os.path.exists(install_path):
+                G_LOGGER.warning(f"{install_path} does not exist, skipping.")
+            elif args.force:
+                G_LOGGER.info(f"Removing {install_path}")
+                os.remove(install_path)
+            else:
+                G_LOGGER.info(f"Would remove: {install_path}")
+
 
     def clean(args):
         # TODO(3): Finish implementation, add per-target cleaning.
@@ -271,7 +293,7 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
         for path in to_remove:
             project.files.rm(path)
 
-    parser = argparse.ArgumentParser(description="Builds this project")
+    parser = argparse.ArgumentParser(description="Builds this project", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-v", "--verbose", help="Enable verbose logging output", action="store_true")
     parser.add_argument("-vv", "--very-verbose", help="Enable very verbose logging output", action="store_true")
 
@@ -310,16 +332,23 @@ def cli(project: Project, GeneratorType: type=RBuildGenerator, default_profiles=
     _add_profile_args(tests_parser, "Test")
     tests_parser.set_defaults(func=tests)
 
+    def _add_installation_dir_args(parser_like):
+        parser_like.add_argument("-I", "--headers", help="Installation directory for headers", default=paths.default_header_install_path())
+        parser_like.add_argument("-L", "--libraries", help="Installation directory for libraries", default=paths.default_library_install_path())
+        parser_like.add_argument("-X", "--executables", help="Installation directory for executables", default=paths.default_executable_install_path())
+
     # Install
-    install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets")
-    install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all targets and paths specified.", default=[])
+    install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets. Uses only the release profile by default.")
+    install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all targets and headers specified.", default=[])
+    _add_installation_dir_args(install_parser)
     _add_profile_args(install_parser, "Install")
     install_parser.set_defaults(func=install)
 
     # Uninstall
-    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall project targets", description="Uninstall one or more project targets")
+    uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall project targets", description="Uninstall one or more project targets. Uses only the release profile by default.")
     uninstall_parser.add_argument("-f", "--force", help="Remove targets. Without this flag, uninstall will only do a dry-run", action="store_true")
-    uninstall_parser.add_argument("targets", nargs='*', help="Targets to uninstall. By default, uninstalls all targets and paths specified.", default=[])
+    uninstall_parser.add_argument("targets", nargs='*', help="Targets to uninstall. By default, uninstalls all targets and headers specified.", default=[])
+    _add_installation_dir_args(uninstall_parser)
     _add_profile_args(uninstall_parser, "Uninstall")
     uninstall_parser.set_defaults(func=uninstall)
 

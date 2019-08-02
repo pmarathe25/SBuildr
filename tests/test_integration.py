@@ -9,6 +9,8 @@ import shutil
 import sys
 import os
 
+INSTALL_DIR_ARGS = ["-I", PATHS["build"], "-L", PATHS["build"], "-X", PATHS["build"]]
+
 class TestIntegration(object):
     @classmethod
     def setup_class(cls):
@@ -56,13 +58,13 @@ class TestIntegration(object):
     def test_default_install_project(self):
         proj = Project(root=ROOT)
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
-        install_path = proj.install(libmath, PATHS["build"])
-        # Install
-        sys.argv = ["", "install"]
+        install_path = os.path.join(PATHS["build"], libmath["release"].name)
+        # Install release profile
+        sys.argv = ["", "install"] + INSTALL_DIR_ARGS
         cli(proj)
         assert os.path.exists(install_path)
         # Then remove
-        sys.argv = ["", "uninstall", "-f"]
+        sys.argv = ["", "uninstall", "-f"] + INSTALL_DIR_ARGS
         cli(proj)
         assert not os.path.exists(install_path)
 
@@ -70,15 +72,15 @@ class TestIntegration(object):
     def test_profile_install_project(self):
         proj = Project(root=ROOT)
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
-        release_install = proj.install(libmath, PATHS["build"])
-        install_path = proj.install(libmath, PATHS["build"], profile="debug")
+        install_path = os.path.join(PATHS["build"], libmath["debug"].name)
+        release_install = os.path.join(PATHS["build"], libmath["release"].name)
         # Install
-        sys.argv = ["", "install", "--debug"]
+        sys.argv = ["", "install", "--debug"] + INSTALL_DIR_ARGS
         cli(proj)
         assert os.path.exists(install_path)
         assert not os.path.exists(release_install)
         # Then remove
-        sys.argv = ["", "uninstall", "-f", "--debug"]
+        sys.argv = ["", "uninstall", "-f", "--debug"] + INSTALL_DIR_ARGS
         cli(proj)
         assert not os.path.exists(install_path)
 
@@ -87,15 +89,15 @@ class TestIntegration(object):
         proj = Project(root=ROOT)
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
         test = proj.executable("test", sources=["test.cpp"], libs=["stdc++", libmath])
-        install_path = proj.install(libmath, PATHS["build"])
-        test_install_path = proj.install(test, PATHS["build"])
+        install_path = os.path.join(PATHS["build"], libmath["release"].name)
+        test_install_path = os.path.join(PATHS["build"], test["release"].name)
         # Install
-        sys.argv = ["", "install", "math"]
+        sys.argv = ["", "install", "math"] + INSTALL_DIR_ARGS
         cli(proj)
         assert os.path.exists(install_path)
         assert not os.path.exists(test_install_path)
         # Then remove
-        sys.argv = ["", "uninstall", "-f", "math"]
+        sys.argv = ["", "uninstall", "-f", "math"] + INSTALL_DIR_ARGS
         cli(proj)
         assert not os.path.exists(install_path)
 
@@ -107,6 +109,21 @@ class TestIntegration(object):
         cli(proj)
 
     # TODO: Need coverage of install/uninstall for non-project-targets.
+    def test_header_install(self):
+        proj = Project(root=ROOT)
+        [header] = proj.interfaces(["math.hpp"])
+        # Check that the return value is the correct path
+        assert header == PATHS["math.hpp"]
+
+        install_path = os.path.join(PATHS["build"], "math.hpp")
+        # Install
+        sys.argv = ["", "install"] + INSTALL_DIR_ARGS
+        cli(proj)
+        assert os.path.exists(install_path)
+        # Then remove
+        sys.argv = ["", "uninstall", "-f"] + INSTALL_DIR_ARGS
+        cli(proj)
+        assert not os.path.exists(install_path)
 
     def test_public_imports(self):
         import sbuildr

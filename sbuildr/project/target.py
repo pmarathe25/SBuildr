@@ -3,7 +3,7 @@ from typing import NewType, Dict
 
 # A Dict[str, LinkedNode] that maps profile names to the LinkedNodes for a target
 class ProjectTarget(dict):
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name, internal=False, *args, **kwargs):
         """
         Represents a single target in a project.
 
@@ -12,6 +12,7 @@ class ProjectTarget(dict):
         """
         super().__init__(self, *args, **kwargs)
         self.name = name
+        self.internal = False
         self.is_lib = False
 
     def __str__(self):
