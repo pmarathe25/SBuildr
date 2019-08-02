@@ -1,8 +1,8 @@
 from sbuildr.generator.generator import Generator
-from sbuildr.logger import G_LOGGER
-from sbuildr.project.project import Project
-from sbuildr.graph.node import Node
 from sbuildr.graph.graph import Graph
+from sbuildr.graph.node import Node
+from sbuildr.logger import G_LOGGER
+from sbuildr.misc import utils
 
 from typing import List, Dict
 import subprocess
@@ -12,11 +12,11 @@ import os
 class RBuildGenerator(Generator):
     CONFIG_FILENAME = "rbuild"
 
-    def __init__(self, project: Project):
-        super().__init__(project)
-        self.config_file = os.path.join(self.project.files.build_dir, RBuildGenerator.CONFIG_FILENAME)
+    def __init__(self, build_dir: str):
+        super().__init__(build_dir)
+        self.config_file = os.path.join(self.build_dir, RBuildGenerator.CONFIG_FILENAME)
 
-    def generate(self):
+    def generate(self, source_graph: Graph, profile_graphs: List[Graph]):
         # Map each node to it's integer id. This is unique per rbuild file.
         node_ids = {}
         id = 0
@@ -40,23 +40,22 @@ class RBuildGenerator(Generator):
                         config_file += '\n'
             return config_file
 
-        self.project.prepare_for_build()
         # First generate the targets in the file manager, then the profiles.
         # This will ensure that ordering is correct, since the targets in profiles depend
         # on the targets in the file manager.
-        config = config_for_graph(self.project.files.graph)
-        for profile in self.project.profiles.values():
-            config += config_for_graph(profile.graph)
+        config = config_for_graph(source_graph)
+        for profile_graph in profile_graphs:
+            config += config_for_graph(profile_graph)
 
-        G_LOGGER.info(f"Generating configuration files in build directory: {self.project.files.build_dir}")
-        self.project.files.mkdir(self.project.files.build_dir)
+        G_LOGGER.info(f"Generating configuration files in build directory: {self.build_dir}")
         with open(self.config_file, "w") as f:
             G_LOGGER.debug(f"Writing {self.config_file}")
             f.write(config)
 
-    def needs_configure(self) -> bool:
-        # The generator's build configuration file must exist and should be at least as new as the project's config file.
-        if not os.path.exists(self.config_file) or os.path.getmtime(self.config_file) < os.path.getmtime(self.project.config_file):
+    def needs_configure(self, project_config_timestamp: float) -> bool:
+        # The generator's build configuration file must exist and should be at
+        # least as new as the project's  SBuildr config file.
+        if not os.path.exists(self.config_file) or os.path.getmtime(self.config_file) < project_config_timestamp:
             return True
         return False
 
@@ -66,22 +65,7 @@ class RBuildGenerator(Generator):
             G_LOGGER.debug(f"No targets specified, skipping build.")
             return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"No targets specified"), 0
 
-        # TODO: This should be in common generator class.
-        # First create all directories.
-        paths = []
-        dirs = set()
-        for node in nodes:
-            paths.append(node.path)
-            dirs.add(os.path.dirname(node.path))
-
-        for dir in dirs:
-            self.project.files.mkdir(dir)
-
-        # Finally, build.
+        paths = [node.path for node in nodes]
         cmd = ["rbuild", f"{self.config_file}"] + paths
         G_LOGGER.verbose(f"Build command: {' '.join(cmd)}\nTarget file paths: {paths}")
-        # TODO: Move this into parent.
-        start = time.time()
-        status = subprocess.run(cmd, capture_output=True)
-        end = time.time()
-        return status, end - start
+        return utils.time_subprocess(cmd)

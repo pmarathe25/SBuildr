@@ -31,7 +31,7 @@ class TestIntegration(object):
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
         test = proj.executable("test", sources=["test.cpp"], libs=["stdc++", libmath])
 
-        sys.argv = ["", "targets"]
+        sys.argv = ["", "help"]
         cli(proj)
 
     def test_can_build_project(self):
@@ -39,16 +39,11 @@ class TestIntegration(object):
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
         test = proj.executable("test", sources=["test.cpp"], libs=["stdc++", libmath])
         # Generate config file
-        generator = RBuildGenerator(proj)
-        generator.generate()
+        proj.configure()
 
         # Build both targets for all profiles.
         targets = [libmath, test]
-        nodes = []
-        for target in targets:
-            nodes.extend(target.values())
-
-        generator.build(nodes)
+        proj.build(targets)
 
         # Ensure that the targets now exist
         for target in targets:

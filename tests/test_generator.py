@@ -26,25 +26,7 @@ def generate_build_graph(compiler, linker):
     # Library and executable
     libmath = LinkedNode(os.path.join(PATHS["build"], "libmath.so"), [factorial_o, fibonacci_o], linker=linker, flags=flags+BuildFlags()._enable_shared(), libs=["stdc++"])
     test = LinkedNode(os.path.join(PATHS["build"], "test"), [test_o, libmath], linker=linker, flags=flags, libs=["stdc++"])
-    return Graph([utils_h, factorial_h, fibonacci_h, factorial_cpp, fibonacci_cpp, test_cpp, factorial_o, fibonacci_o, test_o, libmath, test])
-
-# Create dummy structs to satisfy the API
-class FakeFileManager(object):
-    def __init__(self, graph):
-        self.graph = graph
-        self.build_dir = PATHS["build"]
-
-    def mkdir(self, _):
-        pass
-
-class FakeProject(object):
-    def __init__(self, files: FakeFileManager):
-        self.files = files
-        self.configured = True
-        self.profiles = {}
-
-    def prepare_for_build(self):
-        pass
+    return Graph([utils_h, factorial_h, fibonacci_h, factorial_cpp, fibonacci_cpp, test_cpp]), Graph([factorial_o, fibonacci_o, test_o, libmath, test])
 
 class TestRBuild(object):
     @classmethod
@@ -64,17 +46,19 @@ class TestRBuild(object):
     @pytest.mark.parametrize("compiler", [compiler.gcc, compiler.clang])
     @pytest.mark.parametrize("linker", [linker.gcc, linker.clang])
     def test_config_file(self, compiler, linker):
-        graph = generate_build_graph(compiler, linker)
-        gen = RBuildGenerator(FakeProject(FakeFileManager(graph)))
-        gen.generate()
+        source_graph, profile_graph = generate_build_graph(compiler, linker)
+        gen = RBuildGenerator(PATHS["build"])
+        gen.generate(source_graph, [profile_graph])
         assert subprocess.run(["rbuild", gen.config_file])
         # All paths should exist after building.
-        for node in graph.values():
+        for node in source_graph.values():
+            assert os.path.exists(node.path)
+        for node in profile_graph.values():
             assert os.path.exists(node.path)
 
     # Call build without specifying nodes
     def test_build_empty(self):
-        graph = generate_build_graph(compiler.clang, linker.clang)
-        gen = RBuildGenerator(FakeProject(FakeFileManager(graph)))
-        gen.generate()
+        source_graph, profile_graph = generate_build_graph(compiler.clang, linker.clang)
+        gen = RBuildGenerator(PATHS["build"])
+        gen.generate(source_graph, [profile_graph])
         status, time_elapsed = gen.build([])

@@ -1,6 +1,5 @@
 from sbuildr.graph.node import Node, CompiledNode, LinkedNode
-from sbuildr.project.project import Project
-from sbuildr.project.target import ProjectTarget
+from sbuildr.graph.graph import Graph
 from sbuildr.logger import G_LOGGER
 
 from typing import List, Dict
@@ -21,48 +20,41 @@ class Generator(object):
             return node.linker.link([inp.path for inp in node.inputs], node.path, node.libs, node.lib_dirs, node.flags)
         return []
 
-    def __init__(self, project: Project):
+    def __init__(self, build_dir: str):
         """
-        A generator that creates build files for the specified project, and is able to build arbitrary targets specified in the project. Intermediate build configuration files will be written to the build directory specified by the project's FileManager.
+        A generator that creates build configuration files for a project, and is able to build arbitrary targets specified in the project. Intermediate build configuration files will be written to the build directory specified by the project's FileManager.
 
-        Args:
-            :param project: The project managed by this generator.
+        :param build_dir: A directory in which intermediate configuration files can be written.
         """
-        self.project = project
+        self.build_dir = build_dir
 
-    def generate(self):
+    def generate(self, source_graph: Graph, profile_graphs: List[Graph]):
         """
         Generates build configuration files based on the source files provided by the project's file manager,
         and targets specified in each profile.
 
-        Side Effects:
-            This function will invoke the managed project's `prepare_for_build` function, which may affect its state.
-            It will also invoke the project's file manager's mkdir function to create the build directory if it does not exist.
+        :param source_graph: A graph of the source files in the project.
+        :param profile_graphs: Graphs from each profile in the project.
 
-        Returns:
-            str: The generated build file.
+        :returns: The generated build file.
         """
         raise NotImplementedError()
 
-    def needs_configure(self) -> bool:
+    def needs_configure(self, project_config_timestamp: float) -> bool:
         """
-        Whether the project needs to be configured using this generator. If this returns False, it means the project is ready to build.
+        Whether the generator's configuration files are out of date.
 
-        Returns:
-            bool: Whether the project needs to be configured using this generator before building.
+        :param project_config_timestamp: The last modified time of the project's configuration file, in seconds since the epoch.
+
+        :returns: Whether the project needs to be configured using this generator before building.
         """
         raise NotImplementedError()
 
-    def build(self, targets: List[ProjectTarget], profiles: List[str]=[]) -> (subprocess.CompletedProcess, float):
+    def build(self, nodes: List[Node]) -> (subprocess.CompletedProcess, float):
         """
-        Runs a build command that will generate the specified targets from the specified profiles.
+        Runs a build command that will generate the specified nodes.
 
-        Side Effects:
-            This function will invoke the managed project's file manager's mkdir function to create the build subdirectory for each profile if it does not exist.
-
-        Args:
-            :param targets: The targets to build.
-            :param profiles: The names of the profiles to build for. If no profiles are provided, builds the specified targets for all profiles. If a target does not exist for one of the specified profiles, that target is skipped for that profile.
+        :param nodes: The nodes to build.
 
         :returns: :class:`Tuple[subprocess.CompletedProcess, float]` The return code of the build command and the time required to execute the build command.
         """

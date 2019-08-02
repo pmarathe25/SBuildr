@@ -1,11 +1,13 @@
 from sbuildr.graph.node import Node, CompiledNode, LinkedNode
 from sbuildr.project.file_manager import FileManager
+from sbuildr.generator.rbuild import RBuildGenerator
+from sbuildr.generator.generator import Generator
+from sbuildr.project.target import ProjectTarget
+from sbuildr.logger import G_LOGGER, plural
 from sbuildr.project.profile import Profile
 from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
-from sbuildr.project.target import ProjectTarget
 from sbuildr.graph.graph import Graph
-from sbuildr.logger import G_LOGGER
 from sbuildr.misc import paths
 
 from typing import List, Set, Union, Dict, Tuple
@@ -24,8 +26,9 @@ class Project(object):
     :param root: The path to the root directory for this project. All directories and files within the root directory are considered during searches for files. If no root directory is provided, defaults to the containing directory of the script calling this constructor.
     :param dirs: Additional directories outside the root directory that are part of the project. These directories and all contents will be considered during searches for files.
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
+    :param GeneratorType: The type of generator to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.generator.RBuildGenerator``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a generator.
     """
-    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, version: str=None):
+    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, GeneratorType: type=RBuildGenerator, version: str=None):
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
@@ -34,6 +37,8 @@ class Project(object):
         # TODO: This will change once FileManager takes writable_dirs.
         self.files = FileManager(root_dir, build_dir, dirs)
         self.build_dir = self.files.build_dir
+        # Generator
+        self.generator = GeneratorType(self.build_dir)
         # Set version to empty string if not provided. This is used for library suffixes.
         self.version = "" if version is None else version
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
@@ -52,11 +57,6 @@ class Project(object):
 
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
-
-    # Prepares the project for a build.
-    def prepare_for_build(self) -> None:
-        # Scan for all headers, and create the appropriate nodes.
-        self.files.scan_all()
 
     def _target(self,
                 name: str,
@@ -237,3 +237,58 @@ class Project(object):
             discovered_paths.append(candidates[0])
         self.public_headers = set(discovered_paths)
         return discovered_paths
+
+    def needs_configure(self) -> bool:
+        """
+        Whether this project needs to be reconfigured.
+        """
+        config_timestamp = os.path.getmtime(self.config_file)
+        return self.generator.needs_configure(config_timestamp)
+
+    def configure(self) -> None:
+        """
+        Configures this project for build. This includes generating any build configuration files required by this project's generator.
+        """
+        # Scan for all headers, and create the appropriate nodes.
+        self.files.scan_all()
+        # Create the build directory - this is the only directory the generator will write to.
+        self.files.mkdir(self.build_dir)
+        self.generator.generate(self.files.graph, [profile.graph for profile in self.profiles.values()])
+
+    def build(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> float:
+        """
+        Builds the specified targets for this project. Configuration should be run prior to calling this function.
+
+        :param targets: The targets to build.
+        :param profile_names: The profiles for which to build the targets. If no profiles are specified, the project builds for all profiles.
+
+        :returns: Time elapsed during the build.
+        """
+        def select_nodes(targets: List[ProjectTarget], profile_names: List[str]) -> List[Node]:
+            # Create all required profile build directories and populate nodes.
+            nodes = []
+            for prof_name in profile_names:
+                if prof_name not in self.profiles:
+                    G_LOGGER.critical(f"Profile {prof_name} does not exist in the project. Available profiles: {list(project.profiles.keys())}")
+                self.files.mkdir(self.profiles[prof_name].build_dir)
+                # Populate nodes.
+                for target in targets:
+                    if prof_name in target:
+                        node = target[prof_name]
+                        G_LOGGER.verbose(f"For target: {target}, profile: {prof_name}, found path: {node.path}")
+                        nodes.append(node)
+                    else:
+                        G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
+            return nodes
+
+        G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {profile_names}")
+        G_LOGGER.debug(f"Targets: {targets}")
+
+        profile_names = profile_names or self.profiles.keys()
+        nodes = select_nodes(targets, profile_names)
+        status, time_elapsed = self.generator.build(nodes)
+        if status.returncode:
+            output = f"{_wrap_str(' Captured stdout ')}\n{result.stdout.decode(sys.stdout.encoding)}\n{_wrap_str(' Captured stderr ')}\n{result.stderr.decode(sys.stdout.encoding)}"
+            G_LOGGER.critical(f"Failed with:\n{output}\nReconfiguring the project or running a clean build may resolve this.")
+        G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds.")
+        return time_elapsed
