@@ -36,22 +36,26 @@ class FileManager(object):
         # build_dir is the only location to which FileManager is allowed to write.
         self.build_dir = self.abspath(build_dir) if build_dir else os.path.join(root_dir, "build")
         exclude_dirs.add(self.build_dir)
+        self.exclude_dirs = exclude_dirs
         self.files = []
 
         # Remove directories that are within exclude_dirs after converting all directories to abspaths.
         dirs = set([self.abspath(dir) for dir in dirs]) | set([root_dir])
         G_LOGGER.verbose(f"Directories after converting to absolute paths: {dirs}")
-        self.dirs = set([dir for dir in dirs if not _is_in_directories(dir, exclude_dirs)])
+        
+        self.dirs = set([dir for dir in dirs if not _is_in_directories(dir, self.exclude_dirs)])
         G_LOGGER.verbose(f"Directories after removing ignored: {self.dirs}")
         for dir in self.dirs:
-            for path in glob.iglob(os.path.join(dir, "**"), recursive=True):
-                if os.path.isfile(path) and not _is_in_directories(path, exclude_dirs):
-                    self.files.append(os.path.abspath(path))
-        # self.files = list(map(os.path.abspath, self.files))
+            self.add_dir(dir)
         G_LOGGER.debug(f"Found {len(self.files)} files")
         G_LOGGER.verbose(f"{self.files}")
         # Keep track of all files relevant to building the project.
         self.graph = Graph()
+
+    def add_dir(self, dir: str):
+        for path in glob.iglob(os.path.join(dir, "**"), recursive=True):
+            if os.path.isfile(path) and not _is_in_directories(path, self.exclude_dirs):
+                self.files.append(os.path.abspath(path))
 
     # Recursively creates all parent directories required to create dir_path.
     # Returns whether the directory was created inside the build directory.
