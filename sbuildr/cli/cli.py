@@ -71,7 +71,7 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         targets = select_targets(args) or all_targets()
         G_LOGGER.info(f"\n{utils.wrap_str(' Targets ')}")
         for target in targets:
-            G_LOGGER.info(f"Target: {target} {'(internal)' if target.internal else ''}. Available Profiles:")
+            G_LOGGER.info(f"Target: {target}{'(internal)' if target.internal else ''}. Available Profiles:")
             for prof, node in target.items():
                 G_LOGGER.info(f"\tProfile: {prof}. Path: {node.path}.")
         G_LOGGER.info(f"\n{utils.wrap_str(' Public Interface ')}")
