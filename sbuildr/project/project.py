@@ -8,11 +8,12 @@ from sbuildr.project.profile import Profile
 from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
 from sbuildr.graph.graph import Graph
-from sbuildr.misc import paths
+from sbuildr.misc import paths, utils
 
 from typing import List, Set, Union, Dict, Tuple
 from collections import OrderedDict, defaultdict
 import inspect
+import sys
 import os
 
 # TODO: Create a package manager to install dependencies.
@@ -286,7 +287,7 @@ class Project(object):
         nodes = select_nodes(targets, profile_names)
         status, time_elapsed = self.generator.build(nodes)
         if status.returncode:
-            output = f"{_wrap_str(' Captured stdout ')}\n{result.stdout.decode(sys.stdout.encoding)}\n{_wrap_str(' Captured stderr ')}\n{result.stderr.decode(sys.stdout.encoding)}"
+            output = f"{utils.wrap_str(' Captured stdout ')}\n{status.stdout.decode(sys.stdout.encoding)}\n{utils.wrap_str(' Captured stderr ')}\n{status.stderr.decode(sys.stdout.encoding)}"
             G_LOGGER.critical(f"Failed with:\n{output}\nReconfiguring the project or running a clean build may resolve this.")
         G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds.")
         return time_elapsed
