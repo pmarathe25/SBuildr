@@ -28,7 +28,7 @@ class Project(object):
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
     :param GeneratorType: The type of generator to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.generator.RBuildGenerator``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a generator.
     """
-    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, GeneratorType: type=RBuildGenerator, version: str=None):
+    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, GeneratorType: type=RBuildGenerator):
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
@@ -39,8 +39,6 @@ class Project(object):
         self.build_dir = self.files.build_dir
         # Generator
         self.generator = GeneratorType(self.build_dir)
-        # Set version to empty string if not provided. This is used for library suffixes.
-        self.version = "" if version is None else version
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
         # user-defined target for that profile.
         self.profiles: Dict[str, Profile] = {}
