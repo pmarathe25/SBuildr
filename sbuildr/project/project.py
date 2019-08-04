@@ -287,7 +287,6 @@ class Project(object):
         nodes = select_nodes(targets, profile_names)
         status, time_elapsed = self.generator.build(nodes)
         if status.returncode:
-            output = f"{utils.wrap_str(' Captured stdout ')}\n{status.stdout.decode(sys.stdout.encoding)}\n{utils.wrap_str(' Captured stderr ')}\n{status.stderr.decode(sys.stdout.encoding)}"
-            G_LOGGER.critical(f"Failed with:\n{output}\nReconfiguring the project or running a clean build may resolve this.")
+            G_LOGGER.critical(f"Failed with:\n{utils.subprocess_output(status)}\nReconfiguring the project or running a clean build may resolve this.")
         G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds.")
         return time_elapsed

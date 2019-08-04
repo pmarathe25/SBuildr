@@ -98,7 +98,7 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         project.build([target], [prof_name])
         G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}: {target[prof_name].path}", color=logger.Color.GREEN)
         status = subprocess.run([target[prof_name].path], capture_output=True)
-        output = f"{utils.wrap_str(' Captured stdout ')}\n{result.stdout.decode(sys.stdout.encoding)}\n{utils.wrap_str(' Captured stderr ')}\n{result.stderr.decode(sys.stdout.encoding)}"
+        output = utils.subprocess_output(status)
         G_LOGGER.log(output)
         if result.returncode:
             G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")

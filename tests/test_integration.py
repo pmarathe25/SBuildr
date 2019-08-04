@@ -123,3 +123,4 @@ class TestIntegration(object):
     def test_public_imports(self):
         import sbuildr
         from sbuildr import compiler, linker, BuildFlags, Project, Profile
+        from sbuildr.generator import Generator, RBuildGenerator

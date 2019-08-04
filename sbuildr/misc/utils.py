@@ -2,6 +2,7 @@ from typing import List
 import subprocess
 import shutil
 import time
+import sys
 import os
 
 def time_subprocess(cmd: List[str]) -> (subprocess.CompletedProcess, float):
@@ -9,6 +10,10 @@ def time_subprocess(cmd: List[str]) -> (subprocess.CompletedProcess, float):
     status = subprocess.run(cmd, capture_output=True)
     end = time.time()
     return status, end - start
+
+# Returns the captured output of a subprocess call.
+def subprocess_output(status: subprocess.CompletedProcess):
+    return f"{wrap_str(' Captured stdout ')}\n{status.stdout.decode(sys.stdout.encoding)}\n{wrap_str(' Captured stderr ')}\n{status.stderr.decode(sys.stdout.encoding)}"
 
 def wrap_str(inp: str, wrap: str='='):
     terminal_width, _ = shutil.get_terminal_size()
