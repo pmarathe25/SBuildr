@@ -1,4 +1,4 @@
-from sbuildr.project.dependencies.fetchers.fetcher import DependencyInfo, DependencyFetcher
+from sbuildr.project.dependencies.fetchers.fetcher import DependencyFetcher
 from sbuildr.misc import utils
 import subprocess
 import sys
@@ -22,7 +22,7 @@ class GitFetcher(DependencyFetcher):
         self.branch = branch
         super().__init__(os.path.splitext(os.path.basename(self.url))[0])
 
-    def fetch(self, dest_dir: str) -> DependencyInfo:
+    def fetch(self, dest_dir: str) -> str:
         clone_status = subprocess.run(["git", "clone", self.url, dest_dir], capture_output=True)
 
         # TODO: Error checking here? Pull may fail if this is a local repo.
@@ -35,4 +35,4 @@ class GitFetcher(DependencyFetcher):
         # TODO: Error checking here?
         head_status = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, cwd=dest_dir)
         commit_hash = head_status.stdout.strip().decode(sys.stdout.encoding)
-        return DependencyInfo([commit_hash])
+        return commit_hash

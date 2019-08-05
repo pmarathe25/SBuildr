@@ -17,8 +17,8 @@ class TestGitFetcher(object):
 
     def test_can_fetch_stest_repo(self):
         with tempfile.TemporaryDirectory() as install_dir:
-            dep_info = self.fetcher.fetch(install_dir)
-            assert dep_info.version_tags == [self.commit_hash]
+            tag = self.fetcher.fetch(install_dir)
+            assert tag == self.commit_hash
             assert os.path.exists(install_dir)
             assert os.path.exists(os.path.join(install_dir, "build.py"))
             assert os.path.exists(os.path.join(install_dir, "include", "SLog.hpp"))
@@ -30,7 +30,7 @@ class TestCopyFetcher(object):
 
     def test_can_fetch_minimal_project(self):
         with tempfile.TemporaryDirectory() as install_dir:
-            dep_info = self.fetcher.fetch(install_dir)
+            tag = self.fetcher.fetch(install_dir)
             assert os.path.exists(install_dir)
             dircmp = filecmp.dircmp(ROOT, install_dir)
             assert not dircmp.left_only
@@ -48,6 +48,6 @@ class TestSBuildrBuilder(object):
         os.makedirs(self.exec_dir)
 
     def test_can_build_example_repo(self):
-        self.builder.setup(ROOT, self.header_dir, self.lib_dir, self.exec_dir)
+        self.builder.install(ROOT, self.header_dir, self.lib_dir, self.exec_dir)
         assert os.path.exists(os.path.join(self.header_dir, "math.hpp"))
         assert os.path.exists(os.path.join(self.lib_dir, paths.libname("math")))

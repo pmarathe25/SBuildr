@@ -13,7 +13,7 @@ class SBuildrBuilder(DependencyBuilder):
         """
         self.build_script_name = build_script_name
 
-    def setup(self, source_dir: str, header_dir: str, lib_dir: str, exec_dir: str):
+    def install(self, source_dir: str, header_dir: str, lib_dir: str, exec_dir: str):
         # Configure, then install the project.
         configure_status = subprocess.run([sys.executable, self.build_script_name, "configure"], capture_output=True, cwd=source_dir)
         if configure_status.returncode:

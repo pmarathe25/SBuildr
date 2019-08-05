@@ -1,4 +1,4 @@
-from sbuildr.project.dependencies.fetchers.fetcher import DependencyInfo, DependencyFetcher
+from sbuildr.project.dependencies.fetchers.fetcher import DependencyFetcher
 
 import filecmp
 import shutil
@@ -14,10 +14,10 @@ class CopyFetcher(DependencyFetcher):
         self.path = path
         super().__init__(os.path.basename(self.path))
 
-    def fetch(self, dest_dir: str) -> DependencyInfo:
+    def fetch(self, dest_dir: str) -> str:
         # Only copy if dest_dir is out of date.
         should_copy = filecmp.dircmp(self.path, dest_dir).left_only or not os.path.exists(dest_dir) or os.path.getmtime(self.path) > os.path.getmtime(dest_dir)
         if should_copy:
             shutil.rmtree(dest_dir)
             shutil.copytree(self.path, dest_dir)
-        return DependencyInfo(dest_dir)
+        return str(os.path.getmtime(dest_dir))
