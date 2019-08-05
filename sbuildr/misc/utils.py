@@ -20,7 +20,7 @@ def wrap_str(inp: str, wrap: str='='):
     return inp.center(terminal_width, wrap)
 
 # Copies src to dst. dst may be either a complete path or containing directory.
-def copy_file(src: str, dst: str) -> bool:
+def copy_path(src: str, dst: str) -> bool:
     try:
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)

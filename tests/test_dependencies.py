@@ -1,9 +1,11 @@
 from sbuildr.project.dependencies.fetchers.git_fetcher import GitFetcher
+from sbuildr.project.dependencies.fetchers.copy_fetcher import CopyFetcher
 from sbuildr.project.dependencies.builders.sbuildr_builder import SBuildrBuilder
 from sbuildr.misc import paths
 from test_tools import PATHS, ROOT, TESTS_ROOT
 
 import tempfile
+import filecmp
 import pytest
 import os
 
@@ -11,14 +13,28 @@ class TestGitFetcher(object):
     def setup_method(self):
         self.commit_hash = "b2dd61e5669f9a2dee75d55eaf2950a722eebeae"
         self.fetcher = GitFetcher(url="https://github.com/pmarathe25/SLog.git", commit=self.commit_hash)
+        assert self.fetcher.dependency_name == "SLog"
 
     def test_can_fetch_stest_repo(self):
         with tempfile.TemporaryDirectory() as install_dir:
             dep_info = self.fetcher.fetch(install_dir)
-            assert dep_info.name == "SLog"
             assert dep_info.path == os.path.join(install_dir, "SLog")
             assert dep_info.version_tags == [self.commit_hash]
             assert os.path.exists(dep_info.path)
+
+class TestCopyFetcher(object):
+    def setup_method(self):
+        self.fetcher = CopyFetcher(ROOT)
+        assert self.fetcher.dependency_name == "minimal_project"
+
+    def test_can_fetch_minimal_project(self):
+        with tempfile.TemporaryDirectory() as install_dir:
+            dep_info = self.fetcher.fetch(install_dir)
+            assert os.path.exists(install_dir)
+            dircmp = filecmp.dircmp(ROOT, install_dir)
+            assert not dircmp.left_only
+            assert not dircmp.right_only
+            # assert os.path.exists(os.path.join(install_dir), "build.py")
 
 class TestSBuildrBuilder(object):
     def setup_method(self):

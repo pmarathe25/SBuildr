@@ -192,11 +192,11 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         project.build(targets, prof_names)
         node_installs, header_installs = get_install_nodes(args, targets, prof_names, headers)
         for node, install_path in node_installs:
-            if utils.copy_file(node.path, install_path):
+            if utils.copy_path(node.path, install_path):
                 G_LOGGER.info(f"Installed target: {node.name} to {install_path}")
 
         for header, install_path in header_installs:
-            if utils.copy_file(header, install_path):
+            if utils.copy_path(header, install_path):
                 G_LOGGER.info(f"Installed header: {header} to {install_path}")
 
 

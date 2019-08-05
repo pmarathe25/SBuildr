@@ -1,4 +1,4 @@
-from sbuildr.project.dependencies.fetchers.fetcher import DepInfo, DependencyFetcher
+from sbuildr.project.dependencies.fetchers.fetcher import DependencyInfo, DependencyFetcher
 from sbuildr.misc import utils
 import subprocess
 import sys
@@ -16,18 +16,17 @@ class GitFetcher(DependencyFetcher):
         :param tag: The tag to checkout.
         :param branch: The branch to checkout. Defaults to "master".
         """
-        super().__init__()
         self.url = url
         self.commit = commit
         self.tag = tag
         self.branch = branch
+        super().__init__(os.path.splitext(os.path.basename(self.url))[0])
 
-    def fetch(self, dir: str) -> DepInfo:
-        repo_name = os.path.splitext(os.path.basename(self.url))[0]
-        clone_path = os.path.join(dir, repo_name)
+    def fetch(self, dest_dir: str) -> DependencyInfo:
+        clone_path = os.path.join(dest_dir, self.dependency_name)
         clone_status = subprocess.run(["git", "clone", self.url, clone_path], capture_output=True)
 
-        # TODO: Error checking here?
+        # TODO: Error checking here? Pull may fail if this is a local repo.
         checkout = self.commit or self.tag or self.branch
         pull_status = subprocess.run(["git", "pull"], capture_output=True, cwd=clone_path)
         checkout_status = subprocess.run(["git", "checkout", checkout], capture_output=True, cwd=clone_path)
@@ -37,4 +36,4 @@ class GitFetcher(DependencyFetcher):
         # TODO: Error checking here?
         head_status = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, cwd=clone_path)
         commit_hash = head_status.stdout.strip().decode(sys.stdout.encoding)
-        return DepInfo(repo_name, clone_path, [commit_hash])
+        return DependencyInfo(clone_path, [commit_hash])

@@ -9,6 +9,10 @@ Dates are in YYYY-MM-DD format.
 - Restructures so that `Generator` is now part of the `Project`.
 - `targets` in `cli` has been renamed to `help`.
 - Adds `configure` and `build` to the `Project`.
+- Adds `DependencyBuilder`s and `DependencyFetcher`s for dependency management.
+- Adds `GitFetcher` for retrieving source code from git repositories.
+- Adds `CopyFetcher` for copying directories.
+- Adds `SBuildrBuilder` for building projects using the SBuildr build system.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).
