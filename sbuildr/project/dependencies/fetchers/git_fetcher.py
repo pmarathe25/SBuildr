@@ -23,17 +23,16 @@ class GitFetcher(DependencyFetcher):
         super().__init__(os.path.splitext(os.path.basename(self.url))[0])
 
     def fetch(self, dest_dir: str) -> DependencyInfo:
-        clone_path = os.path.join(dest_dir, self.dependency_name)
-        clone_status = subprocess.run(["git", "clone", self.url, clone_path], capture_output=True)
+        clone_status = subprocess.run(["git", "clone", self.url, dest_dir], capture_output=True)
 
         # TODO: Error checking here? Pull may fail if this is a local repo.
         checkout = self.commit or self.tag or self.branch
-        pull_status = subprocess.run(["git", "pull"], capture_output=True, cwd=clone_path)
-        checkout_status = subprocess.run(["git", "checkout", checkout], capture_output=True, cwd=clone_path)
+        pull_status = subprocess.run(["git", "pull"], capture_output=True, cwd=dest_dir)
+        checkout_status = subprocess.run(["git", "checkout", checkout], capture_output=True, cwd=dest_dir)
         if checkout_status.returncode:
             G_LOGGER.critical(f"Failed to checkout {checkout} with:\n{utils.subprocess_output(checkout_status)}")
 
         # TODO: Error checking here?
-        head_status = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, cwd=clone_path)
+        head_status = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, cwd=dest_dir)
         commit_hash = head_status.stdout.strip().decode(sys.stdout.encoding)
-        return DependencyInfo(clone_path, [commit_hash])
+        return DependencyInfo([commit_hash])

@@ -18,9 +18,10 @@ class TestGitFetcher(object):
     def test_can_fetch_stest_repo(self):
         with tempfile.TemporaryDirectory() as install_dir:
             dep_info = self.fetcher.fetch(install_dir)
-            assert dep_info.path == os.path.join(install_dir, "SLog")
             assert dep_info.version_tags == [self.commit_hash]
-            assert os.path.exists(dep_info.path)
+            assert os.path.exists(install_dir)
+            assert os.path.exists(os.path.join(install_dir, "build.py"))
+            assert os.path.exists(os.path.join(install_dir, "include", "SLog.hpp"))
 
 class TestCopyFetcher(object):
     def setup_method(self):
@@ -34,7 +35,6 @@ class TestCopyFetcher(object):
             dircmp = filecmp.dircmp(ROOT, install_dir)
             assert not dircmp.left_only
             assert not dircmp.right_only
-            # assert os.path.exists(os.path.join(install_dir), "build.py")
 
 class TestSBuildrBuilder(object):
     def setup_method(self):
