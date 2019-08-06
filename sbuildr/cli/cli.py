@@ -34,15 +34,6 @@ def cli(project: Project, default_profiles=["debug", "release"]):
     :param project: The project that the CLI will interface with.
     :param default_profiles: Names of default profiles. These are the profiles the `build`, `run`, and `clean` targets will use when none are explicitly specified via the command-line. Note that `tests` will run tests for all profiles by default.
     """
-    def needs_configure(func, *args, **kwargs):
-        def wrapper(*args, **kwargs):
-            if project.needs_configure():
-                G_LOGGER.warning(f"'{func.__name__}' requires the project to be configured, but project has either not been configured yet, or configuration is outdated. Running configuration now.")
-                configure(*args, **kwargs)
-            return func(*args, **kwargs)
-        return wrapper
-
-
     def all_targets() -> List[ProjectTarget]:
         return list(project.libraries.values()) + list(project.executables.values())
 
@@ -82,14 +73,12 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         project.configure()
 
 
-    @needs_configure
     def build(args) -> Tuple[List[ProjectTarget], List[str]]:
         targets = select_targets(args) or all_targets()
         prof_names = select_profile_names(args) or default_profiles
         project.build(targets, prof_names)
 
 
-    @needs_configure
     def run(args):
         if args.target not in project.executables:
             G_LOGGER.critical(f"Could not find target: {args.target} in project executables. Note: Available executables are: {list(project.executables.keys())}")
@@ -104,7 +93,6 @@ def cli(project: Project, default_profiles=["debug", "release"]):
             G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
 
 
-    @needs_configure
     def tests(args):
         def select_test_targets(args) -> List[ProjectTarget]:
             targets = []
@@ -186,7 +174,6 @@ def cli(project: Project, default_profiles=["debug", "release"]):
 
 
     # TODO: Add -f flag and --upgrade behavior should be to remove older versions.
-    @needs_configure
     def install(args):
         targets, prof_names, headers = get_install_targets(args)
         project.build(targets, prof_names)

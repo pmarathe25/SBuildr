@@ -13,6 +13,7 @@ Dates are in YYYY-MM-DD format.
 - Adds `GitFetcher` for retrieving source code from git repositories.
 - Adds `CopyFetcher` for copying directories.
 - Adds `SBuildrBuilder` for building projects using the SBuildr build system.
+- Renames `Generator` and associated classes/files to `Backend`. 
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).
@@ -71,7 +72,7 @@ Dates are in YYYY-MM-DD format.
 - Added `rm` to `FileManager` so that it can remove paths located in the build directory.
 - Added the nuclear option to `clean` in `cli()`
 - Verbosity is now set during import, so that pre-subparser logging messages are displayed correctly.
-- RBuildGenerator updated to work with rbuild 0.3.0.
+- RBuildBackend updated to work with rbuild 0.3.0.
 - `cli()` now accepts profile options for subparsers.
 - Added `install` to `cli()`
 - Added `uninstall` and `help` to `cli()`

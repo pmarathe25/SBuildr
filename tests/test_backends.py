@@ -1,6 +1,6 @@
 from sbuildr.graph.node import Node, SourceNode, CompiledNode, LinkedNode
 from sbuildr.graph.graph import Graph
-from sbuildr.generator.rbuild import RBuildGenerator
+from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
 from test_tools import PATHS, ROOT, TESTS_ROOT
@@ -9,7 +9,7 @@ import shutil
 import pytest
 import os
 
-def generate_build_graph(compiler, linker):
+def create_build_graph(compiler, linker):
     flags = BuildFlags().O(3).std(17).march("native").fpic()
     # Headers
     utils_h = SourceNode(PATHS["utils.hpp"])
@@ -46,9 +46,9 @@ class TestRBuild(object):
     @pytest.mark.parametrize("compiler", [compiler.gcc, compiler.clang])
     @pytest.mark.parametrize("linker", [linker.gcc, linker.clang])
     def test_config_file(self, compiler, linker):
-        source_graph, profile_graph = generate_build_graph(compiler, linker)
-        gen = RBuildGenerator(PATHS["build"])
-        gen.generate(source_graph, [profile_graph])
+        source_graph, profile_graph = create_build_graph(compiler, linker)
+        gen = RBuildBackend(PATHS["build"])
+        gen.configure(source_graph, [profile_graph])
         assert subprocess.run(["rbuild", gen.config_file])
         # All paths should exist after building.
         for node in source_graph.values():
@@ -58,7 +58,7 @@ class TestRBuild(object):
 
     # Call build without specifying nodes
     def test_build_empty(self):
-        source_graph, profile_graph = generate_build_graph(compiler.clang, linker.clang)
-        gen = RBuildGenerator(PATHS["build"])
-        gen.generate(source_graph, [profile_graph])
+        source_graph, profile_graph = create_build_graph(compiler.clang, linker.clang)
+        gen = RBuildBackend(PATHS["build"])
+        gen.configure(source_graph, [profile_graph])
         status, time_elapsed = gen.build([])

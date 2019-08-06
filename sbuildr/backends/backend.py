@@ -5,13 +5,13 @@ from sbuildr.logger import G_LOGGER
 from typing import List, Dict
 import subprocess
 
-class Generator(object):
+class Backend(object):
     # Generate a build command for the given node.
     # For source nodes and basic nodes this is an empty list, otherwise, it is a compiler/linker command.
     def _node_command(self, node: Node) -> List[str]:
         if isinstance(node, CompiledNode):
             if len(node.inputs) != 1:
-                G_LOGGER.critical(f"CompiledNodes must have exactly one inputs, but received {node} with inputs: {node.inputs}")
+                G_LOGGER.critical(f"CompiledNodes must have exactly one input, but received {node} with inputs: {node.inputs}")
             source = node.inputs[0]
             # The CompiledNode's include dirs take precedence over the SourceNode's. The ones in the SourceNode are
             # automatically deduced, whereas the ones in the CompiledNode are provided by the user.
@@ -22,13 +22,13 @@ class Generator(object):
 
     def __init__(self, build_dir: str):
         """
-        A generator that creates build configuration files for a project, and is able to build arbitrary targets specified in the project. Intermediate build configuration files will be written to the build directory specified by the project's FileManager.
+        A backend that creates build configuration files for a project, and is able to build arbitrary targets specified in the project. Intermediate build configuration files will be written to the build directory specified by the project's FileManager.
 
         :param build_dir: A directory in which intermediate configuration files can be written.
         """
         self.build_dir = build_dir
 
-    def generate(self, source_graph: Graph, profile_graphs: List[Graph]):
+    def configure(self, source_graph: Graph, profile_graphs: List[Graph]):
         """
         Generates build configuration files based on the source files provided by the project's file manager,
         and targets specified in each profile.
@@ -37,16 +37,6 @@ class Generator(object):
         :param profile_graphs: Graphs from each profile in the project.
 
         :returns: The generated build file.
-        """
-        raise NotImplementedError()
-
-    def needs_configure(self, project_config_timestamp: float) -> bool:
-        """
-        Whether the generator's configuration files are out of date.
-
-        :param project_config_timestamp: The last modified time of the project's configuration file, in seconds since the epoch.
-
-        :returns: Whether the project needs to be configured using this generator before building.
         """
         raise NotImplementedError()
 

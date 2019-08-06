@@ -1,7 +1,7 @@
 from sbuildr.graph.node import Node, CompiledNode, LinkedNode
 from sbuildr.project.file_manager import FileManager
-from sbuildr.generator.rbuild import RBuildGenerator
-from sbuildr.generator.generator import Generator
+from sbuildr.backends.rbuild import RBuildBackend
+from sbuildr.backends.backend import Backend
 from sbuildr.project.target import ProjectTarget
 from sbuildr.logger import G_LOGGER, plural
 from sbuildr.project.profile import Profile
@@ -27,9 +27,9 @@ class Project(object):
     :param root: The path to the root directory for this project. All directories and files within the root directory are considered during searches for files. If no root directory is provided, defaults to the containing directory of the script calling this constructor.
     :param dirs: Additional directories outside the root directory that are part of the project. These directories and all contents will be considered during searches for files.
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
-    :param GeneratorType: The type of generator to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.generator.RBuildGenerator``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a generator.
+    :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
     """
-    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, GeneratorType: type=RBuildGenerator):
+    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, BackendType: type=RBuildBackend):
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
@@ -38,8 +38,8 @@ class Project(object):
         # TODO: This will change once FileManager takes writable_dirs.
         self.files = FileManager(root_dir, build_dir, dirs)
         self.build_dir = self.files.build_dir
-        # Generator
-        self.generator = GeneratorType(self.build_dir)
+        # Backend
+        self.backend = BackendType(self.build_dir)
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
         # user-defined target for that profile.
         self.profiles: Dict[str, Profile] = {}
@@ -237,22 +237,15 @@ class Project(object):
         self.public_headers = set(discovered_paths)
         return discovered_paths
 
-    def needs_configure(self) -> bool:
-        """
-        Whether this project needs to be reconfigured.
-        """
-        config_timestamp = os.path.getmtime(self.config_file)
-        return self.generator.needs_configure(config_timestamp)
-
     def configure(self) -> None:
         """
-        Configures this project for build. This includes generating any build configuration files required by this project's generator.
+        Configures this project for build. This includes generating any build configuration files required by this project's backend.
         """
         # Scan for all headers, and create the appropriate nodes.
         self.files.scan_all()
-        # Create the build directory - this is the only directory the generator will write to.
+        # Create the build directory - this is the only directory the backend will write to.
         self.files.mkdir(self.build_dir)
-        self.generator.generate(self.files.graph, [profile.graph for profile in self.profiles.values()])
+        self.backend.configure(self.files.graph, [profile.graph for profile in self.profiles.values()])
 
     def build(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> float:
         """
@@ -285,7 +278,7 @@ class Project(object):
 
         profile_names = profile_names or self.profiles.keys()
         nodes = select_nodes(targets, profile_names)
-        status, time_elapsed = self.generator.build(nodes)
+        status, time_elapsed = self.backend.build(nodes)
         if status.returncode:
             G_LOGGER.critical(f"Failed with:\n{utils.subprocess_output(status)}\nReconfiguring the project or running a clean build may resolve this.")
         G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds.")

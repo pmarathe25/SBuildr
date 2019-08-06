@@ -1,4 +1,4 @@
-from sbuildr.generator.generator import Generator
+from sbuildr.backends.backend import Backend
 from sbuildr.graph.graph import Graph
 from sbuildr.graph.node import Node
 from sbuildr.logger import G_LOGGER
@@ -9,14 +9,14 @@ import subprocess
 import time
 import os
 
-class RBuildGenerator(Generator):
+class RBuildBackend(Backend):
     CONFIG_FILENAME = "rbuild"
 
     def __init__(self, build_dir: str):
         super().__init__(build_dir)
-        self.config_file = os.path.join(self.build_dir, RBuildGenerator.CONFIG_FILENAME)
+        self.config_file = os.path.join(self.build_dir, RBuildBackend.CONFIG_FILENAME)
 
-    def generate(self, source_graph: Graph, profile_graphs: List[Graph]):
+    def configure(self, source_graph: Graph, profile_graphs: List[Graph]):
         # Map each node to it's integer id. This is unique per rbuild file.
         node_ids = {}
         id = 0
@@ -51,13 +51,6 @@ class RBuildGenerator(Generator):
         with open(self.config_file, "w") as f:
             G_LOGGER.debug(f"Writing {self.config_file}")
             f.write(config)
-
-    def needs_configure(self, project_config_timestamp: float) -> bool:
-        # The generator's build configuration file must exist and should be at
-        # least as new as the project's  SBuildr config file.
-        if not os.path.exists(self.config_file) or os.path.getmtime(self.config_file) < project_config_timestamp:
-            return True
-        return False
 
     def build(self, nodes: List[Node]) -> (subprocess.CompletedProcess, float):
         # Early exit if no targets were provided

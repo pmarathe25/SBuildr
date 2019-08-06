@@ -1,4 +1,4 @@
-from sbuildr.generator.rbuild import RBuildGenerator
+from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.project import Project
 from sbuildr.cli.cli import cli
 
@@ -123,4 +123,4 @@ class TestIntegration(object):
     def test_public_imports(self):
         import sbuildr
         from sbuildr import compiler, linker, BuildFlags, Project, Profile
-        from sbuildr.generator import Generator, RBuildGenerator
+        from sbuildr.backends import Backend, RBuildBackend
