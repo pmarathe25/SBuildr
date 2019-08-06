@@ -15,5 +15,5 @@ project.interfaces(["math.hpp"])
 # be linked against the library created above.
 test = project.test("test", sources=["test.cpp"], libs=["stdc++", libmath])
 
-# Enable this script to be used interactively on the command-line
+# project.configure()
 sbuildr.cli(project)

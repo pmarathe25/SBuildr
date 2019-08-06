@@ -1,17 +1,12 @@
 from sbuildr.project.target import ProjectTarget
 from sbuildr.project.project import Project
-from sbuildr.logger import G_LOGGER, plural
+from sbuildr.logger import G_LOGGER
 from sbuildr.misc import paths, utils
-from sbuildr.graph.node import Node
 import sbuildr.logger as logger
 
-from collections import defaultdict
 from typing import List, Tuple
-import subprocess
 import argparse
-import shutil
 import sys
-import os
 
 # Set up a special parser just to intercept -v/-vv. This will not intercept -h, so we duplicate the options
 # in the cli() parser.
@@ -80,17 +75,9 @@ def cli(project: Project, default_profiles=["debug", "release"]):
 
 
     def run(args):
-        if args.target not in project.executables:
-            G_LOGGER.critical(f"Could not find target: {args.target} in project executables. Note: Available executables are: {list(project.executables.keys())}")
-        target = project.executables[args.target]
-        prof_name = select_profile_names(args)[0] or default_profiles
-        project.build([target], [prof_name])
-        G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}: {target[prof_name].path}", color=logger.Color.GREEN)
-        status = subprocess.run([target[prof_name].path], capture_output=True)
-        output = utils.subprocess_output(status)
-        G_LOGGER.log(output)
-        if result.returncode:
-            G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
+        targets = select_targets(args) or all_targets()
+        prof_names = select_profile_names(args) or default_profiles
+        project.run(targets, prof_names)
 
 
     def tests(args):
@@ -100,45 +87,11 @@ def cli(project: Project, default_profiles=["debug", "release"]):
                 if test_name not in project.tests:
                     G_LOGGER.critical(f"Could not find test: {test_name} in project.\n\tAvailable tests:\n\t\t{list(project.tests.keys())}")
                 targets.append(project.tests[test_name])
-            return targets or list(project.tests.values())
+            return targets
 
         tests = select_test_targets(args)
-        prof_names = select_profile_names(args) or list(project.profiles.keys())
-        if not tests:
-            G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
-            return
-        # Otherwise, build and run the specified tests
-        project.build(tests, prof_names)
-
-        class TestResult:
-            def __init__(self):
-                self.failed = 0
-                self.passed = 0
-
-        test_results = defaultdict(TestResult)
-        failed_targets = defaultdict(set)
-        for prof_name in prof_names:
-            G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
-            for test_target in tests:
-                G_LOGGER.log(f"\nRunning test: {test_target}, for profile: {prof_name}: {test_target[prof_name].path}\n", color=logger.Color.GREEN)
-                status = subprocess.run([test_target[prof_name].path])
-                if status.returncode:
-                    G_LOGGER.log(f"\nFAILED {test_target}, for profile: {prof_name}:\n{test_target[prof_name].path}", color=logger.Color.RED)
-                    test_results[prof_name].failed += 1
-                    failed_targets[prof_name].add(test_target[prof_name].name)
-                else:
-                    G_LOGGER.log(f"\nPASSED {test_target}", color=logger.Color.GREEN)
-                    test_results[prof_name].passed += 1
-        # Display summary
-        G_LOGGER.log(f"\n{utils.wrap_str(f' Test Results Summary ')}\n", color=logger.Color.GREEN)
-        for prof_name, result in test_results.items():
-            if result.passed or result.failed:
-                G_LOGGER.log(f"Profile: {prof_name}", color=logger.Color.GREEN)
-                if result.passed:
-                    G_LOGGER.log(f"\tPASSED {plural('test', result.passed)}", color=logger.Color.GREEN)
-                if result.failed:
-                    G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", color=logger.Color.RED)
-
+        prof_names = select_profile_names(args)
+        project.run_tests(tests, prof_names)
 
     def get_install_targets(args):
         headers = [tgt for tgt in args.targets if tgt not in project] or list(project.public_headers)
@@ -146,81 +99,26 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         targets = [tgt for tgt in (select_targets(args) or all_targets()) if not tgt.internal]
         G_LOGGER.verbose(f"Selected public targets: {targets}")
         prof_names = select_profile_names(args) or ["release"]
-        G_LOGGER.verbose(f"Installing targets: {targets} for profiles: {prof_names}")
-        G_LOGGER.verbose(f"Installing headers: {headers}")
+        G_LOGGER.verbose(f"Targets: {targets} for profiles: {prof_names}")
+        G_LOGGER.verbose(f"Headers: {headers}")
         return targets, prof_names, headers
-
-    def get_install_nodes(args, targets, prof_names, headers):
-        # Maps target nodes to installation paths
-        node_installs: List[Tuple[Node, str]] = []
-        for prof_name in prof_names:
-            for target in targets:
-                node = target[prof_name]
-                install_dir = args.libraries if target.is_lib else args.executables
-                install_path = os.path.join(install_dir, node.name)
-                node_installs.append((node, install_path))
-
-        # Maps header paths to installation paths.
-        header_installs: List[Tuple[str, str]] = []
-        for header in headers:
-            candidates = project.files.find(header)
-            if len(candidates) == 0:
-                G_LOGGER.critical(f"Could not find installation header: {header}")
-            if len(candidates) > 1:
-                G_LOGGER.critical(f"For installation header: {header}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate.")
-            header_installs.append((candidates[0], os.path.join(args.headers, os.path.basename(header))))
-
-        return node_installs, header_installs
-
 
     # TODO: Add -f flag and --upgrade behavior should be to remove older versions.
     def install(args):
         targets, prof_names, headers = get_install_targets(args)
-        project.build(targets, prof_names)
-        node_installs, header_installs = get_install_nodes(args, targets, prof_names, headers)
-        for node, install_path in node_installs:
-            if utils.copy_path(node.path, install_path):
-                G_LOGGER.info(f"Installed target: {node.name} to {install_path}")
-
-        for header, install_path in header_installs:
-            if utils.copy_path(header, install_path):
-                G_LOGGER.info(f"Installed header: {header} to {install_path}")
+        project.install(targets, prof_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
 
 
     def uninstall(args):
         targets, prof_names, headers = get_install_targets(args)
-        node_installs, header_installs = get_install_nodes(args, targets, prof_names, headers)
-        install_paths = [path for (_, path) in node_installs] + [path for (_, path) in header_installs]
-
-        if not args.force:
-            G_LOGGER.warning(f"Uninstall dry-run, will not remove files without -f/--force.")
-
-        for install_path in install_paths:
-            if not os.path.exists(install_path):
-                G_LOGGER.warning(f"{install_path} does not exist, skipping.")
-            elif args.force:
-                G_LOGGER.info(f"Removing {install_path}")
-                os.remove(install_path)
-            else:
-                G_LOGGER.info(f"Would remove: {install_path}")
+        project.uninstall(targets, prof_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
 
 
     # TODO: Add -f/--force option without which it will not clean.
     def clean(args):
-        # TODO(3): Finish implementation, add per-target cleaning.
-        to_remove = []
-        if args.nuke:
-            # The nuclear option
-            to_remove = [project.build_dir]
-            G_LOGGER.info(f"Initiating Nuclear Protocol!")
-        else:
-            # By default, cleans all targets for the default profile.
-            prof_names = select_profile_names(args) or default_profiles
-            to_remove = [project.profiles[prof_name].build_dir for prof_name in prof_names]
-            G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
-        # Remove
-        for path in to_remove:
-            project.files.rm(path)
+        # By default, cleans all targets for the default profile.
+        prof_names = select_profile_names(args) or default_profiles
+        project.clean(prof_names, nuke=args.nuke)
 
 
     parser = argparse.ArgumentParser(description="Builds this project", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -270,6 +168,7 @@ def cli(project: Project, default_profiles=["debug", "release"]):
     # Install
     install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets. Uses only the release profile by default.")
     install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all targets and headers specified.", default=[])
+    install_parser.add_argument("-f", "--force", help="Copies targets. Without this flag, install will only do a dry-run", action="store_true")
     _add_installation_dir_args(install_parser)
     _add_profile_args(install_parser, "Install")
     install_parser.set_defaults(func=install)

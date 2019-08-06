@@ -9,14 +9,16 @@ from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
 from sbuildr.graph.graph import Graph
 from sbuildr.misc import paths, utils
+from sbuildr import logger
 
 from typing import List, Set, Union, Dict, Tuple
 from collections import OrderedDict, defaultdict
+import subprocess
 import inspect
+import pickle
 import sys
 import os
 
-# TODO: Create a package manager to install dependencies.
 class Project(object):
     """
     Represents a project. Projects include two default profiles with the following configuration:
@@ -53,6 +55,19 @@ class Project(object):
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG"), file_suffix="_debug")
+
+    @staticmethod
+    def load(path: str=None) -> "Project":
+        """
+        Load a project from the specified path.
+
+        :param path: The path from which to load the project. Defaults to ``os.path.join("build", "project.sbuildr")``
+
+        :returns: The loaded project.
+        """
+        path = path or os.path.join("build", "project.sbuildr")
+        with open(path, "rb") as f:
+            return pickle.load(f)
 
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
@@ -237,15 +252,37 @@ class Project(object):
         self.public_headers = set(discovered_paths)
         return discovered_paths
 
-    def configure(self) -> None:
+
+    def find(self, path) -> str:
         """
-        Configures this project for build. This includes generating any build configuration files required by this project's backend.
+        Attemps to locate a path in the project. If no paths were found, or multiple ambiguous paths were found, raises an exception.
+
+        :param path: The path to find. This may be an absolute path, partial path, or file/directory name.
+
+        :returns: An absolute path to the matching file or directory.
+        """
+        candidates = self.files.find(path)
+        if len(candidates) == 0:
+            G_LOGGER.critical(f"Could not find path: {path}")
+        elif len(candidates) > 1:
+            G_LOGGER.critical(f"For path: {path}, found multiple candidates: {candidates}. Please provide a longer path to disambiguate.")
+        return candidates[0]
+
+
+    def configure(self, path: str=None) -> None:
+        """
+        Configures this project for build and save to the specified path. This includes generating any build configuration files required by this project's backend. This way, it is possible to build without having to run the build script each time.
+
+        :param path: The path at which to save the project. Defaults to ``os.path.join(self.build_dir, "project.sbuildr")``
         """
         # Scan for all headers, and create the appropriate nodes.
         self.files.scan_all()
-        # Create the build directory - this is the only directory the backend will write to.
         self.files.mkdir(self.build_dir)
         self.backend.configure(self.files.graph, [profile.graph for profile in self.profiles.values()])
+        path = path or os.path.join(self.build_dir, "project.sbuildr")
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
 
     def build(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> float:
         """
@@ -256,6 +293,9 @@ class Project(object):
 
         :returns: Time elapsed during the build.
         """
+        G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {profile_names}")
+        G_LOGGER.debug(f"Targets: {targets}")
+
         def select_nodes(targets: List[ProjectTarget], profile_names: List[str]) -> List[Node]:
             # Create all required profile build directories and populate nodes.
             nodes = []
@@ -273,9 +313,6 @@ class Project(object):
                         G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
             return nodes
 
-        G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {profile_names}")
-        G_LOGGER.debug(f"Targets: {targets}")
-
         profile_names = profile_names or self.profiles.keys()
         nodes = select_nodes(targets, profile_names)
         status, time_elapsed = self.backend.build(nodes)
@@ -283,3 +320,212 @@ class Project(object):
             G_LOGGER.critical(f"Failed with:\n{utils.subprocess_output(status)}\nReconfiguring the project or running a clean build may resolve this.")
         G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds.")
         return time_elapsed
+
+
+    # TODO(0): Docstring
+    def run(self, targets: List[ProjectTarget], profile_names: List[str]=[]):
+        """
+        Runs targets from this project.
+        """
+        for target in targets:
+            if target.name not in self.executables:
+                G_LOGGER.critical(f"Could not find target: {target.name} in project executables. Note: Available executables are: {list(self.executables.keys())}")
+
+        def run_target(target: ProjectTarget, prof_name: str):
+            G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}: {target[prof_name].path}", color=logger.Color.GREEN)
+            status = subprocess.run([target[prof_name].path], capture_output=True)
+            output = utils.subprocess_output(status)
+            G_LOGGER.log(output)
+            if result.returncode:
+                G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
+
+        self.build(targets, profile_names)
+        for prof_name in profile_names:
+            G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
+            for target in targets:
+                run_target(target, prof_name)
+
+    # TODO(0): Docstring
+    def run_tests(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]):
+        """
+        Run tests from this project. Runs all tests from the project for all profiles by default.
+        """
+        for target in targets:
+            if target.name not in self.tests:
+                G_LOGGER.critical(f"Could not find test: {target.name} in project.\n\tAvailable tests:\n\t\t{list(self.tests.keys())}")
+
+        tests = targets or list(self.tests.values())
+        profile_names = profile_names or list(self.profiles.keys())
+        if not tests:
+            G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
+            return
+
+        # Otherwise, build and run the specified tests
+        self.build(tests, profile_names)
+
+        class TestResult:
+            def __init__(self):
+                self.failed = 0
+                self.passed = 0
+
+        def run_test(test, prof_name):
+            G_LOGGER.log(f"\nRunning test: {test}, for profile: {prof_name}: {test[prof_name].path}\n", color=logger.Color.GREEN)
+            status = subprocess.run([test[prof_name].path])
+            if status.returncode:
+                G_LOGGER.log(f"\nFAILED {test}, for profile: {prof_name}:\n{test[prof_name].path}", color=logger.Color.RED)
+                test_results[prof_name].failed += 1
+                failed_targets[prof_name].add(test[prof_name].name)
+            else:
+                G_LOGGER.log(f"\nPASSED {test}", color=logger.Color.GREEN)
+                test_results[prof_name].passed += 1
+
+        test_results = defaultdict(TestResult)
+        failed_targets = defaultdict(set)
+        for prof_name in profile_names:
+            G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
+            for test in tests:
+                run_test(test, prof_name)
+
+        # Display summary
+        G_LOGGER.log(f"\n{utils.wrap_str(f' Test Results Summary ')}\n", color=logger.Color.GREEN)
+        for prof_name, result in test_results.items():
+            if result.passed or result.failed:
+                G_LOGGER.log(f"Profile: {prof_name}", color=logger.Color.GREEN)
+                if result.passed:
+                    G_LOGGER.log(f"\tPASSED {plural('test', result.passed)}", color=logger.Color.GREEN)
+                if result.failed:
+                    G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", color=logger.Color.RED)
+
+
+    def _all_targets(self):
+        return list(self.libraries.values()) + list(self.executables.values())
+
+    def install(self,
+        targets: List[ProjectTarget]=[],
+        profile_names: List[str]=[],
+        headers: List[str]=[],
+        header_install_path: str=paths.default_header_install_path(),
+        library_install_path: str=paths.default_library_install_path(),
+        executable_install_path: str=paths.default_executable_install_path(),
+        dry_run: bool=True):
+        """
+        Install the specified targets for the specified profiles.
+
+        :param targets: The targets to install. Defaults to all non-internal project targets.
+        :param profile_names: The profiles for which to install. Defaults to the "release" profile.
+        :param headers: The headers to install. Defaults to all headers that are part of the interface as per :func:`interfaces` .
+        :param header_install_path: The path to which to install headers. This defaults to one of the default locations for the host OS.
+        :param library_install_path: The path to which to install libraries. This defaults to one of the default locations for the host OS.
+        :param executable_install_path: The path to which to install executables. This defaults to one of the default locations for the host OS.
+        :param dry_run: Whether to perform a dry-run only, with no file copying. Defaults to True.
+        """
+        targets = targets or [target for target in self._all_targets() if not target.internal]
+        profile_names = profile_names or ["release"]
+        headers = [self.find(header) for header in headers] or list(self.public_headers)
+
+        if dry_run:
+            G_LOGGER.warning(f"Install dry-run, will not copy files.")
+
+        def install_target(target, prof_name):
+            node = target[prof_name]
+            install_dir = library_install_path if target.is_lib else executable_install_path
+            install_path = os.path.join(install_dir, node.name)
+            if dry_run:
+                G_LOGGER.info(f"Would install target: {node.name} to {install_path}")
+            else:
+                if utils.copy_path(node.path, install_path):
+                    G_LOGGER.info(f"Installed target: {node.name} to {install_path}")
+
+        for prof_name in profile_names:
+            for target in targets:
+                install_target(target, prof_name)
+
+        def install_header(header):
+            install_path = os.path.join(header_install_path, os.path.basename(header))
+            if dry_run:
+                G_LOGGER.info(f"Would install header: {header} to {install_path}")
+            else:
+                if utils.copy_path(header, install_path):
+                    G_LOGGER.info(f"Installed header: {header} to {install_path}")
+
+        for header in headers:
+            install_header(header)
+
+
+    def uninstall(self,
+        targets: List[ProjectTarget]=[],
+        profile_names: List[str]=[],
+        headers: List[str]=[],
+        header_install_path: str=paths.default_header_install_path(),
+        library_install_path: str=paths.default_library_install_path(),
+        executable_install_path: str=paths.default_executable_install_path(),
+        dry_run: bool=True):
+        """
+        Uninstall the specified targets for the specified profiles.
+
+        :param targets: The targets to uninstall. Defaults to all non-internal project targets.
+        :param profile_names: The profiles for which to uninstall. Defaults to the "release" profile.
+        :param headers: The headers to uninstall. Defaults to all headers that are part of the interface as per :func:`interfaces` .
+        :param header_install_path: The path from which to uninstall headers. This defaults to one of the default locations for the host OS.
+        :param library_install_path: The path from which to uninstall libraries. This defaults to one of the default locations for the host OS.
+        :param executable_install_path: The path from which to uninstall executables. This defaults to one of the default locations for the host OS.
+        :param dry_run: Whether to perform a dry-run only, with no file copying. Defaults to True.
+        """
+        targets = targets or [target for target in self._all_targets() if not target.internal]
+        profile_names = profile_names or ["release"]
+        headers = [self.find(header) for header in headers] or list(self.public_headers)
+
+        if dry_run:
+            G_LOGGER.warning(f"Uninstall dry-run, will not remove files.")
+
+        def uninstall_target(target, prof_name):
+            node = target[prof_name]
+            uninstall_dir = library_install_path if target.is_lib else executable_install_path
+            uninstall_path = os.path.join(uninstall_dir, node.name)
+            if dry_run:
+                G_LOGGER.info(f"Would remove target: {node.name} from {uninstall_path}")
+            else:
+                os.remove(uninstall_path)
+                G_LOGGER.info(f"Uninstalled target: {node.name} from {uninstall_path}")
+
+        for prof_name in profile_names:
+            for target in targets:
+                uninstall_target(target, prof_name)
+
+        def uninstall_header(header):
+            uninstall_path = os.path.join(header_install_path, os.path.basename(header))
+            if dry_run:
+                G_LOGGER.info(f"Would remove header: {header} from {uninstall_path}")
+            else:
+                os.remove(uninstall_path)
+                G_LOGGER.info(f"Uninstalled header: {header} from {uninstall_path}")
+
+        for header in headers:
+            uninstall_header(header)
+
+
+    # TODO(0): Docstring
+    def clean(self, profile_names: List[str]=[], nuke: bool=False, dry_run: bool=True):
+        """
+        Removes build directories and project artifacts.
+        """
+        # TODO(3): Add per-target cleaning.
+        to_remove = []
+        if dry_run:
+            G_LOGGER.warning(f"Clean dry-run, will not remove files.")
+
+        if nuke:
+            # The nuclear option
+            to_remove = [self.build_dir]
+            G_LOGGER.info(f"Initiating Nuclear Protocol!")
+        else:
+            # By default, cleans all targets for all profiles.
+            profile_names = profile_names or list(self.profiles.keys())
+            to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
+            G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
+        # Remove
+        for path in to_remove:
+            if dry_run:
+                G_LOGGER.info(f"Would remove: {path}")
+            else:
+                project.files.rm(path)

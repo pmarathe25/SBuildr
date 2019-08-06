@@ -55,7 +55,7 @@ class TestIntegration(object):
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
         install_path = os.path.join(PATHS["build"], libmath["release"].name)
         # Install release profile
-        sys.argv = ["", "install"] + INSTALL_DIR_ARGS
+        sys.argv = ["", "install", "-f"] + INSTALL_DIR_ARGS
         cli(proj)
         assert os.path.exists(install_path)
         # Then remove
@@ -70,7 +70,7 @@ class TestIntegration(object):
         install_path = os.path.join(PATHS["build"], libmath["debug"].name)
         release_install = os.path.join(PATHS["build"], libmath["release"].name)
         # Install
-        sys.argv = ["", "install", "--debug"] + INSTALL_DIR_ARGS
+        sys.argv = ["", "install", "-f", "--debug"] + INSTALL_DIR_ARGS
         cli(proj)
         assert os.path.exists(install_path)
         assert not os.path.exists(release_install)
@@ -87,7 +87,7 @@ class TestIntegration(object):
         install_path = os.path.join(PATHS["build"], libmath["release"].name)
         test_install_path = os.path.join(PATHS["build"], test["release"].name)
         # Install
-        sys.argv = ["", "install", "math"] + INSTALL_DIR_ARGS
+        sys.argv = ["", "install", "-f", "math"] + INSTALL_DIR_ARGS
         cli(proj)
         assert os.path.exists(install_path)
         assert not os.path.exists(test_install_path)
@@ -100,7 +100,7 @@ class TestIntegration(object):
     def test_empty_install(self):
         proj = Project(root=ROOT)
 
-        sys.argv = ["", "install"]
+        sys.argv = ["", "install", "-f"]
         cli(proj)
 
     # TODO: Need coverage of install/uninstall for non-project-targets.
@@ -112,7 +112,7 @@ class TestIntegration(object):
 
         install_path = os.path.join(PATHS["build"], "math.hpp")
         # Install
-        sys.argv = ["", "install"] + INSTALL_DIR_ARGS
+        sys.argv = ["", "install", "-f"] + INSTALL_DIR_ARGS
         cli(proj)
         assert os.path.exists(install_path)
         # Then remove

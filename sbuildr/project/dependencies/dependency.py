@@ -23,6 +23,6 @@ class Dependency(object):
 
     def setup(self):
         """
-        Fetch, build, and install the dependency. This function will only build and install if the fetched dependency is newer than the existing dependency.
+        Fetch, build, and install the dependency. This function will only build and install if the fetched dependency differs from the existing dependency, as per the version tag.
         """
         pass

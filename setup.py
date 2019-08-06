@@ -19,6 +19,7 @@ setup(
     url="https://github.com/pmarathe25/SBuildr",
     zip_safe=True,
     packages=find_packages(),
+    scripts=["bin/sbuildr"],
     license="GNU GPLv3",
     classifiers=[
         "License :: OSI Approved :: MIT License",
