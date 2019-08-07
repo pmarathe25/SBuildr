@@ -10,6 +10,7 @@ import os
 
 G_LOGGER.verbosity = logger.Verbosity.VERBOSE
 
+# TODO: Move test_integration test into here. 
 class TestProject(object):
     def test_inits_to_curdir(self):
         proj = Project()

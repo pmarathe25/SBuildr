@@ -116,6 +116,8 @@ class Project(object):
             G_LOGGER.debug(f"Using fixed libs: {fixed_libs}")
             return fixed_libs
 
+        # TODO: Add Loader class so that we know how to run things that depend on these libraries.
+        # TODO: If the LinkedNode has any inputs that are not CompiledNodes, then they are libraries, and must be added to the loader path.
         source_nodes = get_source_nodes(sources)
         libs: List[Union[ProjectTarget, Node, str]] = get_libraries(libs)
         target = ProjectTarget(name=name, internal=internal)
@@ -322,6 +324,7 @@ class Project(object):
 
 
     # TODO(0): Docstring
+    # TODO: Set up LD_LIBRARY_PATH correctly here
     def run(self, targets: List[ProjectTarget], profile_names: List[str]=[]):
         """
         Runs targets from this project.
@@ -345,6 +348,7 @@ class Project(object):
                 run_target(target, prof_name)
 
     # TODO(0): Docstring
+    # TODO: Set up LD_LIBRARY_PATH correctly here
     def run_tests(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]):
         """
         Run tests from this project. Runs all tests from the project for all profiles by default.

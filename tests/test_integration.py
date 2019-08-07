@@ -103,7 +103,6 @@ class TestIntegration(object):
         sys.argv = ["", "install", "-f"]
         cli(proj)
 
-    # TODO: Need coverage of install/uninstall for non-project-targets.
     def test_header_install(self):
         proj = Project(root=ROOT)
         [header] = proj.interfaces(["math.hpp"])

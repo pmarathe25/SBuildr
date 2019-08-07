@@ -103,7 +103,6 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         G_LOGGER.verbose(f"Headers: {headers}")
         return targets, prof_names, headers
 
-    # TODO: Add -f flag and --upgrade behavior should be to remove older versions.
     def install(args):
         targets, prof_names, headers = get_install_targets(args)
         project.install(targets, prof_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
@@ -114,7 +113,6 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         project.uninstall(targets, prof_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
 
 
-    # TODO: Add -f/--force option without which it will not clean.
     def clean(args):
         # By default, cleans all targets for the default profile.
         prof_names = select_profile_names(args) or default_profiles
