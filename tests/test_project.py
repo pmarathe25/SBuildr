@@ -68,7 +68,6 @@ class TestFileManager(object):
         factorial_cpp = manager.source(PATHS["factorial.cpp"])
         fibonacci_cpp = manager.source(PATHS["fibonacci.cpp"])
         test_cpp = manager.source(PATHS["test.cpp"])
-        manager.scan_all()
         # Headers
         # Includes utils.hpp..
         assert factorial_hpp.include_dirs == sorted([PATHS["src"], PATHS["include"]])

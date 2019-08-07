@@ -116,16 +116,14 @@ class FileManager(object):
         elif len(candidates) == 0:
             G_LOGGER.critical(f"Could not find {path}. Does it exist?")
         path = candidates[0]
-        # This will not overwrite if the SourceNode is already in the graph.
-        return self.graph.add(SourceNode(path))
 
-    def scan_all(self) -> None:
-        # scan() will modify the graph, so cannot iterate over values() directly
-        source_nodes = [node for node in self.graph.values() if isinstance(node, SourceNode)]
-        G_LOGGER.verbose(f"Scanning source nodes: {source_nodes}")
-        [self.scan(node) for node in source_nodes]
+        node = SourceNode(path)
+        if node not in self.graph:
+            G_LOGGER.verbose(f"Scanning source node: {node}")
+            self.scan(node)
+        return self.graph.add(node)
 
-    # Finds all required include directories for a given managed file. Adds it to the graph if missing.
+    # Finds all required include directories for a given managed file. Adds nodes to the graph if missing.
     def scan(self, node: str) -> None:
         # Finds the file path for the file included in `include_path` by the `included_token` token.
         # This always returns an absolute path, since self.find always returns absolute paths.

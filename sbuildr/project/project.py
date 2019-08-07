@@ -269,14 +269,13 @@ class Project(object):
         return candidates[0]
 
 
-    def configure(self, path: str=None) -> None:
+    def freeze(self, path: str=None) -> None:
         """
-        Configures this project for build and save to the specified path. This includes generating any build configuration files required by this project's backend. This way, it is possible to build without having to run the build script each time.
+        Freeze this project for build and save to the specified path. This includes generating any build configuration files required by this project's backend. This way, it is possible to build without having to run the build script each time.
+        New targets should not be added to a frozen project.
 
         :param path: The path at which to save the project. Defaults to ``os.path.join(self.build_dir, "project.sbuildr")``
         """
-        # Scan for all headers, and create the appropriate nodes.
-        self.files.scan_all()
         self.files.mkdir(self.build_dir)
         self.backend.configure(self.files.graph, [profile.graph for profile in self.profiles.values()])
         path = path or os.path.join(self.build_dir, "project.sbuildr")

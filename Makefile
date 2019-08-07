@@ -18,7 +18,7 @@ help:
 
 test:
 	python -m pytest tests/
-	export PYTHONPATH=$(CURDIR); python examples/minimal_project/build.py configure && python examples/minimal_project/build.py build && python examples/minimal_project/build.py tests
+	export PYTHONPATH=$(CURDIR); python examples/minimal_project/build.py configure -vv && python examples/minimal_project/build.py build -vv && python examples/minimal_project/build.py tests -vv
 
 wheel:
 	python setup.py bdist_wheel

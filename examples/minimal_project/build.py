@@ -15,5 +15,4 @@ project.interfaces(["math.hpp"])
 # be linked against the library created above.
 test = project.test("test", sources=["test.cpp"], libs=["stdc++", libmath])
 
-# project.configure()
 sbuildr.cli(project)
