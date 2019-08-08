@@ -18,6 +18,7 @@ Dates are in YYYY-MM-DD format.
 - `Project`'s `configure()` function now pickles and writes the Project into the build directory. `Project.load()` can be used to retrieve it.
 - `Project`'s `configure()` is now `freeze()`
 - Removes lazy header scanning - file manager now scans source files as they are added.
+- Profile build directories can now be outside of the project's build directory.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

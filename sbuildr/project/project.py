@@ -37,9 +37,8 @@ class Project(object):
         root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
-        # TODO: This will change once FileManager takes writable_dirs.
-        self.files = FileManager(root_dir, build_dir, dirs)
-        self.build_dir = self.files.build_dir
+        self.files = FileManager(root_dir, dirs)
+        self.build_dir = self.files.add_build_dir(build_dir or os.path.join(root_dir, "build"))
         # Backend
         self.backend = BackendType(self.build_dir)
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
@@ -117,7 +116,7 @@ class Project(object):
             return fixed_libs
 
         # TODO: Add Loader class so that we know how to run things that depend on these libraries.
-        # TODO: If the LinkedNode has any inputs that are not CompiledNodes, then they are libraries, and must be added to the loader path.
+        # TODO: Grab loader dirs from the LinkedNode's lib_dirs
         source_nodes = get_source_nodes(sources)
         libs: List[Union[ProjectTarget, Node, str]] = get_libraries(libs)
         target = ProjectTarget(name=name, internal=internal)
@@ -214,23 +213,19 @@ class Project(object):
         return self.libraries[name]
 
     # Returns a profile if it exists, otherwise creates a new one and returns it.
-    # TODO: build_subdir should be able to handle absolute paths too. The profile build directory can be outside the main build directory. However, the file manager's writable directories would need to updated.
-    def profile(self, name: str, flags: BuildFlags=BuildFlags(), build_subdir: str=None, file_suffix: str="") -> Profile:
+    def profile(self, name: str, flags: BuildFlags=BuildFlags(), build_dir: str=None, file_suffix: str="") -> Profile:
         """
         Returns or creates a profile with the specified parameters.
 
         :param name: The name of this profile.
         :param flags: The flags to use for this profile. These will be applied to all targets for this profile. Per-target flags always take precedence.
-        :param build_subdir: The name of the build subdirectory to use. This should NOT be a path, as it will always be created as a subdirectory of the project's build directory.
+        :param build_dir: The name of the build subdirectory to use. This should NOT be a path, as it will always be created as a subdirectory of the project's build directory.
         :param file_suffix: A file suffix to attach to all artifacts generated for this profile. For example, the default debug profile attaches a ``_debug`` suffix to all library and executable names.
 
         :returns: :class:`sbuildr.Profile`
         """
         if name not in self.profiles:
-            build_subdir = build_subdir or name
-            if os.path.isabs(build_subdir):
-                G_LOGGER.critical(f"Build subdirectory for profile {name} should not be a path, but was set to {build_subdir}")
-            build_dir = os.path.join(self.files.build_dir, build_subdir)
+            build_dir = self.files.add_build_dir(os.path.abspath(build_dir or os.path.join(self.build_dir, name)))
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 

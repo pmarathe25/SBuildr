@@ -10,7 +10,7 @@ import os
 
 G_LOGGER.verbosity = logger.Verbosity.VERBOSE
 
-# TODO: Move test_integration test into here. 
+# TODO: Move test_integration test into here.
 class TestProject(object):
     def test_inits_to_curdir(self):
         proj = Project()
@@ -40,9 +40,14 @@ class TestProject(object):
         self.check_target(proj, lib)
 
 class TestFileManager(object):
+    def setup_method(self):
+        self.manager = FileManager(ROOT)
+        self.manager.add_build_dir(PATHS["build"])
+
     def test_globs_files_from_relpath_into_abspaths(self):
         dirs = [os.path.relpath(os.path.join(os.path.dirname(__file__), "minimal_project"))]
-        manager = FileManager(ROOT, PATHS["build"], dirs=dirs)
+        manager = FileManager(ROOT, dirs=dirs)
+        manager.add_build_dir(PATHS["build"])
         all_files = []
         for file in glob.iglob(os.path.join(ROOT, "**"), recursive=True):
             if os.path.isfile(file):
@@ -52,23 +57,20 @@ class TestFileManager(object):
         assert all([os.path.isabs(file) for file in manager.files])
 
     def test_find(self):
-        manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
         for filename, path in PATHS.items():
             if os.path.isfile(path):
-                assert manager.find(filename) == [path]
+                assert self.manager.find(filename) == [path]
 
     def test_can_find_sources(self):
-        manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
-        node = manager.source("tests/test.cpp")
+        node = self.manager.source("tests/test.cpp")
         assert node.path == PATHS["test.cpp"]
 
     def test_source(self):
-        manager = FileManager(ROOT, PATHS["build"], dirs=[ROOT])
-        factorial_hpp = manager.source(PATHS["factorial.hpp"])
-        fibonacci_hpp = manager.source(PATHS["fibonacci.hpp"])
-        factorial_cpp = manager.source(PATHS["factorial.cpp"])
-        fibonacci_cpp = manager.source(PATHS["fibonacci.cpp"])
-        test_cpp = manager.source(PATHS["test.cpp"])
+        factorial_hpp = self.manager.source(PATHS["factorial.hpp"])
+        fibonacci_hpp = self.manager.source(PATHS["fibonacci.hpp"])
+        factorial_cpp = self.manager.source(PATHS["factorial.cpp"])
+        fibonacci_cpp = self.manager.source(PATHS["fibonacci.cpp"])
+        test_cpp = self.manager.source(PATHS["test.cpp"])
         # Headers
         # Includes utils.hpp..
         assert factorial_hpp.include_dirs == sorted([PATHS["src"], PATHS["include"]])
@@ -86,4 +88,4 @@ class TestFileManager(object):
         assert test_cpp.include_dirs == sorted(set([PATHS["src"]] + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
         # Make sure that the source graph has been populated
         for file in ["factorial.hpp", "fibonacci.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
-            assert manager.graph.contains_path(PATHS[file])
+            assert self.manager.graph.contains_path(PATHS[file])

@@ -125,7 +125,7 @@ class Linker(object):
         return utils.str_hash(sig)
 
     # Generates the command required to link the inputs files with the specified options.
-    def link(self, input_paths: List[str], output_path, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> List[str]:
+    def link(self, input_paths: List[str], output_path: str, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags()) -> List[str]:
         G_LOGGER.debug(f"self.ldef: {self.ldef}")
         linker_flags = self.ldef.parse_flags(flags)
         lib_dirs = [self.ldef.lib_dir(dir) for dir in lib_dirs]

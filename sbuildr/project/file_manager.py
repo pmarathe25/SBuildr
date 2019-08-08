@@ -28,17 +28,15 @@ def _is_in_directories(path: str, dirs: Set[str]):
 
 class FileManager(object):
     # The root directory is used for relative paths. The build directory is automatically excluded from searches.
-    def __init__(self, root_dir: str, build_dir: str=None, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
+    def __init__(self, root_dir: str, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
         self.root_dir = os.path.abspath(root_dir)
         if not os.path.isdir(self.root_dir):
             G_LOGGER.critical(f"Root Directory: {self.root_dir} does not exist, or is not a directory.")
-        # TODO: Maybe change this to `writable_dirs`
-        # build_dir is the only location to which FileManager is allowed to write.
-        self.build_dir = self.abspath(build_dir) if build_dir else os.path.join(root_dir, "build")
-        exclude_dirs.add(self.build_dir)
-        self.exclude_dirs = exclude_dirs
-        self.files = []
+        # build_dirs are the only locations to which FileManager is allowed to write.
+        self.build_dirs: Set[str] = set()
+        self.exclude_dirs: Set[str] = set()
 
+        self.files = []
         # Remove directories that are within exclude_dirs after converting all directories to abspaths.
         dirs = set([self.abspath(dir) for dir in dirs]) | set([root_dir])
         G_LOGGER.verbose(f"Directories after converting to absolute paths: {dirs}")
@@ -57,11 +55,21 @@ class FileManager(object):
             if os.path.isfile(path) and not _is_in_directories(path, self.exclude_dirs):
                 self.files.append(os.path.abspath(path))
 
+    # Adds the specified directory to build_dirs and exclude_dirs,
+    # then returns the absolute path to the added directory.
+    def add_build_dir(self, build_dir: str) -> str:
+        absdir = self.abspath(build_dir)
+        self.build_dirs.add(absdir)
+        self.exclude_dirs.add(absdir)
+        # Remove any files that are in the new build directory.
+        self.files = [file for file in self.files if not _is_in_directory(file, build_dir)]
+        return absdir
+
     # Recursively creates all parent directories required to create dir_path.
     # Returns whether the directory was created inside the build directory.
     # If it is not a subdirectory of the build directory, returns False.
     def mkdir(self, dir_path: str) -> bool:
-        if _is_in_directory(dir_path, self.build_dir):
+        if _is_in_directories(dir_path, self.build_dirs):
             os.makedirs(dir_path, exist_ok=True)
             return True
         return False
@@ -69,7 +77,7 @@ class FileManager(object):
     # Remove files and directories, but only if they are within the build directory.
     # Returns whether the path was located in the build directory..
     def rm(self, path: str) -> bool:
-        if _is_in_directory(path, self.build_dir):
+        if _is_in_directories(path, self.build_dirs):
             try:
                 shutil.rmtree(path)
                 G_LOGGER.info(f"Removed: {path}")
@@ -83,10 +91,12 @@ class FileManager(object):
     def abspath(self, path: str) -> str:
         if os.path.isabs(path):
             return path
+        # Prefer a path relative to the root unless the absolute path relative to cwd exists.
         in_root_path = os.path.abspath(os.path.join(self.root_dir, path))
-        if os.path.exists(in_root_path):
+        abspath = os.path.abspath(path)
+        if not os.path.exists(abspath):
             return in_root_path
-        return os.path.abspath(path)
+        return abspath
 
     # Finds filename in self.files. Always returns absolute paths.
     # If the file exists but is not in this FileManager's tracked directories, returns an empty list.

@@ -56,6 +56,7 @@ class CompiledNode(Node):
         super().add_input(node)
 
 # In LinkedNodes, the name field contains the user friendly name (i.e. without linker signature)
+# TODO: Change this so that all libraries are provided as names, and lib_dirs is updated correspondingly
 # libs contains library names. When a path to the library is known, it is instead added as an input to the LinkedNode.
 class LinkedNode(Node):
     def __init__(self, path: str, inputs: List[Node], linker: linker.Linker, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), name=""):
