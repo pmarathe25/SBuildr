@@ -27,9 +27,10 @@ class Profile(object):
     :param build_dir: An absolute path to the build directory to use.
     :param suffix: A file suffix to attach to all artifacts generated for this profile.
     """
-    def __init__(self, flags: BuildFlags, build_dir: str, suffix: str):
+    def __init__(self, flags: BuildFlags, build_dir: str, common_objs_build_dir:str, suffix: str):
         self.flags = flags
         self.build_dir = build_dir
+        self.common_objs_build_dir = common_objs_build_dir
         self.graph = Graph()
         self.suffix = suffix
 
@@ -45,7 +46,7 @@ class Profile(object):
             # Only the include dirs provided by the user are part of the hash. When the automatically deduced
             # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
             obj_sig = compiler.signature(source_node.path, include_dirs, flags)
-            obj_path = os.path.join(self.build_dir, _file_suffix(source_node.path, f".{obj_sig}", ".o"))
+            obj_path = os.path.join(self.common_objs_build_dir, _file_suffix(source_node.path, f".{obj_sig}", ".o"))
             # User defined includes are always prepended the ones deduced for SourceNodes.
             obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
             object_nodes.append(self.graph.add(obj_node))
@@ -64,7 +65,8 @@ class Profile(object):
         input_nodes = object_nodes + lib_nodes
         input_paths = [node.path for node in input_nodes]
         linked_sig = linker.signature(input_paths, lib_names, lib_dirs, flags)
-        linked_path = os.path.join(self.build_dir, _file_suffix(basename, f".{linked_sig}"))
+        # linked_path = os.path.join(self.build_dir, _file_suffix(basename, f".{linked_sig}"))
+        linked_path = os.path.join(self.build_dir, basename)
         display_name = _file_suffix(basename, self.suffix)
         linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, lib_dirs, flags, name=display_name)
         return self.graph.add(linked_node)

@@ -23,9 +23,7 @@ class TestProject(object):
             # Make sure generated files are in the build directory.
             build_dir = proj.profile(profile_name).build_dir
             assert os.path.dirname(node.path) == build_dir
-            print(node)
-            print([os.path.dirname(inp.path) for inp in node.inputs])
-            assert all([os.path.dirname(inp.path) == build_dir for inp in node.inputs])
+            assert all([os.path.dirname(inp.path) == build_dir or os.path.dirname(inp.path) == proj.common_objs_build_dir for inp in node.inputs])
 
     def test_executable_api(self):
         proj = Project(root=ROOT)

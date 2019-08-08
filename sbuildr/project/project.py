@@ -39,6 +39,8 @@ class Project(object):
         # to contain no duplicates as well.
         self.files = FileManager(root_dir, dirs)
         self.build_dir = self.files.add_build_dir(build_dir or os.path.join(root_dir, "build"))
+        # TODO: Make this a paramter?
+        self.common_objs_build_dir = os.path.join(self.build_dir, "common")
         # Backend
         self.backend = BackendType(self.build_dir)
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
@@ -226,7 +228,8 @@ class Project(object):
         """
         if name not in self.profiles:
             build_dir = self.files.add_build_dir(os.path.abspath(build_dir or os.path.join(self.build_dir, name)))
-            self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
+            G_LOGGER.verbose(f"Setting build directory for profile: {name} to: {build_dir}")
+            self.profiles[name] = Profile(flags=flags, build_dir=build_dir, common_objs_build_dir=self.common_objs_build_dir, suffix=file_suffix)
         return self.profiles[name]
 
     def interfaces(self, headers: List[str]) -> List[str]:
@@ -298,7 +301,6 @@ class Project(object):
             for prof_name in profile_names:
                 if prof_name not in self.profiles:
                     G_LOGGER.critical(f"Profile {prof_name} does not exist in the project. Available profiles: {list(project.profiles.keys())}")
-                self.files.mkdir(self.profiles[prof_name].build_dir)
                 # Populate nodes.
                 for target in targets:
                     if prof_name in target:
@@ -308,6 +310,11 @@ class Project(object):
                     else:
                         G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
             return nodes
+
+        # Create all required build directories.
+        self.files.mkdir(self.common_objs_build_dir)
+        [self.files.mkdir(prof.build_dir) for prof in self.profiles.values()]
+        G_LOGGER.verbose(f"Created build directories: {self.common_objs_build_dir}, {[prof.build_dir for prof in self.profiles.values()]}")
 
         profile_names = profile_names or self.profiles.keys()
         nodes = select_nodes(targets, profile_names)
@@ -420,6 +427,9 @@ class Project(object):
         targets = targets or [target for target in self._all_targets() if not target.internal]
         profile_names = profile_names or ["release"]
         headers = [self.find(header) for header in headers] or list(self.public_headers)
+
+        # Build targets then install
+        self.build(targets, profile_names)
 
         if dry_run:
             G_LOGGER.warning(f"Install dry-run, will not copy files.")

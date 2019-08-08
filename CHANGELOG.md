@@ -19,6 +19,7 @@ Dates are in YYYY-MM-DD format.
 - `Project`'s `configure()` is now `freeze()`
 - Removes lazy header scanning - file manager now scans source files as they are added.
 - Profile build directories can now be outside of the project's build directory.
+- All profiles now share a common build directory for intermediate objects. Final targets are still built in each profile's individual subdirectory.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).
