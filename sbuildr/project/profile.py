@@ -35,7 +35,6 @@ class Profile(object):
         self.suffix = suffix
 
     # libs can contain either Nodes from this graph, or paths to libraries, or names of libraries
-    # This cannot be called with a target_config that has not been
     def target(self, basename, source_nodes, flags, libs: List[Union[Node, str]], compiler, include_dirs, linker, lib_dirs) -> LinkedNode:
         # Per-target flags always overwrite profile flags.
         flags = self.flags + flags
@@ -53,6 +52,8 @@ class Profile(object):
 
         # For any libraries that are Nodes, add as inputs to the final LinkedNode.
         # For any libraries that are names, pass them along to the linker as-is.
+
+        # TODO: Here, lib_nodes should all be passed to lib_dirs and lib_names
         lib_nodes: List[Node] = []
         lib_names: List[str] = []
         for lib in libs:
@@ -64,9 +65,7 @@ class Profile(object):
         # Finally, add the actual linked node
         input_nodes = object_nodes + lib_nodes
         input_paths = [node.path for node in input_nodes]
-        linked_sig = linker.signature(input_paths, lib_names, lib_dirs, flags)
-        # linked_path = os.path.join(self.build_dir, _file_suffix(basename, f".{linked_sig}"))
-        linked_path = os.path.join(self.build_dir, basename)
-        display_name = _file_suffix(basename, self.suffix)
-        linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, lib_dirs, flags, name=display_name)
+
+        linked_path = os.path.join(self.build_dir, _file_suffix(basename, self.suffix))
+        linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, lib_dirs, flags)
         return self.graph.add(linked_node)
