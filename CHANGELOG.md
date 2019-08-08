@@ -20,6 +20,7 @@ Dates are in YYYY-MM-DD format.
 - Removes lazy header scanning - file manager now scans source files as they are added.
 - Profile build directories can now be outside of the project's build directory.
 - All profiles now share a common build directory for intermediate objects. Final targets are still built in each profile's individual subdirectory.
+- `Backend` now only accepts a single graph describing the whole project. Thus, the backend does not need to know about file manager, profiles, etc. To facilitate, also adds `__add__` and `__iadd__` to Graph.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

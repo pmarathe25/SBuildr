@@ -276,8 +276,17 @@ class Project(object):
 
         :param path: The path at which to save the project. Defaults to ``os.path.join(self.build_dir, "project.sbuildr")``
         """
+        # Combine the source graph from file manager and the various profile graphs
+        def combined_graph():
+            graph = Graph()
+            graph += self.files.graph
+            for profile in self.profiles.values():
+                graph += profile.graph
+            return graph
+
         self.files.mkdir(self.build_dir)
-        self.backend.configure(self.files.graph, [profile.graph for profile in self.profiles.values()])
+        self.backend.configure(combined_graph())
+
         path = path or os.path.join(self.build_dir, "project.sbuildr")
         with open(path, "wb") as f:
             pickle.dump(self, f)

@@ -29,13 +29,12 @@ class Backend(object):
         """
         self.build_dir = build_dir
 
-    def configure(self, source_graph: Graph, profile_graphs: List[Graph]):
+    def configure(self, build_graph: Graph):
         """
         Generates build configuration files based on the source files provided by the project's file manager,
         and targets specified in each profile.
 
-        :param source_graph: A graph of the source files in the project.
-        :param profile_graphs: Graphs from each profile in the project.
+        :param build_graph: A graph of the source files and profile targets in the project.
 
         :returns: The generated build file.
         """

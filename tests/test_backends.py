@@ -48,7 +48,7 @@ class TestRBuild(object):
     def test_config_file(self, compiler, linker):
         source_graph, profile_graph = create_build_graph(compiler, linker)
         gen = RBuildBackend(PATHS["build"])
-        gen.configure(source_graph, [profile_graph])
+        gen.configure(source_graph + profile_graph)
         assert subprocess.run(["rbuild", gen.config_file])
         # All paths should exist after building.
         for node in source_graph.values():
@@ -60,5 +60,5 @@ class TestRBuild(object):
     def test_build_empty(self):
         source_graph, profile_graph = create_build_graph(compiler.clang, linker.clang)
         gen = RBuildBackend(PATHS["build"])
-        gen.configure(source_graph, [profile_graph])
+        gen.configure(source_graph + profile_graph)
         status, time_elapsed = gen.build([])

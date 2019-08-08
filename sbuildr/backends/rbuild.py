@@ -16,36 +16,25 @@ class RBuildBackend(Backend):
         super().__init__(build_dir)
         self.config_file = os.path.join(self.build_dir, RBuildBackend.CONFIG_FILENAME)
 
-    def configure(self, source_graph: Graph, profile_graphs: List[Graph]):
-        # Map each node to it's integer id. This is unique per rbuild file.
+    def configure(self, build_graph: Graph):
+        config = ""
+
         node_ids = {}
         id = 0
-
-        def config_for_graph(graph: Graph) -> str:
-            nonlocal node_ids, id
-            config_file = f""
-            for layer in graph.layers():
-                for node in layer:
-                    node_ids[node] = id
-                    config_file += f"path {node.path} #{id}\n"
-                    id += 1
-                    # For dependencies, we need to convert to node_ids
-                    if node.inputs:
-                        config_file += f"deps {' '.join([str(node_ids[node]) for node in node.inputs])}\n"
-                    cmd = self._node_command(node)
-                    if cmd:
-                        config_file += "run"
-                        for arg in cmd:
-                            config_file += f' "{arg}"'
-                        config_file += '\n'
-            return config_file
-
-        # First generate the targets in the file manager, then the profiles.
-        # This will ensure that ordering is correct, since the targets in profiles depend
-        # on the targets in the file manager.
-        config = config_for_graph(source_graph)
-        for profile_graph in profile_graphs:
-            config += config_for_graph(profile_graph)
+        for layer in build_graph.layers():
+            for node in layer:
+                node_ids[node] = id
+                config += f"path {node.path} #{id}\n"
+                id += 1
+                # For dependencies, we need to convert to node_ids
+                if node.inputs:
+                    config += f"deps {' '.join([str(node_ids[node]) for node in node.inputs])}\n"
+                cmd = self._node_command(node)
+                if cmd:
+                    config += "run"
+                    for arg in cmd:
+                        config += f' "{arg}"'
+                    config += '\n'
 
         G_LOGGER.info(f"Generating configuration files in build directory: {self.build_dir}")
         with open(self.config_file, "w") as f:

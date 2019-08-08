@@ -1,5 +1,6 @@
 from sbuildr.graph.node import Node
 from typing import List, Dict, Set
+import copy
 
 class Graph(dict):
     def __init__(self, nodes: Set[Node]=set()):
@@ -11,6 +12,16 @@ class Graph(dict):
 
     def contains_path(self, path: str) -> bool:
         return dict.__contains__(self, path)
+
+    # TODO: This may need additional logic for overriding
+    def __iadd__(self, other: "Graph"):
+        self.update(other)
+        return self
+
+    def __add__(self, other: "Graph"):
+        temp = copy.deepcopy(self)
+        temp += other
+        return temp
 
     # Adds a node if it is not already present.
     # If the path is present already, but the node is of a different type, it is overwritten.
