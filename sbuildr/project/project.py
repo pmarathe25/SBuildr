@@ -34,12 +34,11 @@ class Project(object):
     def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, BackendType: type=RBuildBackend):
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
-        root_dir = root if root else os.path.abspath(os.path.dirname(self.config_file))
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
-        self.files = FileManager(root_dir, dirs)
-        self.build_dir = self.files.add_build_dir(build_dir or os.path.join(root_dir, "build"))
-        # TODO: Make this a paramter?
+        self.files = FileManager(root or os.path.abspath(os.path.dirname(self.config_file)), dirs)
+        self.build_dir = self.files.add_build_dir(build_dir or os.path.join(self.files.root_dir, "build"))
+        # TODO: Make this a parameter?
         self.common_objs_build_dir = os.path.join(self.build_dir, "common")
         # Backend
         self.backend = BackendType(self.build_dir)
@@ -117,8 +116,6 @@ class Project(object):
             G_LOGGER.debug(f"Using fixed libs: {fixed_libs}")
             return fixed_libs
 
-        # TODO: Add Loader class so that we know how to run things that depend on these libraries.
-        # TODO: Grab loader dirs from the LinkedNode's lib_dirs
         source_nodes = get_source_nodes(sources)
         libs: List[Union[ProjectTarget, Node, str]] = get_libraries(libs)
         target = ProjectTarget(name=name, internal=internal)
@@ -156,7 +153,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.executables[name] = self._target(name, paths.execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, internal)
+        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, internal)
         return self.executables[name]
 
     def test(self,
@@ -182,7 +179,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.tests[name] = self._target(name, paths.execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, True)
+        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, True)
         return self.tests[name]
 
     def library(self,
@@ -210,7 +207,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.libraries[name] = self._target(name, paths.libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, lib_dirs, internal)
+        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, lib_dirs, internal)
         self.libraries[name].is_lib = True
         return self.libraries[name]
 
@@ -269,12 +266,20 @@ class Project(object):
         return candidates[0]
 
 
-    def freeze(self, path: str=None) -> None:
+    def save(self, path: str=None) -> None:
         """
-        Freeze this project for build and save to the specified path. This includes generating any build configuration files required by this project's backend. This way, it is possible to build without having to run the build script each time.
-        New targets should not be added to a frozen project.
+        Save this project to the specified path.
 
-        :param path: The path at which to save the project. Defaults to ``os.path.join(self.build_dir, "project.sbuildr")``
+        :param path: The path at which to save the project. Defaults to "project.sbuildr" in the project's root directory.
+        """
+        path = path or os.path.join(self.files.root_dir, "project.sbuildr")
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+
+    def configure(self) -> None:
+        """
+        Configure the project for build. This includes generating any build configuration files required by this project's backend.
         """
         # Combine the source graph from file manager and the various profile graphs
         def combined_graph():
@@ -286,10 +291,6 @@ class Project(object):
 
         self.files.mkdir(self.build_dir)
         self.backend.configure(combined_graph())
-
-        path = path or os.path.join(self.build_dir, "project.sbuildr")
-        with open(path, "wb") as f:
-            pickle.dump(self, f)
 
 
     def build(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> float:
@@ -334,8 +335,18 @@ class Project(object):
         return time_elapsed
 
 
+    # Sets up the environment correctly to be able to run the specified linked node.
+    # TODO: Refactor into separate file with run() that does platform independent env vars.
+    def _run_linked_node(self, node: LinkedNode, *args, **kwargs) -> subprocess.CompletedProcess:
+        loader_path = os.environ[paths.loader_path_env_var()]
+        G_LOGGER.verbose(f"Running linked node: {node}")
+        for lib_dir in node.lib_dirs:
+            loader_path += f"{os.pathsep}{lib_dir}"
+        G_LOGGER.debug(f"Using loader paths: {loader_path}")
+
+        return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)
+
     # TODO(0): Docstring
-    # TODO: Set up LD_LIBRARY_PATH correctly here
     def run(self, targets: List[ProjectTarget], profile_names: List[str]=[]):
         """
         Runs targets from this project.
@@ -346,7 +357,7 @@ class Project(object):
 
         def run_target(target: ProjectTarget, prof_name: str):
             G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}: {target[prof_name].path}", color=logger.Color.GREEN)
-            status = subprocess.run([target[prof_name].path], capture_output=True)
+            status = self._run_linked_node(target[prof_name], capture_output=True)
             output = utils.subprocess_output(status)
             G_LOGGER.log(output)
             if result.returncode:
@@ -359,7 +370,6 @@ class Project(object):
                 run_target(target, prof_name)
 
     # TODO(0): Docstring
-    # TODO: Set up LD_LIBRARY_PATH correctly here
     def run_tests(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]):
         """
         Run tests from this project. Runs all tests from the project for all profiles by default.
@@ -384,7 +394,7 @@ class Project(object):
 
         def run_test(test, prof_name):
             G_LOGGER.log(f"\nRunning test: {test}, for profile: {prof_name}: {test[prof_name].path}\n", color=logger.Color.GREEN)
-            status = subprocess.run([test[prof_name].path])
+            status = self._run_linked_node(test[prof_name])
             if status.returncode:
                 G_LOGGER.log(f"\nFAILED {test}, for profile: {prof_name}:\n{test[prof_name].path}", color=logger.Color.RED)
                 test_results[prof_name].failed += 1

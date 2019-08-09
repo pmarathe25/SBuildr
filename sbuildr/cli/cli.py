@@ -65,7 +65,7 @@ def cli(project: Project, default_profiles=["debug", "release"]):
 
 
     def configure(args):
-        project.freeze()
+        project.configure()
 
 
     def build(args) -> Tuple[List[ProjectTarget], List[str]]:
@@ -92,6 +92,7 @@ def cli(project: Project, default_profiles=["debug", "release"]):
         tests = select_test_targets(args)
         prof_names = select_profile_names(args)
         project.run_tests(tests, prof_names)
+
 
     def get_install_targets(args):
         headers = [tgt for tgt in args.targets if tgt not in project] or list(project.public_headers)

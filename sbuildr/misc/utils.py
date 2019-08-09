@@ -5,9 +5,9 @@ import time
 import sys
 import os
 
-def time_subprocess(cmd: List[str]) -> (subprocess.CompletedProcess, float):
+def time_subprocess(cmd: List[str], *args, **kwargs) -> (subprocess.CompletedProcess, float):
     start = time.time()
-    status = subprocess.run(cmd, capture_output=True)
+    status = subprocess.run(cmd, capture_output=True, *args, **kwargs)
     end = time.time()
     return status, end - start
 

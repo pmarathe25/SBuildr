@@ -25,7 +25,7 @@ def create_build_graph(compiler, linker):
     test_o = CompiledNode(os.path.join(PATHS["build"], "test.o"), input=test_cpp, compiler=compiler, flags=flags)
     # Library and executable
     libmath = LinkedNode(os.path.join(PATHS["build"], "libmath.so"), [factorial_o, fibonacci_o], linker=linker, flags=flags+BuildFlags()._enable_shared(), libs=["stdc++"])
-    test = LinkedNode(os.path.join(PATHS["build"], "test"), [test_o, libmath], linker=linker, flags=flags, libs=["stdc++"])
+    test = LinkedNode(os.path.join(PATHS["build"], "test"), [test_o, libmath], linker=linker, flags=flags, libs=["stdc++", "math"], lib_dirs=[os.path.dirname(libmath.path)])
     return Graph([utils_h, factorial_h, fibonacci_h, factorial_cpp, fibonacci_cpp, test_cpp]), Graph([factorial_o, fibonacci_o, test_o, libmath, test])
 
 class TestRBuild(object):

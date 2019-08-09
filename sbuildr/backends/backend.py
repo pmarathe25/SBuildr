@@ -17,8 +17,8 @@ class Backend(object):
             # automatically deduced, whereas the ones in the CompiledNode are provided by the user.
             return node.compiler.compile(source.path, node.path, node.include_dirs + source.include_dirs, node.flags)
         elif isinstance(node, LinkedNode):
-            # TODO: Change this to only link CompiledNodes. All libraries should come from node.libs
-            return node.linker.link([inp.path for inp in node.inputs], node.path, node.libs, node.lib_dirs, node.flags)
+            # Only link CompiledNodes. All libraries should come from node.libs
+            return node.linker.link([inp.path for inp in node.inputs if isinstance(inp, CompiledNode)], node.path, node.libs, node.lib_dirs, node.flags)
         return []
 
     def __init__(self, build_dir: str):

@@ -17,10 +17,10 @@ class Node(object):
             self.add_input(inp)
 
     def __str__(self):
-        return self.name
+        return f"{self.name}: {self.path}"
 
     def __repr__(self):
-        return f"{self} (at {hex(id(self))})"
+        return f"{self}: {self.path} (at {hex(id(self))})"
 
     # Returns a string representation of the dependency graph for this node.
     def dependency_graph_str(self, tab_depth=0):
@@ -55,10 +55,7 @@ class CompiledNode(Node):
             G_LOGGER.critical(f"Cannot create a CompiledNode with more than one source. This node already has one input: {self.inputs}")
         super().add_input(node)
 
-# In LinkedNodes, the name field contains the user friendly name (i.e. without linker signature)
-# TODO: Change this so that all libraries are provided as names, and lib_dirs is updated correspondingly
-# libs contains library names. When a path to the library is known, it is instead added as an input to the LinkedNode.
-# TODO: Only CompiledNodes in the inputs list are passed on to the linker. 
+# Only CompiledNodes in the inputs list are passed on to the linker.
 class LinkedNode(Node):
     def __init__(self, path: str, inputs: List[Node], linker: linker.Linker, libs: List[str]=[], lib_dirs: List[str]=[], flags: BuildFlags=BuildFlags(), name=""):
         super().__init__(path, inputs, name)

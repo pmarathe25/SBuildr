@@ -15,12 +15,12 @@ Dates are in YYYY-MM-DD format.
 - Adds `SBuildrBuilder` for building projects using the SBuildr build system.
 - Renames `Generator` and associated classes/files to `Backend`.
 - Pulls in most functions from `cli` into `Project` to enable more powerful scripting.
-- `Project`'s `configure()` function now pickles and writes the Project into the build directory. `Project.load()` can be used to retrieve it.
-- `Project`'s `configure()` is now `freeze()`
+- Adds `save()` function to `Project` that pickles and writes it into the specified path. `Project.load()` can be used to retrieve it.
 - Removes lazy header scanning - file manager now scans source files as they are added.
 - Profile build directories can now be outside of the project's build directory.
 - All profiles now share a common build directory for intermediate objects. Final targets are still built in each profile's individual subdirectory.
 - `Backend` now only accepts a single graph describing the whole project. Thus, the backend does not need to know about file manager, profiles, etc. To facilitate, also adds `__add__` and `__iadd__` to Graph.
+- Libraries are now linked in a portable way - instead of using paths, names are used.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

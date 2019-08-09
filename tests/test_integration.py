@@ -39,7 +39,7 @@ class TestIntegration(object):
         libmath = proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
         test = proj.executable("test", sources=["test.cpp"], libs=["stdc++", libmath])
         # Generate config file
-        proj.freeze()
+        proj.configure()
 
         # Build both targets for all profiles.
         targets = [libmath, test]

@@ -50,4 +50,4 @@ class TestSBuildrBuilder(object):
     def test_can_build_example_repo(self):
         self.builder.install(ROOT, self.header_dir, self.lib_dir, self.exec_dir)
         assert os.path.exists(os.path.join(self.header_dir, "math.hpp"))
-        assert os.path.exists(os.path.join(self.lib_dir, paths.libname("math")))
+        assert os.path.exists(os.path.join(self.lib_dir, paths.name_to_libname("math")))

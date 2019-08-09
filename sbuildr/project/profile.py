@@ -2,8 +2,10 @@ from sbuildr.graph.node import Node, CompiledNode, LinkedNode
 from sbuildr.tools.flags import BuildFlags
 from sbuildr.graph.graph import Graph
 from sbuildr.logger import G_LOGGER
+from sbuildr.misc import paths
 
 from typing import List, Union, Dict
+import copy
 import os
 
 # Inserts suffix into path, just before the extension
@@ -40,7 +42,7 @@ class Profile(object):
         flags = self.flags + flags
 
         # First, add or retrieve object nodes for each source.
-        object_nodes = []
+        input_nodes = []
         for source_node in source_nodes:
             # Only the include dirs provided by the user are part of the hash. When the automatically deduced
             # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
@@ -48,24 +50,22 @@ class Profile(object):
             obj_path = os.path.join(self.common_objs_build_dir, _file_suffix(source_node.path, f".{obj_sig}", ".o"))
             # User defined includes are always prepended the ones deduced for SourceNodes.
             obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
-            object_nodes.append(self.graph.add(obj_node))
+            input_nodes.append(self.graph.add(obj_node))
 
-        # For any libraries that are Nodes, add as inputs to the final LinkedNode.
-        # For any libraries that are names, pass them along to the linker as-is.
-
-        # TODO: Here, lib_nodes should all be passed to lib_dirs and lib_names
-        lib_nodes: List[Node] = []
+        # For any libraries that are Nodes, add to lib_names and lib_dirs, otherwise, just add to lib_names
+        # Nodes are also added to the LinkedNodes inputs, for timestamp checks during the build.
         lib_names: List[str] = []
+        local_lib_dirs = copy.deepcopy(lib_dirs)
         for lib in libs:
             if isinstance(lib, Node):
-                lib_nodes.append(lib)
+                input_nodes.append(lib)
+                lib_names.append(paths.libname_to_name(os.path.basename(lib.path)))
+                local_lib_dirs.append(os.path.dirname(lib.path))
             else:
                 lib_names.append(lib)
-        G_LOGGER.verbose(f"Sorted libraries into nodes: {lib_nodes}, and names: {lib_names}")
-        # Finally, add the actual linked node
-        input_nodes = object_nodes + lib_nodes
-        input_paths = [node.path for node in input_nodes]
+        G_LOGGER.verbose(f"Final libraries: {lib_names}, and library directories: {local_lib_dirs}")
 
+        # Finally, add the actual linked node
         linked_path = os.path.join(self.build_dir, _file_suffix(basename, self.suffix))
-        linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, lib_dirs, flags)
+        linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, local_lib_dirs, flags)
         return self.graph.add(linked_node)
