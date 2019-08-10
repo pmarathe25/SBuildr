@@ -29,9 +29,8 @@ class Project(object):
     :param root: The path to the root directory for this project. All directories and files within the root directory are considered during searches for files. If no root directory is provided, defaults to the containing directory of the script calling this constructor.
     :param dirs: Additional directories outside the root directory that are part of the project. These directories and all contents will be considered during searches for files.
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
-    :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
     """
-    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None, BackendType: type=RBuildBackend):
+    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None):
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
@@ -42,7 +41,7 @@ class Project(object):
         # TODO: Make this a parameter?
         self.common_objs_build_dir = os.path.join(self.build_dir, "common")
         # Backend
-        self.backend = BackendType(self.build_dir)
+        self.backend = None
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
         # user-defined target for that profile.
         self.profiles: Dict[str, Profile] = {}
@@ -101,6 +100,7 @@ class Project(object):
                 has_ext = bool(os.path.splitext(lib)[1])
                 return has_path_components or has_ext
 
+            # TODO: Convert libs to paths below, and move this logic into Profile
             fixed_libs = []
             for lib in libs:
                 # Targets are handled for each profile individually
@@ -277,11 +277,18 @@ class Project(object):
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
+    # TODO: fetch_dependencies(targets)
 
-    def configure(self) -> None:
+
+    def configure_backend(self, BackendType: type=RBuildBackend) -> None:
         """
-        Configure the project for build. This includes generating any build configuration files required by this project's backend.
+        Configure the project for build using the specified backend type. This includes generating any build configuration files required by this project's backend.
+
+        :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
         """
+        self.backend = BackendType(self.build_dir)
+        self.files.mkdir(self.build_dir)
+
         # Combine the source graph from file manager and the various profile graphs
         def combined_graph():
             graph = Graph()
@@ -290,7 +297,6 @@ class Project(object):
                 graph += profile.graph
             return graph
 
-        self.files.mkdir(self.build_dir)
         self.backend.configure(combined_graph())
 
 
@@ -321,6 +327,10 @@ class Project(object):
                     else:
                         G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
             return nodes
+
+        if not self.backend:
+            G_LOGGER.warning(f"Backend has not been configured. Attempting to automatically configure the default backend. If this does not work, please call configure_backend() before attempting to build.")
+            self.configure_backend()
 
         # Create all required build directories.
         self.files.mkdir(self.common_objs_build_dir)

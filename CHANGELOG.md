@@ -21,7 +21,8 @@ Dates are in YYYY-MM-DD format.
 - All profiles now share a common build directory for intermediate objects. Final targets are still built in each profile's individual subdirectory.
 - `Backend` now only accepts a single graph describing the whole project. Thus, the backend does not need to know about file manager, profiles, etc. To facilitate, also adds `__add__` and `__iadd__` to Graph.
 - Libraries are now linked in a portable way - instead of using paths, names are used.
-- `Project` now display a command that can be used to reproduce any executables that are run via the API. 
+- `Project` now display a command that can be used to reproduce any executables that are run via the API.
+- `Project`'s `configure()` is now `configure_backend()`. Additionally, projects are no longer tied to backends. 
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

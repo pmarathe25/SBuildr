@@ -65,7 +65,7 @@ def cli(project: Project, default_profiles=["debug", "release"]):
 
 
     def configure(args):
-        project.configure()
+        project.configure_backend()
 
 
     def build(args) -> Tuple[List[ProjectTarget], List[str]]:
