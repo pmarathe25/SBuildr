@@ -27,57 +27,66 @@ def _is_in_directories(path: str, dirs: Set[str]):
     return any([_is_in_directory(path, dir) for dir in dirs])
 
 class FileManager(object):
-    # The root directory is used for relative paths. The build directory is automatically excluded from searches.
-    def __init__(self, root_dir: str, dirs: Set[str]=set(), exclude_dirs: Set[str]=set()):
+    # The root directory is used for converting relative paths to absolute paths.
+    def __init__(self, root_dir: str, dirs: Set[str]=set(), exclude_dirs: Set[str]=set(), writable_dirs: Set[str]=set()):
+        self.exclude_dirs: Set[str] = exclude_dirs
+        # writable_dirs are the only locations to which FileManager is allowed to write.
+        self.writable_dirs: Set[str] = writable_dirs
+        G_LOGGER.verbose(f"Excluded directories: {exclude_dirs}. Writable directories: {writable_dirs}")
+
+        self.files: Set[str] = set()
+
         self.root_dir = os.path.abspath(root_dir)
         if not os.path.isdir(self.root_dir):
             G_LOGGER.critical(f"Root Directory: {self.root_dir} does not exist, or is not a directory.")
-        # build_dirs are the only locations to which FileManager is allowed to write.
-        self.build_dirs: Set[str] = set()
-        self.exclude_dirs: Set[str] = set()
+        self.add_dir(self.root_dir)
 
-        self.files = []
         # Remove directories that are within exclude_dirs after converting all directories to abspaths.
-        dirs = set([self.abspath(dir) for dir in dirs]) | set([root_dir])
-        G_LOGGER.verbose(f"Directories after converting to absolute paths: {dirs}")
-
-        self.dirs = set([dir for dir in dirs if not _is_in_directories(dir, self.exclude_dirs)])
-        G_LOGGER.verbose(f"Directories after removing ignored: {self.dirs}")
-        for dir in self.dirs:
+        for dir in dirs:
             self.add_dir(dir)
         G_LOGGER.debug(f"Found {len(self.files)} files")
         G_LOGGER.verbose(f"{self.files}")
         # Keep track of all files relevant to building the project.
         self.graph = Graph()
 
+    # TODO: FIXME: This does not handle directories inside exclude directories correctly.
     def add_dir(self, dir: str):
+        dir = self.abspath(dir)
+        G_LOGGER.verbose(f"Searching for files in: {dir}")
         for path in glob.iglob(os.path.join(dir, "**"), recursive=True):
             if os.path.isfile(path) and not _is_in_directories(path, self.exclude_dirs):
-                self.files.append(os.path.abspath(path))
+                self.files.add(os.path.abspath(path))
+            else:
+                G_LOGGER.verbose(f"Rejecting path: {path}, because it is either not a file, or falls in one of the excluded directories.")
 
-    # Adds the specified directory to build_dirs and exclude_dirs,
-    # then returns the absolute path to the added directory.
-    def add_build_dir(self, build_dir: str) -> str:
-        absdir = self.abspath(build_dir)
-        self.build_dirs.add(absdir)
+    # Adds the specified directory to exclude_dirs, then returns the absolute path to the added directory.
+    def add_exclude_dir(self, dir: str) -> str:
+        absdir = self.abspath(dir)
         self.exclude_dirs.add(absdir)
-        # Remove any files that are in the new build directory.
-        self.files = [file for file in self.files if not _is_in_directory(file, build_dir)]
+        # Remove any files that are in the new exclude directory.
+        self.files = set([file for file in self.files if not _is_in_directory(file, absdir)])
+        G_LOGGER.verbose(f"Updated files to: {self.files}")
+        return absdir
+
+    # Adds the specified directory to writable_dirs, then returns the absolute path to the added directory.
+    def add_writable_dir(self, dir: str) -> str:
+        absdir = self.abspath(dir)
+        self.writable_dirs.add(absdir)
         return absdir
 
     # Recursively creates all parent directories required to create dir_path.
-    # Returns whether the directory was created inside the build directory.
-    # If it is not a subdirectory of the build directory, returns False.
+    # Returns whether the directory was created inside the exclude directory.
+    # If it is not a subdirectory of the exclude directory, returns False.
     def mkdir(self, dir_path: str) -> bool:
-        if _is_in_directories(dir_path, self.build_dirs):
+        if _is_in_directories(dir_path, self.writable_dirs):
             os.makedirs(dir_path, exist_ok=True)
             return True
         return False
 
-    # Remove files and directories, but only if they are within the build directory.
+    # Remove files and directories, but only if they are within the exclude directories.
     # Returns whether the path was located in the build directory..
     def rm(self, path: str) -> bool:
-        if _is_in_directories(path, self.build_dirs):
+        if _is_in_directories(path, self.writable_dirs):
             try:
                 shutil.rmtree(path)
                 G_LOGGER.info(f"Removed: {path}")

@@ -40,16 +40,16 @@ class TestProject(object):
 class TestFileManager(object):
     def setup_method(self):
         self.manager = FileManager(ROOT)
-        self.manager.add_build_dir(PATHS["build"])
+        self.manager.add_writable_dir(self.manager.add_exclude_dir(PATHS["build"]))
 
     def test_globs_files_from_relpath_into_abspaths(self):
         dirs = [os.path.relpath(os.path.join(os.path.dirname(__file__), "minimal_project"))]
         manager = FileManager(ROOT, dirs=dirs)
-        manager.add_build_dir(PATHS["build"])
-        all_files = []
+        manager.add_exclude_dir(PATHS["build"])
+        all_files = set()
         for file in glob.iglob(os.path.join(ROOT, "**"), recursive=True):
             if os.path.isfile(file):
-                all_files.append(os.path.abspath(file))
+                all_files.add(os.path.abspath(file))
         print(all_files)
         assert manager.files == all_files
         assert all([os.path.isabs(file) for file in manager.files])

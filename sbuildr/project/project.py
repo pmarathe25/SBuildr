@@ -37,7 +37,8 @@ class Project(object):
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
         self.files = FileManager(root or os.path.abspath(os.path.dirname(self.config_file)), dirs)
-        self.build_dir = self.files.add_build_dir(build_dir or os.path.join(self.files.root_dir, "build"))
+        # The build directory will be writable, and excluded when the FileManager is searching for paths.
+        self.build_dir = self.files.add_writable_dir(self.files.add_exclude_dir(build_dir or os.path.join(self.files.root_dir, "build")))
         # TODO: Make this a parameter?
         self.common_objs_build_dir = os.path.join(self.build_dir, "common")
         # Backend
@@ -224,7 +225,7 @@ class Project(object):
         :returns: :class:`sbuildr.Profile`
         """
         if name not in self.profiles:
-            build_dir = self.files.add_build_dir(os.path.abspath(build_dir or os.path.join(self.build_dir, name)))
+            build_dir = self.files.add_writable_dir(self.files.add_exclude_dir(os.path.abspath(build_dir or os.path.join(self.build_dir, name))))
             G_LOGGER.verbose(f"Setting build directory for profile: {name} to: {build_dir}")
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, common_objs_build_dir=self.common_objs_build_dir, suffix=file_suffix)
         return self.profiles[name]
