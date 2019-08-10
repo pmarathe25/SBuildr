@@ -344,7 +344,7 @@ class Project(object):
         for lib_dir in node.lib_dirs:
             loader_path += f"{os.pathsep}{lib_dir}"
         G_LOGGER.debug(f"Using loader paths: {loader_path}")
-
+        G_LOGGER.log(f"{paths.loader_path_env_var()}={loader_path} {node.path}\n", color=logger.Color.GREEN)
         return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)
 
     # TODO(0): Docstring
@@ -357,10 +357,8 @@ class Project(object):
                 G_LOGGER.critical(f"Could not find target: {target.name} in project executables. Note: Available executables are: {list(self.executables.keys())}")
 
         def run_target(target: ProjectTarget, prof_name: str):
-            G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}: {target[prof_name].path}", color=logger.Color.GREEN)
-            status = self._run_linked_node(target[prof_name], capture_output=True)
-            output = utils.subprocess_output(status)
-            G_LOGGER.log(output)
+            G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}", color=logger.Color.GREEN)
+            status = self._run_linked_node(target[prof_name])
             if result.returncode:
                 G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
 
@@ -394,7 +392,7 @@ class Project(object):
                 self.passed = 0
 
         def run_test(test, prof_name):
-            G_LOGGER.log(f"\nRunning test: {test}, for profile: {prof_name}: {test[prof_name].path}\n", color=logger.Color.GREEN)
+            G_LOGGER.log(f"\nRunning test: {test}, for profile: {prof_name}", color=logger.Color.GREEN)
             status = self._run_linked_node(test[prof_name])
             if status.returncode:
                 G_LOGGER.log(f"\nFAILED {test}, for profile: {prof_name}:\n{test[prof_name].path}", color=logger.Color.RED)
