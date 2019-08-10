@@ -1,7 +1,14 @@
 # Platform independent paths and file naming conventions.
+import pathlib
 import os
 
 # TODO: Edit these functions to take into account other platforms
+def dependency_cache_root():
+    """
+    Returns the path to the root of the dependency cache directory.
+    """
+    return os.path.join(pathlib.Path.home(), ".sbuildr")
+
 def loader_path_env_var() -> str:
     """
     Returns the name of the environment variable used to specify paths to the loader.

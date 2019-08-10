@@ -277,9 +277,6 @@ class Project(object):
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-    # TODO: fetch_dependencies(targets)
-
-
     def configure_backend(self, BackendType: type=RBuildBackend) -> None:
         """
         Configure the project for build using the specified backend type. This includes generating any build configuration files required by this project's backend.
@@ -328,8 +325,10 @@ class Project(object):
                         G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
             return nodes
 
+        # TODO: fetch_dependencies(nodes)
+
         if not self.backend:
-            G_LOGGER.warning(f"Backend has not been configured. Attempting to automatically configure the default backend. If this does not work, please call configure_backend() before attempting to build.")
+            G_LOGGER.warning(f"A backend has not been configured for this project. Attempting to automatically configure the default backend. If this does not work, please call configure_backend() before attempting to build.")
             self.configure_backend()
 
         # Create all required build directories.

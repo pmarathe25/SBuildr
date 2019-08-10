@@ -1,4 +1,5 @@
 from sbuildr.project.dependencies.fetchers.fetcher import DependencyFetcher
+from sbuildr.logger import G_LOGGER
 
 import filecmp
 import shutil
@@ -14,10 +15,13 @@ class CopyFetcher(DependencyFetcher):
         self.path = path
         super().__init__(os.path.basename(self.path))
 
-    def fetch(self, dest_dir: str) -> str:
+    def fetch(self, dest_dir: str, version: str=None) -> str:
+        if version is not None:
+            G_LOGGER.warning(f"The copy fetcher ignores version numbers. Please ensure that {self.path} contains version {version} of the project.")
         # Only copy if dest_dir is out of date.
-        should_copy = filecmp.dircmp(self.path, dest_dir).left_only or not os.path.exists(dest_dir) or os.path.getmtime(self.path) > os.path.getmtime(dest_dir)
+        should_copy = not os.path.exists(dest_dir) or filecmp.dircmp(self.path, dest_dir).left_only or os.path.getmtime(self.path) > os.path.getmtime(dest_dir)
         if should_copy:
-            shutil.rmtree(dest_dir)
+            shutil.rmtree(dest_dir, ignore_errors=True)
             shutil.copytree(self.path, dest_dir)
-        return str(os.path.getmtime(dest_dir))
+        # Use the timestamp of the source, as dest_dir timestamp will change every time the source is copied.
+        return str(os.path.getmtime(self.path))
