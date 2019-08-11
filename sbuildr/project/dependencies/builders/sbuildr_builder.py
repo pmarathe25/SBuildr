@@ -18,6 +18,9 @@ class SBuildrBuilder(DependencyBuilder):
         configure_status = subprocess.run([sys.executable, self.build_script_name, "configure"], capture_output=True, cwd=source_dir)
         if configure_status.returncode:
             G_LOGGER.critical(f"Failed to configure dependency in {source_dir} with:\n{utils.subprocess_output(configure_status)}")
-        install_status = subprocess.run([sys.executable, self.build_script_name, "install", "-I", header_dir, "-L", lib_dir, "-X", exec_dir, "-f"], capture_output=True, cwd=source_dir)
+        project_status = subprocess.run([sys.executable, self.build_script_name], capture_output=True, cwd=source_dir)
+        if project_status.returncode:
+            G_LOGGER.critical(f"Could not run project build configuration script: {self.build_script_name}")
+        install_status = subprocess.run(["sbuildr", "install", "-I", header_dir, "-L", lib_dir, "-X", exec_dir, "-f"], capture_output=True, cwd=source_dir)
         if install_status.returncode:
             G_LOGGER.critical(f"Failed to install dependency from {source_dir} with:\n{utils.subprocess_output(install_status)}")

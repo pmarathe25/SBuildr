@@ -10,6 +10,7 @@ from sbuildr.tools.flags import BuildFlags
 from sbuildr.graph.graph import Graph
 from sbuildr.misc import paths, utils
 from sbuildr import logger
+import sbuildr
 
 from typing import List, Set, Union, Dict, Tuple
 from collections import OrderedDict, defaultdict
@@ -20,6 +21,7 @@ import sys
 import os
 
 class Project(object):
+    DEFAULT_SAVED_PROJECT_NAME = "project.sbuildr"
     """
     Represents a project. Projects include two default profiles with the following configuration:
     ``release``: ``BuildFlags().O(3).std(17).march("native").fpic()``
@@ -31,6 +33,7 @@ class Project(object):
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
     """
     def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None):
+        self.sbuildr_version = sbuildr.__version__
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
@@ -58,19 +61,32 @@ class Project(object):
 
     @staticmethod
     def load(path: str=None) -> "Project":
-        """
+        f"""
         Load a project from the specified path.
 
-        :param path: The path from which to load the project. Defaults to ``os.path.join("build", "project.sbuildr")``
+        :param path: The path from which to load the project. Defaults to {os.path.abspath(Project.DEFAULT_SAVED_PROJECT_NAME)}
 
         :returns: The loaded project.
         """
-        path = path or os.path.join("build", "project.sbuildr")
+        path = path or os.path.abspath(Project.DEFAULT_SAVED_PROJECT_NAME)
         with open(path, "rb") as f:
             return pickle.load(f)
 
+
+    def save(self, path: str=None) -> None:
+        f"""
+        Save this project to the specified path.
+
+        :param path: The path at which to save the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME} in the project's root directory.
+        """
+        path = path or os.path.join(self.files.root_dir, Project.DEFAULT_SAVED_PROJECT_NAME)
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
+
 
     def _target(self,
                 name: str,
@@ -273,17 +289,6 @@ class Project(object):
         elif len(candidates) > 1:
             G_LOGGER.critical(f"For path: {path}, found multiple candidates: {candidates}. Please provide a longer path to disambiguate.")
         return candidates[0]
-
-
-    def save(self, path: str=None) -> None:
-        """
-        Save this project to the specified path.
-
-        :param path: The path at which to save the project. Defaults to "project.sbuildr" in the project's root directory.
-        """
-        path = path or os.path.join(self.files.root_dir, "project.sbuildr")
-        with open(path, "wb") as f:
-            pickle.dump(self, f)
 
 
     def configure_backend(self, BackendType: type=RBuildBackend) -> None:

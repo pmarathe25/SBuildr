@@ -15,4 +15,5 @@ project.interfaces(["math.hpp"])
 # be linked against the library created above.
 test = project.test("test", sources=["test.cpp"], libs=[cppstdlib, libmath])
 
-sbuildr.cli(project)
+# Save the project for use with the sbuildr command line utility.
+project.save()

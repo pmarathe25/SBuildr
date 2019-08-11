@@ -17,17 +17,17 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 test:
-	python -m pytest tests/
-	export PYTHONPATH=$(CURDIR); python examples/minimal_project/build.py configure -vv && python examples/minimal_project/build.py build -vv && python examples/minimal_project/build.py tests -vv
+	python3 -m pytest tests/
+	export PYTHONPATH=$(CURDIR); python3 examples/minimal_project/build.py && bin/sbuildr -p examples/minimal_project/project.sbuildr configure -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr build -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr tests -vv
 
 wheel:
-	python setup.py bdist_wheel
+	python3 setup.py bdist_wheel
 
 install: wheel
-	python -m pip install dist/*.whl --user --upgrade --force-reinstall
+	python3 -m pip install dist/*.whl --user --upgrade --force-reinstall
 
 clean:
 	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SBuildr.egg-info
 
 upload: wheel
-	python -m twine upload dist/*
+	python3 -m twine upload dist/*

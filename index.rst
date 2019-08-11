@@ -2,7 +2,7 @@
 
 .. toctree::
     :hidden:
-    
+
     self
 
 .. toctree::
@@ -13,4 +13,3 @@
     docs/project
     docs/profile
     docs/flags
-    docs/cli

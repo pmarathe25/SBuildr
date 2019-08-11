@@ -1,16 +1,18 @@
 from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.project import Project
 from sbuildr.graph.node import Library
-from sbuildr.cli.cli import cli
 
 from test_tools import PATHS, TESTS_ROOT, ROOT
 
 import subprocess
+import tempfile
 import shutil
 import sys
 import os
 
 INSTALL_DIR_ARGS = ["-I", PATHS["build"], "-L", PATHS["build"], "-X", PATHS["build"]]
+SBUILDR_ROOT = os.path.abspath(os.path.join(TESTS_ROOT, os.pardir))
+SBUILDR_EXEC = os.path.join(SBUILDR_ROOT, "bin", "sbuildr")
 
 def test_public_imports():
     import sbuildr
@@ -34,10 +36,11 @@ class TestIntegration(object):
         self.libmath = self.proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
         self.test = self.proj.executable("test", sources=["test.cpp"], libs=[Library("stdc++"), self.libmath])
         [self.header] = self.proj.interfaces(["math.hpp"])
+        self.saved_project = tempfile.NamedTemporaryFile()
 
     def test_help_targets(self):
-        sys.argv = ["", "help"]
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "help"])
 
     def test_can_build_project(self):
         # Build both targets for all profiles.
@@ -52,12 +55,12 @@ class TestIntegration(object):
     def test_default_install_project(self):
         install_path = os.path.join(PATHS["build"], self.libmath["release"].basename)
         # Install release profile
-        sys.argv = ["", "install", "-f"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f"] + INSTALL_DIR_ARGS)
         assert os.path.exists(install_path)
         # Then remove
-        sys.argv = ["", "uninstall", "-f"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "uninstall", "-f"] + INSTALL_DIR_ARGS)
         assert not os.path.exists(install_path)
 
     # Installation when profile is specified
@@ -65,13 +68,13 @@ class TestIntegration(object):
         install_path = os.path.join(PATHS["build"], self.libmath["debug"].basename)
         release_install = os.path.join(PATHS["build"], self.libmath["release"].basename)
         # Install
-        sys.argv = ["", "install", "-f", "--debug"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f", "--debug"] + INSTALL_DIR_ARGS)
         assert os.path.exists(install_path)
         assert not os.path.exists(release_install)
         # Then remove
-        sys.argv = ["", "uninstall", "-f", "--debug"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "uninstall", "-f", "--debug"] + INSTALL_DIR_ARGS)
         assert not os.path.exists(install_path)
 
     # Installation when target is specified
@@ -79,21 +82,21 @@ class TestIntegration(object):
         install_path = os.path.join(PATHS["build"], self.libmath["release"].basename)
         test_install_path = os.path.join(PATHS["build"], self.test["release"].basename)
         # Install
-        sys.argv = ["", "install", "-f", "math"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f", "math"] + INSTALL_DIR_ARGS)
         assert os.path.exists(install_path)
         assert not os.path.exists(test_install_path)
         # Then remove
-        sys.argv = ["", "uninstall", "-f", "math"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "uninstall", "-f", "math"] + INSTALL_DIR_ARGS)
         assert not os.path.exists(install_path)
 
     # Installation when no installation targets are specified.
     def test_empty_install(self):
         proj = Project(root=ROOT)
         proj.configure_backend()
-        sys.argv = ["", "install", "-f"]
-        cli(proj)
+        proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f"])
 
     def test_header_install(self):
         # Check that the return value is the correct path
@@ -101,10 +104,10 @@ class TestIntegration(object):
 
         install_path = os.path.join(PATHS["build"], "math.hpp")
         # Install
-        sys.argv = ["", "install", "-f"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f"] + INSTALL_DIR_ARGS)
         assert os.path.exists(install_path)
         # Then remove
-        sys.argv = ["", "uninstall", "-f"] + INSTALL_DIR_ARGS
-        cli(self.proj)
+        self.proj.save(self.saved_project.name)
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "uninstall", "-f"] + INSTALL_DIR_ARGS)
         assert not os.path.exists(install_path)

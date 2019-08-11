@@ -24,6 +24,7 @@ Dates are in YYYY-MM-DD format.
 - `Project` now display a command that can be used to reproduce any executables that are run via the API.
 - `Project`'s `configure()` is now `configure_backend()`. Additionally, projects are no longer tied to backends.
 - Adds `Library` class to better abstract external libraries. This also allows for better handling of nested loader search path dependencies.
+- Removes `cli()` and adds `bin/sbuildr` in its place. `bin/sbuildr` operates on saved projects, so it is much faster than running the `build.py` script each time.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).
