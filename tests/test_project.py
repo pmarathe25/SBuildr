@@ -1,5 +1,6 @@
 from sbuildr.project.file_manager import FileManager
 from sbuildr.project.project import Project
+from sbuildr.graph.node import Library
 from sbuildr.logger import G_LOGGER
 import sbuildr.logger as logger
 
@@ -27,12 +28,12 @@ class TestProject(object):
 
     def test_executable_api(self):
         proj = Project(root=ROOT)
-        test = proj.executable("test", sources=["tests/test.cpp"], libs=["stdc++"])
+        test = proj.executable("test", sources=["tests/test.cpp"], libs=[Library("stdc++")])
         self.check_target(proj, test)
 
     def test_library_api(self):
         proj = Project(root=ROOT)
-        lib = proj.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
+        lib = proj.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
         for node in lib.values():
             assert node.flags._shared
         self.check_target(proj, lib)

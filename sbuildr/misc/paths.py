@@ -25,6 +25,8 @@ def name_to_libname(name: str) -> str:
     """
     return f"lib{name}.so"
 
+# TODO: FIXME: This should return None if the library is not named in the correct format for this platform.
+# TODO: FIXME: This is becuase -l will not work if the name is non-standard (maybe try -l: instead?)
 def libname_to_name(libname: str) -> str:
     """
     Given the basename of a library, specifies the corresponding library name.

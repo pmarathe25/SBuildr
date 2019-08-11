@@ -1,5 +1,6 @@
 from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.project import Project
+from sbuildr.graph.node import Library
 from sbuildr.cli.cli import cli
 
 from test_tools import PATHS, TESTS_ROOT, ROOT
@@ -13,7 +14,7 @@ INSTALL_DIR_ARGS = ["-I", PATHS["build"], "-L", PATHS["build"], "-X", PATHS["bui
 
 def test_public_imports():
     import sbuildr
-    from sbuildr import compiler, linker, BuildFlags, Project, Profile
+    from sbuildr import compiler, linker, BuildFlags, Project, Profile, Library
     from sbuildr.backends import Backend, RBuildBackend
 
 class TestIntegration(object):
@@ -30,8 +31,8 @@ class TestIntegration(object):
 
     def setup_method(self):
         self.proj = Project(root=ROOT)
-        self.libmath = self.proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=["stdc++"])
-        self.test = self.proj.executable("test", sources=["test.cpp"], libs=["stdc++", self.libmath])
+        self.libmath = self.proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
+        self.test = self.proj.executable("test", sources=["test.cpp"], libs=[Library("stdc++"), self.libmath])
         [self.header] = self.proj.interfaces(["math.hpp"])
 
     def test_help_targets(self):
@@ -49,7 +50,7 @@ class TestIntegration(object):
                 assert os.path.exists(node.path)
 
     def test_default_install_project(self):
-        install_path = os.path.join(PATHS["build"], self.libmath["release"].name)
+        install_path = os.path.join(PATHS["build"], self.libmath["release"].basename)
         # Install release profile
         sys.argv = ["", "install", "-f"] + INSTALL_DIR_ARGS
         cli(self.proj)
@@ -61,8 +62,8 @@ class TestIntegration(object):
 
     # Installation when profile is specified
     def test_profile_install_project(self):
-        install_path = os.path.join(PATHS["build"], self.libmath["debug"].name)
-        release_install = os.path.join(PATHS["build"], self.libmath["release"].name)
+        install_path = os.path.join(PATHS["build"], self.libmath["debug"].basename)
+        release_install = os.path.join(PATHS["build"], self.libmath["release"].basename)
         # Install
         sys.argv = ["", "install", "-f", "--debug"] + INSTALL_DIR_ARGS
         cli(self.proj)
@@ -75,8 +76,8 @@ class TestIntegration(object):
 
     # Installation when target is specified
     def test_target_install_project(self):
-        install_path = os.path.join(PATHS["build"], self.libmath["release"].name)
-        test_install_path = os.path.join(PATHS["build"], self.test["release"].name)
+        install_path = os.path.join(PATHS["build"], self.libmath["release"].basename)
+        test_install_path = os.path.join(PATHS["build"], self.test["release"].basename)
         # Install
         sys.argv = ["", "install", "-f", "math"] + INSTALL_DIR_ARGS
         cli(self.proj)

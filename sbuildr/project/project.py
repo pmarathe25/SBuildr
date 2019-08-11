@@ -1,8 +1,8 @@
-from sbuildr.graph.node import Node, CompiledNode, LinkedNode
+from sbuildr.graph.node import Node, CompiledNode, LinkedNode, Library
 from sbuildr.project.file_manager import FileManager
 from sbuildr.backends.rbuild import RBuildBackend
-from sbuildr.backends.backend import Backend
 from sbuildr.project.target import ProjectTarget
+from sbuildr.backends.backend import Backend
 from sbuildr.logger import G_LOGGER, plural
 from sbuildr.project.profile import Profile
 from sbuildr.tools import compiler, linker
@@ -77,55 +77,65 @@ class Project(object):
                 basename: str,
                 sources: List[str],
                 flags: BuildFlags,
-                libs: List[Union[ProjectTarget, str]],
+                libs: List[Union[ProjectTarget, Library]],
                 compiler: compiler.Compiler,
                 include_dirs: List[str],
                 linker: linker.Linker,
-                lib_dirs: List[str],
                 internal: bool) -> ProjectTarget:
+        if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) for lib in libs]):
+            G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library or sbuildr.ProjectTarget")
+
         # Convert sources to full paths
         def get_source_nodes(sources: List[str]) -> List[CompiledNode]:
             source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
             G_LOGGER.verbose(f"For sources: {sources}, found source paths: {source_nodes}")
             return source_nodes
 
-        # The linker expects libs to be either absolute paths, or library names.
-        # e.g. ["stdc++", "/path/to/libtest.so"]
-        # If the library is provided as a path, we also add it as a node to the file manager
-        # so that we can properly rebuild when it is updated (even if it's external).
-        def get_libraries(libs: List[Union[ProjectTarget, str]]) -> List[Union[ProjectTarget, Node, str]]:
-            # Determines whether lib looks like a path, or like a library name.
-            def is_lib_path(lib: str) -> bool:
-                has_path_components = os.path.sep in lib
-                has_ext = bool(os.path.splitext(lib)[1])
-                return has_path_components or has_ext
-
-            # TODO: Convert libs to paths below, and move this logic into Profile
-            fixed_libs = []
-            for lib in libs:
-                # Targets are handled for each profile individually
-                if not isinstance(lib, ProjectTarget):
-                    candidates = self.files.find(lib)
-                    if is_lib_path(lib):
-                        if len(candidates) > 1:
-                            G_LOGGER.warning(f"For library: {lib}, found multiple candidates: {candidates}. Using {candidates[0]}. If this is incorrect, please provide a longer path to disambiguate.")
-                        # Add the library to the file manager as an external path
-                        lib = self.files.external(lib)
-                    elif candidates:
-                        G_LOGGER.warning(f"For library: {lib}, found matching paths: {candidates}. However, {lib} appears to be a library name rather than a path to a library. If you meant to use a path, please provide a longer path to disambiguate.")
-                fixed_libs.append(lib)
-            G_LOGGER.debug(f"Using fixed libs: {fixed_libs}")
-            return fixed_libs
+        # Inserts suffix into path, just before the extension
+        def file_suffix(path: str, suffix: str, ext: str = None) -> str:
+            split = os.path.splitext(os.path.basename(path))
+            suffixed = f"{split[0]}{suffix}{(ext or split[1] or '')}"
+            G_LOGGER.verbose(f"Received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
+            return suffixed
 
         source_nodes = get_source_nodes(sources)
-        libs: List[Union[ProjectTarget, Node, str]] = get_libraries(libs)
+        G_LOGGER.verbose(f"Converted libs to: {libs}")
         target = ProjectTarget(name=name, internal=internal)
         for profile_name, profile in self.profiles.items():
-            # Process targets so we only give each profile its own LinkedNodes.
-            # Purposely don't convert all libs to paths here, so that each profile can set up dependencies correctly.
-            target_libs = [lib if not isinstance(lib, ProjectTarget) else lib[profile_name] for lib in libs]
+            # Convert all libraries to nodes.
+            target_libs = [lib[profile_name] if isinstance(lib, ProjectTarget) else lib for lib in libs]
+
+            # Per-target flags always overwrite profile flags.
+            flags = profile.flags + flags
+
+            # First, add or retrieve object nodes for each source.
+            input_nodes = []
+            for source_node in source_nodes:
+                # Only the include dirs provided by the user are part of the hash. When the automatically deduced
+                # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
+                obj_sig = compiler.signature(source_node.path, include_dirs, flags)
+                obj_path = os.path.join(self.common_objs_build_dir, file_suffix(source_node.path, f".{obj_sig}", ".o"))
+                # User defined includes are always prepended the ones deduced for SourceNodes.
+                obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
+                input_nodes.append(profile.graph.add(obj_node))
+
+            # Get library names and dirs.
+            lib_names: List[str] = []
+            lib_dirs: List[str] = []
+            for lib in target_libs:
+                lib_names.append(lib.name)
+                lib_dirs.extend(lib.ld_dirs)
+                # Finally, if the node has a path, we can add it as a dependency
+                if lib.path:
+                    input_nodes.append(lib)
+
+            G_LOGGER.verbose(f"Final libraries: {lib_names}, and linker/loader directories: {lib_dirs}")
+            # TODO: Add back linker signature, create hard links using always clause in rbuild.
+            # Finally, add the actual linked node
+            linked_path = os.path.join(profile.build_dir, file_suffix(basename, profile.suffix))
+            linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, lib_dirs, flags)
             G_LOGGER.debug(f"Adding target: {name}, with basename: {basename} to profile: {profile_name}")
-            target[profile_name] = profile.target(basename, source_nodes, flags, target_libs, compiler, include_dirs, linker, lib_dirs)
+            target[profile_name] = profile.graph.add(linked_node)
         return target
 
     # Both of these functions will modify name before passing it to profile so that the filename is correct.
@@ -133,11 +143,10 @@ class Project(object):
                     name: str,
                     sources: List[str],
                     flags: BuildFlags = BuildFlags(),
-                    libs: List[Union[ProjectTarget, str]] = [],
+                    libs: List[Union[ProjectTarget, Library]] = [],
                     compiler: compiler.Compiler = compiler.clang,
                     include_dirs: List[str] = [],
                     linker: linker.Linker = linker.clang,
-                    lib_dirs: List[str] = [],
                     internal = False) -> ProjectTarget:
         """
         Adds an executable target to all profiles within this project.
@@ -145,53 +154,49 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either 'ProjectTarget's or strings (which may be either library names or paths to libraries) against which to link. Paths must be absolute paths, so as to disambiguate from library names.
+        :param libs: A list containing either 'ProjectTarget's or `Library`s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
-        :param lib_dirs: A list of paths for directories containing libraries needed by this target.
         :param internal: Whether this target is internal to the project, in which case it will not be installed.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, internal)
+        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, internal)
         return self.executables[name]
 
     def test(self,
                 name: str,
                 sources: List[str],
                 flags: BuildFlags = BuildFlags(),
-                libs: List[Union[ProjectTarget, str]] = [],
+                libs: List[Union[ProjectTarget, Library]] = [],
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
-                linker: linker.Linker = linker.clang,
-                lib_dirs: List[str] = []) -> ProjectTarget:
+                linker: linker.Linker = linker.clang) -> ProjectTarget:
         """
         Adds an executable target to all profiles within this project. Test targets can be automatically built and run by using the ``test`` command on the CLI.
 
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either 'ProjectTarget's or strings (which may be either library names or paths to libraries) against which to link. Paths must be absolute paths, so as to disambiguate from library names.
+        :param libs: A list containing either 'ProjectTarget's or `Library`s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
-        :param lib_dirs: A list of paths for directories containing libraries needed by this target.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, lib_dirs, True)
+        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, True)
         return self.tests[name]
 
     def library(self,
                 name: str,
                 sources: List[str],
                 flags: BuildFlags = BuildFlags(),
-                libs: List[Union[ProjectTarget, str]] = [],
+                libs: List[Union[ProjectTarget, Library]] = [],
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
-                lib_dirs: List[str] = [],
                 internal = False) -> ProjectTarget:
         """
         Adds a library target to all profiles within this project.
@@ -199,16 +204,15 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either 'ProjectTarget's or strings (which may be either library names or paths to libraries) against which to link. Paths must be absolute paths, so as to disambiguate from library names.
+        :param libs: A list containing either 'ProjectTarget's or `Library`s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
-        :param lib_dirs: A list of paths for directories containing libraries needed by this target.
         :param internal: Whether this target is internal to the project, in which case it will not be installed.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, lib_dirs, internal)
+        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, internal)
         self.libraries[name].is_lib = True
         return self.libraries[name]
 
@@ -227,7 +231,7 @@ class Project(object):
         if name not in self.profiles:
             build_dir = self.files.add_writable_dir(self.files.add_exclude_dir(os.path.abspath(build_dir or os.path.join(self.build_dir, name))))
             G_LOGGER.verbose(f"Setting build directory for profile: {name} to: {build_dir}")
-            self.profiles[name] = Profile(flags=flags, build_dir=build_dir, common_objs_build_dir=self.common_objs_build_dir, suffix=file_suffix)
+            self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
     def interfaces(self, headers: List[str]) -> List[str]:
@@ -464,12 +468,12 @@ class Project(object):
         def install_target(target, prof_name):
             node = target[prof_name]
             install_dir = library_install_path if target.is_lib else executable_install_path
-            install_path = os.path.join(install_dir, node.name)
+            install_path = os.path.join(install_dir, node.basename)
             if dry_run:
-                G_LOGGER.info(f"Would install target: {node.name} to {install_path}")
+                G_LOGGER.info(f"Would install target: {node.basename} to {install_path}")
             else:
                 if utils.copy_path(node.path, install_path):
-                    G_LOGGER.info(f"Installed target: {node.name} to {install_path}")
+                    G_LOGGER.info(f"Installed target: {node.basename} to {install_path}")
 
         for prof_name in profile_names:
             for target in targets:
@@ -516,12 +520,12 @@ class Project(object):
         def uninstall_target(target, prof_name):
             node = target[prof_name]
             uninstall_dir = library_install_path if target.is_lib else executable_install_path
-            uninstall_path = os.path.join(uninstall_dir, node.name)
+            uninstall_path = os.path.join(uninstall_dir, node.basename)
             if dry_run:
-                G_LOGGER.info(f"Would remove target: {node.name} from {uninstall_path}")
+                G_LOGGER.info(f"Would remove target: {node.basename} from {uninstall_path}")
             else:
                 os.remove(uninstall_path)
-                G_LOGGER.info(f"Uninstalled target: {node.name} from {uninstall_path}")
+                G_LOGGER.info(f"Uninstalled target: {node.basename} from {uninstall_path}")
 
         for prof_name in profile_names:
             for target in targets:
