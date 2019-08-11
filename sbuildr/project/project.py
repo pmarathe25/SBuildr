@@ -285,6 +285,7 @@ class Project(object):
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
+
     def configure_backend(self, BackendType: type=RBuildBackend) -> None:
         """
         Configure the project for build using the specified backend type. This includes generating any build configuration files required by this project's backend.

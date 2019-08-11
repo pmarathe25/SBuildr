@@ -87,4 +87,4 @@ class TestFileManager(object):
         assert test_cpp.include_dirs == sorted(set([PATHS["src"]] + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
         # Make sure that the source graph has been populated
         for file in ["factorial.hpp", "fibonacci.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
-            assert self.manager.graph.contains_path(PATHS[file])
+            assert PATHS[file] in self.manager.graph

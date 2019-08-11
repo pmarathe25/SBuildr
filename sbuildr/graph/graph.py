@@ -1,16 +1,14 @@
 from sbuildr.graph.node import Node
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Union
 import copy
 
 class Graph(dict):
     def __init__(self, nodes: Set[Node]=set()):
         self.update({node.path: node for node in nodes})
 
-    # The path must exist in the graph, and the node type must be the same.
-    def __contains__(self, node: Node) -> bool:
-        return self.contains_path(node.path) and type(self[node.path]) == type(node)
-
-    def contains_path(self, path: str) -> bool:
+    # Whether the graph contains this node.
+    def __contains__(self, val: Union[Node, str]) -> bool:
+        path = val.path if isinstance(val, Node) else val
         return dict.__contains__(self, path)
 
     # TODO: This may need additional logic for overriding
