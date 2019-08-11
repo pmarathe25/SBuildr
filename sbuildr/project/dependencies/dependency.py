@@ -13,6 +13,7 @@ PACKAGE_EXECUTABLE_SUBDIR = "bin"
 
 # TODO: Should have a library(), and executable() to specify what exactly we need from the dependency
 # TODO: Dependency fetching needs to be deferred to the build.
+# TODO: Need to get loader paths from library somehow.
 class Dependency(object):
     def __init__(self, fetcher: DependencyFetcher, builder: DependencyBuilder, version: str, cache_root: str=paths.dependency_cache_root()):
         """

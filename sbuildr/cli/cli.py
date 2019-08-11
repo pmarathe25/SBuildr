@@ -20,6 +20,7 @@ if args.very_verbose:
 elif args.verbose:
     G_LOGGER.verbosity = logger.Verbosity.DEBUG
 
+# TODO: Move this into bin/sbuildr
 # Sets up the the command-line interface for the given project/generator combination.
 # When no profile(s) are specified, default_profile will be used.
 def cli(project: Project, default_profiles=["debug", "release"]):

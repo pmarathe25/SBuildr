@@ -165,6 +165,7 @@ class Project(object):
         self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, internal)
         return self.executables[name]
 
+
     def test(self,
                 name: str,
                 sources: List[str],
@@ -188,6 +189,7 @@ class Project(object):
         """
         self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, True)
         return self.tests[name]
+
 
     def library(self,
                 name: str,
@@ -216,6 +218,7 @@ class Project(object):
         self.libraries[name].is_lib = True
         return self.libraries[name]
 
+
     # Returns a profile if it exists, otherwise creates a new one and returns it.
     def profile(self, name: str, flags: BuildFlags=BuildFlags(), build_dir: str=None, file_suffix: str="") -> Profile:
         """
@@ -233,6 +236,7 @@ class Project(object):
             G_LOGGER.verbose(f"Setting build directory for profile: {name} to: {build_dir}")
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
+
 
     def interfaces(self, headers: List[str]) -> List[str]:
         """
@@ -360,6 +364,7 @@ class Project(object):
         G_LOGGER.log(f"{paths.loader_path_env_var()}={loader_path} {node.path}\n", color=logger.Color.GREEN)
         return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)
 
+
     # TODO(0): Docstring
     def run(self, targets: List[ProjectTarget], profile_names: List[str]=[]):
         """
@@ -380,6 +385,7 @@ class Project(object):
             G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
             for target in targets:
                 run_target(target, prof_name)
+
 
     # TODO(0): Docstring
     def run_tests(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]):
