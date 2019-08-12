@@ -1,4 +1,4 @@
-from sbuildr.project.dependencies.dependency import CACHE_SOURCES_SUBDIR, Dependency
+from sbuildr.project.dependencies.dependency import Dependency
 from sbuildr.project.dependencies.fetchers.git_fetcher import GitFetcher
 from sbuildr.project.dependencies.fetchers.copy_fetcher import CopyFetcher
 from sbuildr.project.dependencies.builders.sbuildr_builder import SBuildrBuilder
@@ -66,13 +66,12 @@ class TestSBuildrBuilder(object):
 class TestDependency(object):
     def setup_method(self):
         # Copy fetcher does not support version, so we can provide any version.
-        self.dependency = Dependency(CopyFetcher(ROOT), SBuildrBuilder(), version="")
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.dependency = Dependency(CopyFetcher(ROOT), SBuildrBuilder(), version="", cache_root=self.tmpdir.name)
 
     def test_can_setup_correctly(self):
-        with tempfile.TemporaryDirectory() as cache_root:
-            self.dependency.cache_root = cache_root
-            self.dependency.setup()
-            # Source should be fetched into the cache root.
-            assert os.path.exists(os.path.join(cache_root, CACHE_SOURCES_SUBDIR, "minimal_project"))
-
-            # TODO(0): Complete this test
+        self.dependency.setup()
+        # Source should be fetched into the cache root.
+        assert os.path.exists(os.path.join(self.tmpdir.name, Dependency.CACHE_SOURCES_SUBDIR, "minimal_project"))
+        assert os.path.exists(os.path.join(self.dependency.lib_dir, paths.name_to_libname("math")))
+        assert os.path.exists(os.path.join(self.dependency.header_dir, "math.hpp"))

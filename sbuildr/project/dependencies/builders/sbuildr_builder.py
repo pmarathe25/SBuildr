@@ -1,9 +1,9 @@
 from sbuildr.project.dependencies.builders.builder import DependencyBuilder
 from sbuildr.project.dependencies.meta import DependencyMetadata
-from sbuildr.graph.node import Library
 from sbuildr.project.project import Project
-from sbuildr.misc import utils
+from sbuildr.graph.node import Library
 from sbuildr.logger import G_LOGGER
+from sbuildr.misc import utils
 import subprocess
 import sys
 import os
@@ -36,7 +36,8 @@ class SBuildrBuilder(DependencyBuilder):
 
         libraries = {}
         for name, target in project.libraries.items():
-            lib = target[self.install_profile]
-            libraries[name] = Library(lib.path, ld_dirs=lib.ld_dirs)
+            if not target.internal:
+                lib = target[self.install_profile]
+                libraries[name] = Library(path=lib.path, lib_dirs=lib.lib_dirs)
         include_dirs = project.files.include_dirs
         return DependencyMetadata(libraries, include_dirs)

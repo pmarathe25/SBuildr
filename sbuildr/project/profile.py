@@ -45,7 +45,9 @@ class Profile(object):
                     # Avoid duplicates in libs/lib_dirs.
                     if inp.name not in node.libs:
                         node.libs.append(inp.name)
-                        lib_dirs = [dir for dir in inp.ld_dirs if dir not in node.lib_dirs]
+                        # Add the dependency's lib_dirs in addition to the directory containing the dependency itself.
+                        lib_dirs = ([os.path.dirname(inp.path)] if inp.path else []) + inp.lib_dirs
+                        lib_dirs = [dir for dir in lib_dirs if dir not in node.lib_dirs]
                         node.lib_dirs.extend(lib_dirs)
                         G_LOGGER.verbose(f"Adding library: {inp.name}, and library directories: {lib_dirs} to {node}")
                     # Lastly, if this node does not have a path, it needs to be removed from its inp

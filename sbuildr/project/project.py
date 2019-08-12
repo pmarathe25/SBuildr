@@ -1,4 +1,5 @@
 from sbuildr.graph.node import Node, CompiledNode, LinkedNode, Library
+from sbuildr.project.dependencies.dependency import DependencyLibrary
 from sbuildr.project.file_manager import FileManager
 from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.target import ProjectTarget
@@ -100,7 +101,7 @@ class Project(object):
                 basename: str,
                 sources: List[str],
                 flags: BuildFlags,
-                libs: List[Union[ProjectTarget, Library]],
+                libs: List[Union[DependencyLibrary, ProjectTarget, Library]],
                 compiler: compiler.Compiler,
                 include_dirs: List[str],
                 linker: linker.Linker,
@@ -121,8 +122,12 @@ class Project(object):
             G_LOGGER.verbose(f"Received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
             return suffixed
 
+        # For any DependencyLibrarys in libs, add them to the target's dependencies, and then extract the Library.
+        deps: List[Dependency] = [lib.dependency for lib in libs if isinstance(lib, DependencyLibrary)]
+        libs = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
+
         source_nodes = get_source_nodes(sources)
-        target = ProjectTarget(name=name, internal=internal)
+        target = ProjectTarget(name=name, internal=internal, dependencies=deps)
         for profile_name, profile in self.profiles.items():
             # Convert all libraries to nodes. These will be inputs to the target.
             # Profile will later convert them to library names and directories.
@@ -155,7 +160,7 @@ class Project(object):
                     name: str,
                     sources: List[str],
                     flags: BuildFlags = BuildFlags(),
-                    libs: List[Union[ProjectTarget, Library]] = [],
+                    libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
                     compiler: compiler.Compiler = compiler.clang,
                     include_dirs: List[str] = [],
                     linker: linker.Linker = linker.clang,
@@ -166,7 +171,7 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either 'ProjectTarget's or `Library`s.
+        :param libs: A list containing either ``ProjectTarget``s, ``DependencyLibrary``s or ``Library``s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
@@ -182,7 +187,7 @@ class Project(object):
                 name: str,
                 sources: List[str],
                 flags: BuildFlags = BuildFlags(),
-                libs: List[Union[ProjectTarget, Library]] = [],
+                libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang) -> ProjectTarget:
@@ -192,7 +197,7 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either 'ProjectTarget's or `Library`s.
+        :param libs: A list containing either ``ProjectTarget``s, ``DependencyLibrary``s or ``Library``s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
@@ -207,7 +212,7 @@ class Project(object):
                 name: str,
                 sources: List[str],
                 flags: BuildFlags = BuildFlags(),
-                libs: List[Union[ProjectTarget, Library]] = [],
+                libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
@@ -218,7 +223,7 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either 'ProjectTarget's or `Library`s.
+        :param libs: A list containing either ``ProjectTarget``s, ``DependencyLibrary``s or ``Library``s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
@@ -285,6 +290,20 @@ class Project(object):
         elif len(candidates) > 1:
             G_LOGGER.critical(f"For path: {path}, found multiple candidates: {candidates}. Please provide a longer path to disambiguate.")
         return candidates[0]
+
+
+    def fetch_dependencies(self, targets: List[ProjectTarget]) -> None:
+        """
+        Fetches dependencies for the specified targets.
+        """
+        unique_deps = set()
+        for target in targets:
+            unique_deps.update(target.dependencies)
+        for dep in unique_deps:
+            include_dirs = dep.setup()
+            self.files.add_include_dir(dep.header_dir)
+            [self.files.add_include_dir(dir) for dir in include_dirs]
+        G_LOGGER.critical(unique_deps)
 
 
     def configure_graph(self) -> None:

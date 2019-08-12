@@ -1,21 +1,26 @@
 from sbuildr.project.dependencies.builders.builder import DependencyBuilder
 from sbuildr.project.dependencies.fetchers.fetcher import DependencyFetcher
+from sbuildr.project.dependencies.meta import DependencyMetadata
+from sbuildr.graph.node import Library
+from sbuildr.logger import G_LOGGER
 from sbuildr.misc import paths
 
+from typing import List
 import os
-
-CACHE_SOURCES_SUBDIR = "sources"
-CACHE_PACKAGES_SUBDIR = "packages"
-
-PACKAGE_HEADER_SUBDIR = "include"
-PACKAGE_LIBRARY_SUBDIR = "lib"
-PACKAGE_EXECUTABLE_SUBDIR = "bin"
 
 # TODO: Should have a library(), and executable() to specify what exactly we need from the dependency
 # TODO: Dependency fetching should happen in configure, with a targets parameter. This way you can fetch only for those targets you need to install.
 # TODO: When configuring, add include dirs and libs from dependencies.
 # TODO: Header scanning will need to be deferred once again until configure_backend
 class Dependency(object):
+    CACHE_SOURCES_SUBDIR = "sources"
+    CACHE_PACKAGES_SUBDIR = "packages"
+
+    PACKAGE_HEADER_SUBDIR = "include"
+    PACKAGE_LIBRARY_SUBDIR = "lib"
+    PACKAGE_EXECUTABLE_SUBDIR = "bin"
+    METADATA_FILENAME = "meta.pkl"
+
     def __init__(self, fetcher: DependencyFetcher, builder: DependencyBuilder, version: str, cache_root: str=paths.dependency_cache_root()):
         """
         Manages a fetcher-builder pair for a single dependency.
@@ -30,26 +35,51 @@ class Dependency(object):
         self.name = self.fetcher.dependency_name
         self.version = version
         self.cache_root = cache_root
+        self.package_root = os.path.join(self.cache_root, Dependency.CACHE_PACKAGES_SUBDIR, f"{self.name}-{self.version}")
+        self.libraries: Dict[str, Library] = {}
+        self.header_dir = os.path.join(self.package_root, Dependency.PACKAGE_HEADER_SUBDIR)
+        self.lib_dir = os.path.join(self.package_root, Dependency.PACKAGE_LIBRARY_SUBDIR)
+        self.exec_dir = os.path.join(self.package_root, Dependency.PACKAGE_EXECUTABLE_SUBDIR)
 
-    def setup(self) -> str:
+
+    def setup(self) -> List[str]:
         """
         Fetch, build, and install the dependency if the dependency does not exist in the cache. If the dependency is found in the cache, does nothing.
 
-        :returns: An absolute path to the root of the package.
+        :returns: A list of include directories from this dependency.
         """
-        package_root = os.path.join(self.cache_root, CACHE_PACKAGES_SUBDIR, f"{self.name}-{self.version}")
-
-        if not os.path.exists(package_root):
+        metadata_path = os.path.join(self.package_root, Dependency.METADATA_FILENAME)
+        if not os.path.exists(metadata_path):
+            G_LOGGER.info(f"{self.package_root} does not contain package metadata. Fetching dependency.")
             # Fetch
-            dep_dir = os.path.join(self.cache_root, CACHE_SOURCES_SUBDIR, self.name)
+            dep_dir = os.path.join(self.cache_root, Dependency.CACHE_SOURCES_SUBDIR, self.name)
             self.fetcher.fetch(dep_dir, self.version)
             # Install
-            header_dir = os.path.join(package_root, PACKAGE_HEADER_SUBDIR)
-            lib_dir = os.path.join(package_root, PACKAGE_LIBRARY_SUBDIR)
-            exec_dir = os.path.join(package_root, PACKAGE_EXECUTABLE_SUBDIR)
-            self.builder.install(dep_dir, header_dir=header_dir, lib_dir=lib_dir, exec_dir=exec_dir)
+            meta = self.builder.install(dep_dir, header_dir=self.header_dir, lib_dir=self.lib_dir, exec_dir=self.exec_dir)
+            meta.save(metadata_path)
+        else:
+            G_LOGGER.info(f"Found {metadata_path}, assuming dependency is up-to-date")
+            meta = DependencyMetadata.load(metadata_path)
 
-        # TODO(0): If the package_root exists, need some way to get information about libs/execs from it.
-        # Need at least path and ld_dirs. Builder will need to return this when installing above.
-        # Need something similar for include dirs as well
-        return package_root
+        # Next, update all libraries that have been requested from this dependency.
+        for name, lib in self.libraries:
+            if name not in meta.libraries:
+                G_LOGGER.critical(f"Requested library: {name} is not present in dependency: {self.name}")
+            metalib = meta.libraries[name]
+            lib.path = metalib.path
+            lib.lib_dirs.extend(metalib.lib_dirs)
+
+        return meta.include_dirs
+
+
+    def library(self, name: str) -> "DependencyLibrary":
+        # The library's lib_dirs and path will be updated during setup in project's configure_graph.
+        self.libraries[name] = Library(name=name)
+        return DependencyLibrary(self, self.libraries[name])
+
+
+# Tracks a library and the dependency from which it originates.
+class DependencyLibrary(object):
+    def __init__(self, dependency: Dependency, library: Library):
+        self.dependency = dependency
+        self.library = library
