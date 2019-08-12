@@ -87,6 +87,11 @@ class Project(object):
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
 
+    def all_targets(self):
+        return list(self.libraries.values()) + list(self.executables.values()) + list(self.tests.values())
+
+    def all_profile_names(self) -> List[str]:
+        return list(self.profiles.keys())
 
     def _target(self,
                 name: str,
@@ -328,7 +333,7 @@ class Project(object):
             nodes = []
             for prof_name in profile_names:
                 if prof_name not in self.profiles:
-                    G_LOGGER.critical(f"Profile {prof_name} does not exist in the project. Available profiles: {list(project.profiles.keys())}")
+                    G_LOGGER.critical(f"Profile {prof_name} does not exist in the project. Available profiles: {self.all_profile_names()}")
                 # Populate nodes.
                 for target in targets:
                     if prof_name in target:
@@ -350,7 +355,7 @@ class Project(object):
         [self.files.mkdir(prof.build_dir) for prof in self.profiles.values()]
         G_LOGGER.verbose(f"Created build directories: {self.common_objs_build_dir}, {[prof.build_dir for prof in self.profiles.values()]}")
 
-        profile_names = profile_names or self.profiles.keys()
+        profile_names = profile_names or self.all_profile_names()
         nodes = select_nodes(targets, profile_names)
         status, time_elapsed = self.backend.build(nodes)
         if status.returncode:
@@ -403,7 +408,7 @@ class Project(object):
                 G_LOGGER.critical(f"Could not find test: {target.name} in project.\n\tAvailable tests:\n\t\t{list(self.tests.keys())}")
 
         tests = targets or list(self.tests.values())
-        profile_names = profile_names or list(self.profiles.keys())
+        profile_names = profile_names or self.all_profile_names()
         if not tests:
             G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
             return
@@ -445,9 +450,6 @@ class Project(object):
                     G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", color=logger.Color.RED)
 
 
-    def _all_targets(self):
-        return list(self.libraries.values()) + list(self.executables.values())
-
     def install(self,
         targets: List[ProjectTarget]=[],
         profile_names: List[str]=[],
@@ -467,7 +469,7 @@ class Project(object):
         :param executable_install_path: The path to which to install executables. This defaults to one of the default locations for the host OS.
         :param dry_run: Whether to perform a dry-run only, with no file copying. Defaults to True.
         """
-        targets = targets or [target for target in self._all_targets() if not target.internal]
+        targets = targets or [target for target in self.all_targets() if not target.internal]
         profile_names = profile_names or ["release"]
         headers = [self.find(header) for header in headers] or list(self.public_headers)
 
@@ -522,7 +524,7 @@ class Project(object):
         :param executable_install_path: The path from which to uninstall executables. This defaults to one of the default locations for the host OS.
         :param dry_run: Whether to perform a dry-run only, with no file copying. Defaults to True.
         """
-        targets = targets or [target for target in self._all_targets() if not target.internal]
+        targets = targets or [target for target in self.all_targets() if not target.internal]
         profile_names = profile_names or ["release"]
         headers = [self.find(header) for header in headers] or list(self.public_headers)
 
@@ -571,7 +573,7 @@ class Project(object):
             G_LOGGER.info(f"Initiating Nuclear Protocol!")
         else:
             # By default, cleans all targets for all profiles.
-            profile_names = profile_names or list(self.profiles.keys())
+            profile_names = profile_names or self.all_profile_names()
             to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
             G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
         # Remove

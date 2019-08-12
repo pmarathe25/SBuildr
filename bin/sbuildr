@@ -24,12 +24,6 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
 
     :param project: The project that the CLI will interface with.
     """
-    def all_targets() -> List[ProjectTarget]:
-        return list(project.libraries.values()) + list(project.executables.values())
-
-    def all_profiles() -> List[str]:
-        return list(project.profiles.keys())
-
     # Given target names, returns the corresponding targets.
     def select_targets(args) -> List[ProjectTarget]:
         targets = []
@@ -52,7 +46,7 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
 
 
     def help(args):
-        targets = select_targets(args) or all_targets()
+        targets = select_targets(args) or project.all_targets()
         G_LOGGER.info(f"\n{utils.wrap_str(' Targets ')}")
         for target in targets:
             G_LOGGER.info(f"Target: {target}{'(internal)' if target.internal else ''}. Available Profiles:")
@@ -67,14 +61,14 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
 
 
     def build(args) -> Tuple[List[ProjectTarget], List[str]]:
-        targets = select_targets(args) or all_targets()
-        prof_names = select_profile_names(args) or all_profiles()
+        targets = select_targets(args) or project.all_targets()
+        prof_names = select_profile_names(args) or project.all_profile_names()
         project.build(targets, prof_names)
 
 
     def run(args):
-        targets = select_targets(args) or all_targets()
-        prof_names = select_profile_names(args) or all_profiles()
+        targets = select_targets(args) or project.all_targets()
+        prof_names = select_profile_names(args) or project.all_profile_names()
         project.run(targets, prof_names)
 
 
@@ -95,7 +89,7 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
     def get_install_targets(args):
         headers = [tgt for tgt in args.targets if tgt not in project] or list(project.public_headers)
         args.targets = [tgt for tgt in args.targets if tgt in project]
-        targets = [tgt for tgt in (select_targets(args) or all_targets()) if not tgt.internal]
+        targets = [tgt for tgt in (select_targets(args) or project.all_targets()) if not tgt.internal]
         G_LOGGER.verbose(f"Selected public targets: {targets}")
         prof_names = select_profile_names(args) or ["release"]
         G_LOGGER.verbose(f"Targets: {targets} for profiles: {prof_names}")
@@ -114,7 +108,7 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
 
     def clean(args):
         # By default, cleans all targets for the default profile.
-        prof_names = select_profile_names(args) or all_profiles()
+        prof_names = select_profile_names(args) or project.all_profile_names()
         project.clean(prof_names, nuke=args.nuke)
 
 

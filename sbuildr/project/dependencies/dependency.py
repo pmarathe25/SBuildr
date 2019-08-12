@@ -12,8 +12,9 @@ PACKAGE_LIBRARY_SUBDIR = "lib"
 PACKAGE_EXECUTABLE_SUBDIR = "bin"
 
 # TODO: Should have a library(), and executable() to specify what exactly we need from the dependency
-# TODO: Dependency fetching needs to be deferred to the build.
-# TODO: Need to get loader paths from library somehow.
+# TODO: Dependency fetching should happen in configure, with a targets parameter. This way you can fetch only for those targets you need to install.
+# TODO: FileManager needs add_include_dir so that include dirs from dependencies can be propagated.
+# TODO: Header scanning will need to be deferred once again until configure_backend
 class Dependency(object):
     def __init__(self, fetcher: DependencyFetcher, builder: DependencyBuilder, version: str, cache_root: str=paths.dependency_cache_root()):
         """
@@ -48,4 +49,7 @@ class Dependency(object):
             exec_dir = os.path.join(package_root, PACKAGE_EXECUTABLE_SUBDIR)
             self.builder.install(dep_dir, header_dir=header_dir, lib_dir=lib_dir, exec_dir=exec_dir)
 
+        # TODO(0): If the package_root exists, need some way to get information about libs/execs from it.
+        # Need at least path and ld_dirs. Builder will need to return this when installing above.
+        # Need something similar for include dirs as well
         return package_root

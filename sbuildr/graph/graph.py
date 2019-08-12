@@ -28,6 +28,8 @@ class Graph(dict):
             self[node.path] = node
         return self[node.path]
 
+    # Returns layers of the topologically sorted graph. The first element of the list is the the
+    # set of input nodes, the last element, the output nodes.
     def layers(self) -> List[Set[Node]]:
         outputs = set([node for node in self.values() if not node.outputs])
         # The layers of the graph.
