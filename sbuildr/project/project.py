@@ -58,6 +58,8 @@ class Project(object):
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG"), file_suffix="_debug")
+        # A graph describing the entire project. This is typically not constructed until just before the build
+        self.graph: Graph = None
 
     @staticmethod
     def load(path: str=None) -> "Project":
@@ -120,17 +122,17 @@ class Project(object):
             return suffixed
 
         source_nodes = get_source_nodes(sources)
-        G_LOGGER.verbose(f"Converted libs to: {libs}")
         target = ProjectTarget(name=name, internal=internal)
         for profile_name, profile in self.profiles.items():
-            # Convert all libraries to nodes.
-            target_libs = [lib[profile_name] if isinstance(lib, ProjectTarget) else lib for lib in libs]
+            # Convert all libraries to nodes. These will be inputs to the target.
+            # Profile will later convert them to library names and directories.
+            input_nodes = [lib[profile_name] if isinstance(lib, ProjectTarget) else lib for lib in libs]
+            G_LOGGER.verbose(f"Library inputs for target: {name} are: {input_nodes}")
 
             # Per-target flags always overwrite profile flags.
             flags = profile.flags + flags
 
             # First, add or retrieve object nodes for each source.
-            input_nodes = []
             for source_node in source_nodes:
                 # Only the include dirs provided by the user are part of the hash. When the automatically deduced
                 # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
@@ -140,22 +142,11 @@ class Project(object):
                 obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
                 input_nodes.append(profile.graph.add(obj_node))
 
-            # Get library names and dirs.
-            lib_names: List[str] = []
-            lib_dirs: List[str] = []
-            for lib in target_libs:
-                lib_names.append(lib.name)
-                lib_dirs.extend(lib.ld_dirs)
-                # Finally, if the node has a path, we can add it as a dependency
-                if lib.path:
-                    input_nodes.append(lib)
-
-            G_LOGGER.verbose(f"Final libraries: {lib_names}, and linker/loader directories: {lib_dirs}")
             # TODO: Add back linker signature, create hard links using always clause in rbuild.
             # Finally, add the actual linked node
             linked_path = os.path.join(profile.build_dir, file_suffix(basename, profile.suffix))
-            linked_node = LinkedNode(linked_path, input_nodes, linker, lib_names, lib_dirs, flags)
-            G_LOGGER.debug(f"Adding target: {name}, with basename: {basename} to profile: {profile_name}")
+            linked_node = LinkedNode(linked_path, input_nodes, linker, flags=flags)
+            G_LOGGER.debug(f"Adding target: {name}, with path: {linked_path} to profile: {profile_name}")
             target[profile_name] = profile.graph.add(linked_node)
         return target
 
@@ -296,14 +287,15 @@ class Project(object):
         return candidates[0]
 
 
-    def configure_backend(self, BackendType: type=RBuildBackend) -> None:
+    def configure_graph(self) -> None:
         """
-        Configure the project for build using the specified backend type. This includes generating any build configuration files required by this project's backend.
+        Configures the project's build graph. This must be called prior to configuring a backend.
+        """
+        # Scan for headers and propagate libs
+        self.files.scan_all()
 
-        :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
-        """
-        self.backend = BackendType(self.build_dir)
-        self.files.mkdir(self.build_dir)
+        for profile in self.profiles.values():
+            profile.configure_libraries()
 
         # Combine the source graph from file manager and the various profile graphs
         def combined_graph():
@@ -313,7 +305,22 @@ class Project(object):
                 graph += profile.graph
             return graph
 
-        self.backend.configure(combined_graph())
+        self.graph = combined_graph()
+
+
+    def configure_backend(self, BackendType: type=RBuildBackend) -> None:
+        """
+        Configure the project for build using the specified backend type. This includes generating any build configuration files required by this project's backend. This must be called prior to building.
+
+        :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
+        """
+        if not self.graph:
+            G_LOGGER.warning(f"Project Graph has not been configured. Attempting to automatically configure the graph. If this does not work, please call `configure_graph()` prior to calling this function")
+            self.configure_graph()
+
+        self.backend = BackendType(self.build_dir)
+        self.files.mkdir(self.build_dir)
+        self.backend.configure(self.graph)
 
 
     def build(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> float:

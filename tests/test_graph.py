@@ -1,5 +1,5 @@
 from sbuildr.graph.graph import Graph
-from sbuildr.graph.node import Node
+from sbuildr.graph.node import Node, Library
 
 def linear_graph():
     # Constructs a linear graph:
@@ -75,3 +75,7 @@ class TestNodes(object):
         assert hash(A) != hash(B)
         test = set([A, B])
         assert len(test) == 2
+
+    def test_library_node_has_no_path(self):
+        libstdcpp = Library("stdc++")
+        assert not libstdcpp.path

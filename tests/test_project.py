@@ -11,11 +11,13 @@ import os
 
 G_LOGGER.verbosity = logger.Verbosity.VERBOSE
 
-# TODO: Move test_integration test into here.
+# TODO: Move test_integration tests into here.
 class TestProject(object):
-    def test_inits_to_curdir(self):
-        proj = Project()
-        assert proj.files.root_dir == os.path.dirname(__file__)
+    def setup_method(self):
+        self.project = Project(root=ROOT)
+        self.test = self.project.executable("test", sources=["tests/test.cpp"], libs=[Library("stdc++")])
+        self.lib = self.project.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
+        self.project.configure_graph()
 
     def check_target(self, proj, target):
         for name in proj.profiles.keys():
@@ -26,17 +28,17 @@ class TestProject(object):
             assert os.path.dirname(node.path) == build_dir
             assert all([os.path.dirname(inp.path) == build_dir or os.path.dirname(inp.path) == proj.common_objs_build_dir for inp in node.inputs])
 
+    def test_inits_to_curdir(self):
+        proj = Project()
+        assert proj.files.root_dir == os.path.dirname(__file__)
+
     def test_executable_api(self):
-        proj = Project(root=ROOT)
-        test = proj.executable("test", sources=["tests/test.cpp"], libs=[Library("stdc++")])
-        self.check_target(proj, test)
+        self.check_target(self.project, self.test)
 
     def test_library_api(self):
-        proj = Project(root=ROOT)
-        lib = proj.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
-        for node in lib.values():
+        for node in self.lib.values():
             assert node.flags._shared
-        self.check_target(proj, lib)
+        self.check_target(self.project, self.lib)
 
 class TestFileManager(object):
     def setup_method(self):
@@ -70,6 +72,7 @@ class TestFileManager(object):
         factorial_cpp = self.manager.source(PATHS["factorial.cpp"])
         fibonacci_cpp = self.manager.source(PATHS["fibonacci.cpp"])
         test_cpp = self.manager.source(PATHS["test.cpp"])
+        self.manager.scan_all()
         # Headers
         # Includes utils.hpp..
         assert factorial_hpp.include_dirs == sorted([PATHS["src"], PATHS["include"]])

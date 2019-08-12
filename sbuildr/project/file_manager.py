@@ -34,6 +34,10 @@ class FileManager(object):
         self.writable_dirs: Set[str] = writable_dirs
         G_LOGGER.verbose(f"Excluded directories: {exclude_dirs}. Writable directories: {writable_dirs}")
 
+        # Include dirs/"header" files are only considered when searching for includes.
+        self.include_dirs: List[str] = []
+        self.header_files: List[str] = [] # List to enable header priority
+
         self.files: Set[str] = set()
 
         self.root_dir = os.path.abspath(root_dir)
@@ -49,15 +53,25 @@ class FileManager(object):
         # Keep track of all files relevant to building the project.
         self.graph = Graph()
 
-    # TODO: FIXME: This does not handle directories inside exclude directories correctly.
-    def add_dir(self, dir: str):
+
+    # Finds all files recursively in the specified directory.
+    def _files_in_dir(self, dir: str):
         dir = self.abspath(dir)
         G_LOGGER.verbose(f"Searching for files in: {dir}")
+        files = []
         for path in glob.iglob(os.path.join(dir, "**"), recursive=True):
             if os.path.isfile(path) and not _is_in_directories(path, self.exclude_dirs):
-                self.files.add(os.path.abspath(path))
+                files.append(os.path.abspath(path))
             else:
                 G_LOGGER.verbose(f"Rejecting path: {path}, because it is either not a file, or falls in one of the excluded directories.")
+        return files
+
+    # TODO: FIXME: This does not handle directories inside exclude directories correctly.
+    def add_dir(self, dir: str):
+        self.files.update(self._files_in_dir(dir))
+
+    def add_include_dir(self, dir: str):
+        self.header_files.extend(self._files_in_dir(dir))
 
     # Adds the specified directory to exclude_dirs, then returns the absolute path to the added directory.
     def add_exclude_dir(self, dir: str) -> str:
@@ -110,9 +124,11 @@ class FileManager(object):
     # Finds filename in self.files. Always returns absolute paths.
     # If the file exists but is not in this FileManager's tracked directories, returns an empty list.
     # The returned list is in order of proximity to the root. The first element is closest to the root.
-    def find(self, path: str) -> List[str]:
+    # If search_include_dirs is True, then also looks for files in include_dirs
+    def find(self, path: str, search_include_dirs=False) -> List[str]:
+        all_files = list(self.files) + self.header_files if search_include_dirs else self.files
         # TODO: endswith is not a good way to do this. Need a path-separator-aware endswith.
-        candidates = set([fpath for fpath in self.files if fpath.endswith(path)])
+        candidates = set([fpath for fpath in all_files if fpath.endswith(path)])
         # Prefer shorter paths, i.e. closer to the root.
         candidates = list(sorted(candidates, key=lambda elem: len(elem)))
         # Also check if this exists when converted to an absolute path.
@@ -134,13 +150,14 @@ class FileManager(object):
             G_LOGGER.warning(f"For {path}, found multiple candidates: {candidates}. Using {candidates[0]}. If this is incorrect, please disambiguate by providing either an absolute path, or a longer relative path.")
         elif len(candidates) == 0:
             G_LOGGER.critical(f"Could not find {path}. Does it exist?")
-        path = candidates[0]
-
-        node = SourceNode(path)
-        if node not in self.graph:
-            G_LOGGER.verbose(f"Scanning source node: {node}")
-            self.scan(node)
+        node = SourceNode(candidates[0])
         return self.graph.add(node)
+
+    def scan_all(self) -> None:
+        # scan() will modify the graph, so cannot iterate over values() directly
+        source_nodes = [node for node in self.graph.values() if isinstance(node, SourceNode)]
+        G_LOGGER.verbose(f"Scanning source nodes: {source_nodes}")
+        [self.scan(node) for node in source_nodes]
 
     # Finds all required include directories for a given managed file. Adds nodes to the graph if missing.
     def scan(self, node: str) -> None:
@@ -152,7 +169,7 @@ class FileManager(object):
             if include_path.startswith(os.pardir):
                 raise NotImplementedError(f"FileManager does not currently support includes containing {os.pardir}")
 
-            candidates = self.find(included_token)
+            candidates = self.find(included_token, search_include_dirs=True)
             if len(candidates) == 0:
                 return None
 

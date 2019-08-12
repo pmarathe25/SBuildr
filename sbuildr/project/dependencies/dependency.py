@@ -13,7 +13,7 @@ PACKAGE_EXECUTABLE_SUBDIR = "bin"
 
 # TODO: Should have a library(), and executable() to specify what exactly we need from the dependency
 # TODO: Dependency fetching should happen in configure, with a targets parameter. This way you can fetch only for those targets you need to install.
-# TODO: FileManager needs add_include_dir so that include dirs from dependencies can be propagated.
+# TODO: When configuring, add include dirs and libs from dependencies.
 # TODO: Header scanning will need to be deferred once again until configure_backend
 class Dependency(object):
     def __init__(self, fetcher: DependencyFetcher, builder: DependencyBuilder, version: str, cache_root: str=paths.dependency_cache_root()):

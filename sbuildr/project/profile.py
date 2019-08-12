@@ -1,8 +1,7 @@
-from sbuildr.graph.node import Node, CompiledNode, LinkedNode
 from sbuildr.tools.flags import BuildFlags
+from sbuildr.graph.node import Library
 from sbuildr.graph.graph import Graph
 from sbuildr.logger import G_LOGGER
-from sbuildr.misc import paths
 
 from typing import List, Union, Dict
 import copy
@@ -34,3 +33,21 @@ class Profile(object):
         self.build_dir = build_dir
         self.graph = Graph()
         self.suffix = suffix
+
+    # Propagates library dirs from dependencies to their dependees.
+    def configure_libraries(self):
+        for layer in self.graph.layers():
+            lib_nodes = [node for node in layer if isinstance(node, Library)]
+            for node in lib_nodes:
+                # Pull in libraries from this node's inputs
+                lib_inputs = [inp for inp in node.inputs if isinstance(inp, Library)]
+                for inp in lib_inputs:
+                    # Avoid duplicates in libs/lib_dirs.
+                    if inp.name not in node.libs:
+                        node.libs.append(inp.name)
+                        lib_dirs = [dir for dir in inp.ld_dirs if dir not in node.lib_dirs]
+                        node.lib_dirs.extend(lib_dirs)
+                        G_LOGGER.verbose(f"Adding library: {inp.name}, and library directories: {lib_dirs} to {node}")
+                    # Lastly, if this node does not have a path, it needs to be removed from its inp
+                    if not inp.path:
+                        node.remove_input(inp)

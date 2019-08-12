@@ -30,23 +30,26 @@ class Graph(dict):
 
     # Returns layers of the topologically sorted graph. The first element of the list is the the
     # set of input nodes, the last element, the output nodes.
+    # Note that this will exclude any nodes that are not in this graph, even if they are inputs/outputs
+    # to nodes that are in the graph.
     def layers(self) -> List[Set[Node]]:
         outputs = set([node for node in self.values() if not node.outputs])
         # The layers of the graph.
-        _layers: List[Set[Node]] = []
-        _layers.append(outputs)
-        for layer in _layers:
+        graph_layers: List[Set[Node]] = []
+        graph_layers.append(outputs)
+        for layer in graph_layers:
             layer_inputs = set()
-            [layer_inputs.update(node.inputs) for node in layer]
+            [layer_inputs.update([inp for inp in node.inputs if inp.path in self]) for node in layer]
+            # [layer_inputs.update(node.inputs) for node in layer]
             if layer_inputs:
-                _layers.append(layer_inputs)
+                graph_layers.append(layer_inputs)
         # Sort in order from inputs to outputs and ensure uniqueness across
-        # layers by removing all nodes that we've seen already.
+        # graph_layers by removing all nodes that we've seen already.
         seen_nodes = set()
-        _unique_layers = []
-        for layer in reversed(_layers):
+        unique_layers = []
+        for layer in reversed(graph_layers):
             layer -= seen_nodes
             if layer:
-                _unique_layers.append(layer)
+                unique_layers.append(layer)
             seen_nodes.update(layer)
-        return _unique_layers
+        return unique_layers

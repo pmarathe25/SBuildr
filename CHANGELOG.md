@@ -26,6 +26,8 @@ Dates are in YYYY-MM-DD format.
 - Adds `Library` class to better abstract external libraries. This also allows for better handling of nested loader search path dependencies.
 - Removes `cli()` and adds `bin/sbuildr` in its place. `bin/sbuildr` operates on saved projects, so it is much faster than running the `build.py` script each time.
 - `bin/sbuildr`'s `configure` is now `configure-backend`.
+- Adds deferred library propagation. Profiles can now set up libraries just before the build.
+- `Graph` `layers()` now only returns nodes that are actually in the graph.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

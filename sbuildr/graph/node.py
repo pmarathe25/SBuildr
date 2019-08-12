@@ -4,16 +4,17 @@ from sbuildr.logger import G_LOGGER
 from sbuildr.misc import paths
 
 from typing import List
+import copy
 import os
 
 # Represents a node in a dependency graph that tracks a path on the filesystem.
 class Node(object):
     def __init__(self, path: str, inputs: List["Node"]=[]):
         self.path = path
-        self.basename = os.path.basename(path)
+        self.basename = os.path.basename(path) if path else None
         self.inputs: List[Node] = []
         self.outputs: List[Node] = []
-        G_LOGGER.debug(f"Constructing {self} with {len(inputs)} inputs: {inputs}")
+        G_LOGGER.debug(f"Constructing Node with path: {self.path}, basename: {self.basename} with {len(inputs)} inputs: {inputs}")
         for inp in inputs:
             self.add_input(inp)
 
@@ -21,7 +22,7 @@ class Node(object):
         return f"{self.basename}: {self.path}"
 
     def __repr__(self):
-        return f"{self}: {self.path} (at {hex(id(self))})"
+        return f"{self} (at {hex(id(self))})"
 
     # Returns a string representation of the dependency graph for this node.
     def dependency_graph_str(self, tab_depth=0):
@@ -31,10 +32,17 @@ class Node(object):
             out += f"{inp.dependency_graph_str(tab_depth + 1)}\n"
         return out
 
+    # This function avoids duplicates
     def add_input(self, node: "Node"):
-        G_LOGGER.verbose(f"Adding {self} as an output of {node}")
-        node.outputs.append(self)
-        self.inputs.append(node)
+        if node not in self.inputs:
+            G_LOGGER.verbose(f"Adding {self} as an output of {node}")
+            node.outputs.append(self)
+            self.inputs.append(node)
+
+    def remove_input(self, node: "Node"):
+        G_LOGGER.verbose(f"Removing {self} as an output of {node}")
+        node.outputs.remove(self)
+        self.inputs.remove(node)
 
 class SourceNode(Node):
     def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=None):
@@ -71,13 +79,15 @@ class Library(Node):
         if not (name or path):
             G_LOGGER.critical(f"Either a name or path must be provided to find a library")
 
-        self.path = path
         # TODO: FIXME: This will not handle non-standard library names (e.g. not in the form lib<name>.so)
-        self.name = name or paths.libname_to_name(os.path.basename(path))
-        self.basename = self.name or self.path
+        super().__init__(path)
+        self.name = name or paths.libname_to_name(os.path.basename(self.path))
         self.ld_dirs = [os.path.abspath(dir) for dir in ld_dirs]
         if self.path:
             self.ld_dirs.insert(0, os.path.dirname(self.path))
+
+    def __str__(self):
+        return f"{self.name}"
 
 # Only CompiledNodes in the inputs list are passed on to the linker.
 class LinkedNode(Library):
@@ -85,6 +95,10 @@ class LinkedNode(Library):
         super().__init__(path=path, ld_dirs=lib_dirs)
         Node.__init__(self, path, inputs)
         self.linker = linker
-        self.libs = libs
+        # Need a copy here because default arguments are silly in Python.
+        self.libs = copy.deepcopy(libs)
         self.lib_dirs = lib_dirs
         self.flags = flags
+
+    def __str__(self):
+        return Node.__str__(self)

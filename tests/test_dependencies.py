@@ -73,8 +73,6 @@ class TestDependency(object):
             self.dependency.cache_root = cache_root
             self.dependency.setup()
             # Source should be fetched into the cache root.
-            # DEBUG:
-            # import pdb; pdb.set_trace()
             assert os.path.exists(os.path.join(cache_root, CACHE_SOURCES_SUBDIR, "minimal_project"))
 
             # TODO(0): Complete this test

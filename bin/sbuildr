@@ -224,6 +224,7 @@ def main():
         G_LOGGER.warning(f"This project was built with an older version of SBuildr. System version: {sbuildr.__version__}, Project version: {proj.sbuildr_version if hasattr(proj, 'sbuildr_version') else 'unknown'}")
 
     status = launch_cli(proj, parser)
+    # TODO(0): Move this into an atexit handler.
     # Save the updated project
     proj.save(project_file)
     return status
