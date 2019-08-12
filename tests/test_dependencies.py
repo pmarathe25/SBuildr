@@ -12,6 +12,9 @@ import pytest
 import sys
 import os
 
+SBUILDR_ROOT = os.path.abspath(os.path.join(TESTS_ROOT, os.pardir))
+sys.path.insert(0, SBUILDR_ROOT)
+
 class TestGitFetcher(object):
     def setup_method(self):
         self.version = "0.2.0"

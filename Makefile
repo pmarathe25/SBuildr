@@ -18,7 +18,7 @@ help:
 
 test:
 	python3 -m pytest tests/
-	export PYTHONPATH=$(CURDIR); python3 examples/minimal_project/build.py && bin/sbuildr -p examples/minimal_project/project.sbuildr configure -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr build -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr tests -vv
+	export PYTHONPATH=$(CURDIR); python3 examples/minimal_project/build.py && bin/sbuildr -p examples/minimal_project/project.sbuildr configure-backend -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr build -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr tests -vv
 
 wheel:
 	python3 setup.py bdist_wheel

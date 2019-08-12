@@ -13,8 +13,6 @@ from sbuildr.misc import paths, utils
 import sbuildr.logger as logger
 import sbuildr
 
-G_LOGGER.info(f"Using SBuildr {sbuildr.__version__} from {sbuildr.__path__}")
-
 from typing import List, Tuple
 import argparse
 
@@ -64,7 +62,7 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
         G_LOGGER.info(f"Headers: {project.public_headers}")
 
 
-    def configure(args):
+    def configure_backend(args):
         project.configure_backend()
 
 
@@ -134,8 +132,8 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
     help_parser.set_defaults(func=help)
 
     # Configure
-    configure_parser = subparsers.add_parser("configure", help="Generate build configuration files", description="Generate a build configuration file for the project")
-    configure_parser.set_defaults(func=configure)
+    configure_backend_parser = subparsers.add_parser("configure-backend", help="Generate build configuration files", description="Generate a build configuration file for the project using a backend")
+    configure_backend_parser.set_defaults(func=configure_backend)
 
     # Build
     build_parser = subparsers.add_parser("build", help="Build project targets", description="Build one or more project targets")

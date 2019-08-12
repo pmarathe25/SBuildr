@@ -1,7 +1,6 @@
 from sbuildr.graph.node import LinkedNode
 from typing import NewType, Dict
 
-# TODO: This should map str: sbuildr.Library/sbuildr.Executable
 # A Dict[str, LinkedNode] that maps profile names to the LinkedNodes for a target
 class ProjectTarget(dict):
     def __init__(self, name, internal=False, *args, **kwargs):
