@@ -26,7 +26,7 @@ def create_build_graph(compiler, linker):
     # Library and executable
     libmath = LinkedNode(os.path.join(PATHS["build"], "libmath.so"), [factorial_o, fibonacci_o], linker=linker, flags=flags+BuildFlags()._enable_shared(), libs=["stdc++"])
     test = LinkedNode(os.path.join(PATHS["build"], "test"), [test_o, libmath], linker=linker, flags=flags, libs=["stdc++", "math"], lib_dirs=[os.path.dirname(libmath.path)])
-    return Graph([utils_h, factorial_h, fibonacci_h, factorial_cpp, fibonacci_cpp, test_cpp]), Graph([factorial_o, fibonacci_o, test_o, libmath, test])
+    return Graph([utils_h, factorial_h, fibonacci_h, factorial_cpp, fibonacci_cpp, test_cpp, factorial_o, fibonacci_o, test_o, libmath, test])
 
 class TestRBuild(object):
     @classmethod
@@ -46,19 +46,17 @@ class TestRBuild(object):
     @pytest.mark.parametrize("compiler", [compiler.gcc, compiler.clang])
     @pytest.mark.parametrize("linker", [linker.gcc, linker.clang])
     def test_config_file(self, compiler, linker):
-        source_graph, profile_graph = create_build_graph(compiler, linker)
+        graph = create_build_graph(compiler, linker)
         gen = RBuildBackend(PATHS["build"])
-        gen.configure(source_graph + profile_graph)
+        gen.configure(graph)
         assert subprocess.run(["rbuild", gen.config_file])
         # All paths should exist after building.
-        for node in source_graph.values():
-            assert os.path.exists(node.path)
-        for node in profile_graph.values():
+        for node in graph.values():
             assert os.path.exists(node.path)
 
     # Call build without specifying nodes
     def test_build_empty(self):
-        source_graph, profile_graph = create_build_graph(compiler.clang, linker.clang)
+        graph = create_build_graph(compiler.clang, linker.clang)
         gen = RBuildBackend(PATHS["build"])
-        gen.configure(source_graph + profile_graph)
+        gen.configure(graph)
         status, time_elapsed = gen.build([])

@@ -19,7 +19,7 @@ Dates are in YYYY-MM-DD format.
 - Removes lazy header scanning - file manager now scans source files as they are added.
 - Profile build directories can now be outside of the project's build directory.
 - All profiles now share a common build directory for intermediate objects. Final targets are still built in each profile's individual subdirectory.
-- `Backend` now only accepts a single graph describing the whole project. Thus, the backend does not need to know about file manager, profiles, etc. To facilitate, also adds `__add__` and `__iadd__` to Graph.
+- `Backend` now only accepts a single graph describing the whole project. Thus, the backend does not need to know about file manager, profiles, etc.
 - Libraries are now linked in a portable way - instead of using paths, names are used.
 - `Project` now display a command that can be used to reproduce any executables that are run via the API.
 - `Project`'s `configure()` is now `configure_backend()`. Additionally, projects are no longer tied to backends.

@@ -6,7 +6,6 @@ import os
 
 # TODO: Support local repos (they should be copied to the destination instead of downloaded)
 class GitFetcher(DependencyFetcher):
-    # TODO: Support version numbers
     def __init__(self, url):
         """
         A dependency fetcher that fetches git repositories.
