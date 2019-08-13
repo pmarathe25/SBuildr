@@ -77,11 +77,11 @@ class Project(object):
             return pickle.load(f)
 
 
-    def save(self, path: str=None) -> None:
+    def export(self, path: str=None) -> None:
         f"""
-        Save this project to the specified path.
+        Export this project to the specified path. When invoked within an SBuildr configuration script, this enables the project to be used with SBuildr's dependency management system.
 
-        :param path: The path at which to save the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME} in the project's root directory.
+        :param path: The path at which to export the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME} in the project's root directory.
         """
         path = path or os.path.join(self.files.root_dir, Project.DEFAULT_SAVED_PROJECT_NAME)
         with open(path, "wb") as f:

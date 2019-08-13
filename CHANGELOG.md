@@ -15,7 +15,7 @@ Dates are in YYYY-MM-DD format.
 - Adds `SBuildrBuilder` for building projects using the SBuildr build system.
 - Renames `Generator` and associated classes/files to `Backend`.
 - Pulls in most functions from `cli` into `Project` to enable more powerful scripting.
-- Adds `save()` function to `Project` that pickles and writes it into the specified path. `Project.load()` can be used to retrieve it.
+- Adds `export()` function to `Project` that pickles and writes it into the specified path. `Project.load()` can be used to retrieve it.
 - Removes lazy header scanning - file manager now scans source files as they are added.
 - Profile build directories can now be outside of the project's build directory.
 - All profiles now share a common build directory for intermediate objects. Final targets are still built in each profile's individual subdirectory.
@@ -29,10 +29,12 @@ Dates are in YYYY-MM-DD format.
 - Adds deferred library propagation. Profiles can now set up libraries just before the build.
 - `Graph` `layers()` now only returns nodes that are actually in the graph.
 - Moves `dependencies` directory up one level.
+- Adds `fetch_dependencies` and `configure_graph` to `Project`
 - Adds `single_dependency` example
 - Adds library name propagation in addition to just `lib_dirs` previously
 - `configure_graph()` is now able to construct partial graphs.
 - `Project` API functions no longer automatically call each other.
+- `SBuildrBuilder` now proapagates `sys.path` to the `PYTHONPATH` environment variable correctly.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

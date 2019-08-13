@@ -101,11 +101,8 @@ class FileManager(object):
     # Returns whether the path was located in the build directory..
     def rm(self, path: str) -> bool:
         if _is_in_directories(path, self.writable_dirs):
-            try:
-                shutil.rmtree(path)
-                G_LOGGER.info(f"Removed: {path}")
-            except FileNotFoundError:
-                G_LOGGER.warning(f"Path: {path} does not exist, skipping.")
+            shutil.rmtree(path, ignore_errors=True)
+            G_LOGGER.info(f"Removed: {path}")
             return True
         return False
 

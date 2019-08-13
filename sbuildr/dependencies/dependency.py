@@ -39,6 +39,7 @@ class Dependency(object):
         self.exec_dir = os.path.join(self.package_root, Dependency.PACKAGE_EXECUTABLE_SUBDIR)
 
 
+    # TODO: Need a switch to force the fetch.
     def setup(self) -> List[str]:
         """
         Fetch, build, and install the dependency if the dependency does not exist in the cache. After setting up the dependency, all references to libraries in the dependency are updated according to the metadata reported by the builder. If the dependency is found in the cache, loads the metadata from the cache instead.

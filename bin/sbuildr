@@ -8,18 +8,19 @@ sys.path.insert(0, SBUILDR_ROOT)
 
 from sbuildr.project.target import ProjectTarget
 from sbuildr.project.project import Project
-from sbuildr.logger import G_LOGGER
+from sbuildr.logger import G_LOGGER, SBuildrException
 from sbuildr.misc import paths, utils
 import sbuildr.logger as logger
 import sbuildr
 
 from typing import List, Tuple
+import subprocess
 import argparse
 
 # TODO: Copy this back into sbuildr.cli()
 # Sets up the the command-line interface for the given project/generator combination.
 # When no profile(s) are specified, default_profile will be used.
-def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
+def launch_cli(project: Project, parser: argparse.ArgumentParser, project_file: str) -> int:
     """
     Adds the SBuildr command-line interface to the Python script invoking this function. For detailed usage information, you can run the Python code invoking this function with ``--help``.
 
@@ -57,24 +58,47 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
         G_LOGGER.info(f"Headers: {project.public_headers}")
 
 
-    # TODO: Rework configure.
-    def configure_backend(args):
-        project.fetch_dependencies()
-        project.configure_graph()
+    def configure(args):
+        targets = project.all_targets()
+        profile_names = project.all_profile_names()
+        project.fetch_dependencies(targets)
+        project.configure_graph(targets, profile_names)
         project.configure_backend()
+
+
+    def fetch_deps(args):
+        targets = select_targets(args) or project.all_targets()
+        project.fetch_dependencies(targets)
+
+
+    def configure_graph(args):
+        targets = select_targets(args) or project.all_targets()
+        profile_names = select_profile_names(args) or project.all_profile_names()
+        project.configure_graph(targets, profile_names)
+
+
+    def configure_backend(args):
+        project.configure_backend()
+
+
+    def try_build(targets: List[ProjectTarget], profile_names: List[str]):
+        try:
+            project.build(targets, profile_names)
+        except SBuildrException:
+            G_LOGGER.critical(f"Could not build project. Has this project been configured?")
 
 
     def build(args) -> Tuple[List[ProjectTarget], List[str]]:
         targets = select_targets(args) or project.all_targets()
-        prof_names = select_profile_names(args) or project.all_profile_names()
-        project.build(targets, prof_names)
+        profile_names = select_profile_names(args) or project.all_profile_names()
+        try_build(targets, profile_names)
 
 
     def run(args):
         targets = select_targets(args) or project.all_targets()
-        prof_names = select_profile_names(args) or project.all_profile_names()
-        project.build(targets, prof_names)
-        project.run(targets, prof_names)
+        profile_names = select_profile_names(args) or project.all_profile_names()
+        try_build(targets, profile_names)
+        project.run(targets, profile_names)
 
 
     def tests(args):
@@ -87,9 +111,9 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
             return targets
 
         tests = select_test_targets(args) or project.test_targets()
-        prof_names = select_profile_names(args)
-        project.build(tests, prof_names)
-        project.run_tests(tests, prof_names)
+        profile_names = select_profile_names(args)
+        try_build(tests, profile_names)
+        project.run_tests(tests, profile_names)
 
 
     def get_install_targets(args):
@@ -97,29 +121,33 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
         args.targets = [tgt for tgt in args.targets if tgt in project]
         targets = [tgt for tgt in (select_targets(args) or project.all_targets()) if not tgt.internal]
         G_LOGGER.verbose(f"Selected public targets: {targets}")
-        prof_names = select_profile_names(args) or ["release"]
-        G_LOGGER.verbose(f"Targets: {targets} for profiles: {prof_names}")
+        profile_names = select_profile_names(args) or ["release"]
+        G_LOGGER.verbose(f"Targets: {targets} for profiles: {profile_names}")
         G_LOGGER.verbose(f"Headers: {headers}")
-        return targets, prof_names, headers
+        return targets, profile_names, headers
+
 
     def install(args):
-        targets, prof_names, headers = get_install_targets(args)
-        project.build(targets, prof_names)
-        project.install(targets, prof_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
+        targets, profile_names, headers = get_install_targets(args)
+        try_build(targets, profile_names)
+        project.install(targets, profile_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
 
 
     def uninstall(args):
-        targets, prof_names, headers = get_install_targets(args)
-        project.uninstall(targets, prof_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
+        targets, profile_names, headers = get_install_targets(args)
+        project.uninstall(targets, profile_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
 
 
     def clean(args):
         # By default, cleans all targets for the default profile.
-        prof_names = select_profile_names(args) or project.all_profile_names()
-        project.clean(prof_names, nuke=args.nuke)
+        profile_names = select_profile_names(args) or project.all_profile_names()
+        project.clean(profile_names, nuke=args.nuke, dry_run=not args.force)
+        if args.force and args.nuke:
+            shutil.rmtree(project_file, ignore_errors=True)
+            G_LOGGER.info(f"Removed exported project file: {project_file}")
 
 
-    def _add_profile_args(parser_like, verb: str):
+    def add_profile_args(parser_like, verb: str):
         for prof_name in project.profiles.keys():
             parser_like.add_argument(f"--{prof_name}", help=f"{verb} targets for the {prof_name} profile", action="store_true")
 
@@ -127,60 +155,87 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
     # By setting defaults, each subparser automatically invokes a function to execute it's actions.
     subparsers = parser.add_subparsers()
 
+
     # List
     help_parser = subparsers.add_parser("help", help="Display information about available targets and public headers", description="Display information about the targets and public headers in this project")
     help_parser.add_argument("targets", nargs='*', help="Targets to display. By default, displays help information for all targets.", default=[])
     help_parser.set_defaults(func=help)
 
+
     # Configure
-    configure_backend_parser = subparsers.add_parser("configure-backend", help="Generate build configuration files", description="Generate a build configuration file for the project using a backend")
-    configure_backend_parser.set_defaults(func=configure_backend)
+    def add_configure_subparsers(configure_subparsers):
+        fetch_deps_parser = configure_subparsers.add_parser("deps", help="Fetch dependencies for this project")
+        fetch_deps_parser.set_defaults(func=fetch_deps)
+        fetch_deps_parser.add_argument("targets", nargs='*', help="Targets for which to fetch dependencies. By default, fetches dependencies for all targets in the project.")
+
+        configure_graph_parser = configure_subparsers.add_parser("graph", help="Configure the project graph")
+        configure_graph_parser.set_defaults(func=configure_graph)
+        configure_graph_parser.add_argument("targets", nargs='*', help="Targets for which to configure the project graph. By default, configures the graph for all targets in the project.")
+        add_profile_args(configure_graph_parser, "Configure")
+
+        configure_backend_parser = configure_subparsers.add_parser("backend", help="Configure the project backend")
+        configure_backend_parser.set_defaults(func=configure_backend)
+
+    configure_parser = subparsers.add_parser("configure", help="Configure the project for build", description="Configures the project for building. This includes fetching dependencies, building the project graph, and configuring a backend. When invoked with no arguments, automatically performed these three actions for all project targets")
+    configure_parser.add_argument("targets", nargs='*', help="Targets for which to configure. By default, configures for all targets in the project.")
+    configure_subparsers = configure_parser.add_subparsers()
+    add_configure_subparsers(configure_subparsers)
+    configure_parser.set_defaults(func=configure)
+
 
     # Build
     build_parser = subparsers.add_parser("build", help="Build project targets", description="Build one or more project targets")
     build_parser.add_argument("targets", nargs='*', help="Targets to build. By default, builds all targets for the default profiles.", default=[])
-    _add_profile_args(build_parser, "Build")
+    add_profile_args(build_parser, "Build")
     build_parser.set_defaults(func=build)
+
 
     # Run
     run_parser = subparsers.add_parser("run", help="Run a project executable", description="Run a project executable")
     run_parser.add_argument("target", help="Target corresponding to an executable")
     run_profile_group = run_parser.add_mutually_exclusive_group()
-    _add_profile_args(run_profile_group, "Run")
+    add_profile_args(run_profile_group, "Run")
     run_parser.set_defaults(func=run)
+
 
     # Test
     tests_parser = subparsers.add_parser("tests", help="Run project tests", description="Run one or more project tests")
     tests_parser.add_argument("targets", nargs='*', help="Targets to test. By default, tests all targets for all profiles.", default=[])
-    _add_profile_args(tests_parser, "Test")
+    add_profile_args(tests_parser, "Test")
     tests_parser.set_defaults(func=tests)
 
-    def _add_installation_dir_args(parser_like):
+    def add_installation_dir_args(parser_like):
         parser_like.add_argument("-I", "--headers", help="Installation directory for headers", default=paths.default_header_install_path())
         parser_like.add_argument("-L", "--libraries", help="Installation directory for libraries", default=paths.default_library_install_path())
         parser_like.add_argument("-X", "--executables", help="Installation directory for executables", default=paths.default_executable_install_path())
+
 
     # Install
     install_parser = subparsers.add_parser("install", help="Install project targets", description="Install one or more project targets. Uses only the release profile by default.")
     install_parser.add_argument("targets", nargs='*', help="Targets to install. By default, installs all targets and headers specified.", default=[])
     install_parser.add_argument("-f", "--force", help="Copies targets. Without this flag, install will only do a dry-run", action="store_true")
-    _add_installation_dir_args(install_parser)
-    _add_profile_args(install_parser, "Install")
+    add_installation_dir_args(install_parser)
+    add_profile_args(install_parser, "Install")
     install_parser.set_defaults(func=install)
+
 
     # Uninstall
     uninstall_parser = subparsers.add_parser("uninstall", help="Uninstall project targets", description="Uninstall one or more project targets. Uses only the release profile by default.")
     uninstall_parser.add_argument("-f", "--force", help="Remove targets. Without this flag, uninstall will only do a dry-run", action="store_true")
     uninstall_parser.add_argument("targets", nargs='*', help="Targets to uninstall. By default, uninstalls all targets and headers specified.", default=[])
-    _add_installation_dir_args(uninstall_parser)
-    _add_profile_args(uninstall_parser, "Uninstall")
+    add_installation_dir_args(uninstall_parser)
+    add_profile_args(uninstall_parser, "Uninstall")
     uninstall_parser.set_defaults(func=uninstall)
+
 
     # Clean
     clean_parser = subparsers.add_parser("clean", help="Clean project targets", description="Clean one or more project targets. By default, cleans all targets for the default profiles.")
     clean_parser.add_argument("--nuke", help="The nuclear option. Removes the entire build directory, including all targets for all profiles, meaning that the project must be reconfigured before subsequent builds.", action="store_true")
-    _add_profile_args(clean_parser, "Clean")
+    clean_parser.add_argument("-f", "--force", help="Removes targets. Without this flag, clean will only do a dry-run", action="store_true")
+
+    add_profile_args(clean_parser, "Clean")
     clean_parser.set_defaults(func=clean)
+
 
     # Display help if no arguments are provided.
     if len(sys.argv) < 2:
@@ -207,6 +262,7 @@ def main():
     parser = argparse.ArgumentParser(add_help=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-h", "--help", help="Show this help message and exit.", action="store_true")
     parser.add_argument("-p", "--project-file", help="Path to the frozen project.", default=os.path.abspath(Project.DEFAULT_SAVED_PROJECT_NAME))
+    parser.add_argument("-b", "--build-script", help="Path to the build script. If the project file does not exist, the build script will be run in an attempt to regenerate the exported project.", default="build.py")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-vv", "--very-verbose", action="store_true")
 
@@ -214,12 +270,26 @@ def main():
 
     project_file = os.path.abspath(args.project_file)
 
-    if not os.path.exists(project_file):
+    def exit_if_help():
+        # Only show help for the parent parser if the project cannot be loaded correctly
         if args.help:
             parser.print_help()
             return 0
 
-        G_LOGGER.critical(f"Saved project: {args.project_file} does not exist. Please provide a path to a saved project using the -p/--project-file option")
+    def try_generate_project():
+        if not os.path.exists(args.build_script):
+            exit_if_help()
+            G_LOGGER.critical(f"Saved project: {args.project_file} does not exist, and build script to generate the project: {args.build_script} could not be found.")
+
+        G_LOGGER.info(f"Exporting project using build script: {args.build_script}")
+        subprocess.run([sys.executable, args.build_script])
+
+    if not os.path.exists(project_file):
+        try_generate_project()
+
+    if not os.path.exists(project_file):
+        exit_if_help()
+        G_LOGGER.critical(f"Saved project: {args.project_file} does not exist, and could not be generated using build script: {args.build_script}. Please provide a path to a saved project using the -p/--project-file option")
 
     if args.very_verbose:
         G_LOGGER.verbosity = logger.Verbosity.VERBOSE
@@ -230,9 +300,9 @@ def main():
     if not hasattr(proj, "sbuildr_version") or proj.sbuildr_version < sbuildr.__version__:
         G_LOGGER.warning(f"This project was built with an older version of SBuildr. System version: {sbuildr.__version__}, Project version: {proj.sbuildr_version if hasattr(proj, 'sbuildr_version') else 'unknown'}")
 
-    status = launch_cli(proj, parser)
+    status = launch_cli(proj, parser, project_file)
     # Save the updated project
-    proj.save(project_file)
+    proj.export(project_file)
     return status
 
 if __name__ == '__main__':

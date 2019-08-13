@@ -17,6 +17,9 @@ def split_path(path) -> List[str]:
     head, tail = os.path.split(path)
     return [head] if head == path else split_path(head) + [tail]
 
+class SBuildrException(Exception):
+    pass
+
 class Color(enum.Enum):
     DEFAULT = "0m"
     GRAY = "90m"
@@ -84,6 +87,6 @@ class Logger(object):
     def critical(self, message, color=Color.RED):
         message = self.assemble_message(message, stack_depth=2, prefix="E")
         self.log(message, verbosity=Verbosity.ERROR, color=color)
-        sys.exit(1)
+        raise SBuildrException
 
 G_LOGGER = Logger()

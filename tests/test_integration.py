@@ -43,7 +43,7 @@ class TestIntegration(object):
         self.proj.fetch_dependencies()
         self.proj.configure_graph()
         self.proj.configure_backend()
-        self.proj.save(self.saved_project.name)
+        self.proj.export(self.saved_project.name)
 
     def test_help_targets(self):
         subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "help"])

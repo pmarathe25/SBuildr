@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# DEBUG:
+import sys
+print(sys.path)
+
 import sbuildr
 cppstdlib = sbuildr.Library("stdc++")
 
@@ -16,4 +20,4 @@ project.interfaces(["math.hpp"])
 test = project.test("test", sources=["test.cpp"], libs=[cppstdlib, libmath])
 
 # Save the project for use with the sbuildr command line utility.
-project.save()
+project.export()
