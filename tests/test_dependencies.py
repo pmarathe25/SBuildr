@@ -73,5 +73,6 @@ class TestDependency(object):
         self.dependency.setup()
         # Source should be fetched into the cache root.
         assert os.path.exists(os.path.join(self.tmpdir.name, Dependency.CACHE_SOURCES_SUBDIR, "minimal_project"))
+        # Libs/headers should be installed into the package root.
         assert os.path.exists(os.path.join(self.dependency.lib_dir, paths.name_to_libname("math")))
         assert os.path.exists(os.path.join(self.dependency.header_dir, "math.hpp"))

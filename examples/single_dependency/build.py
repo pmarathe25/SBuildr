@@ -19,5 +19,7 @@ minimal_project = sbuildr.dependencies.Dependency(fetchers.CopyFetcher(os.path.j
 
 project.interfaces(["dep.hpp"])
 libdep = project.library("dep", sources=["dep.cpp"], libs=[cppstdlib, minimal_project.library("math")])
+project.test("test", sources=["test.cpp"], libs=[cppstdlib, libdep])
+project.test("selfContainedTest", sources=["selfContainedTest.cpp"])
 
 project.save()

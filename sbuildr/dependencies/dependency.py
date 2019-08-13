@@ -8,10 +8,7 @@ from sbuildr.misc import paths
 from typing import List
 import os
 
-# TODO: Should have a library(), and executable() to specify what exactly we need from the dependency
-# TODO: Dependency fetching should happen in configure, with a targets parameter. This way you can fetch only for those targets you need to install.
-# TODO: When configuring, add include dirs and libs from dependencies.
-# TODO: Header scanning will need to be deferred once again until configure_backend
+# TODO: This does not support executables
 class Dependency(object):
     CACHE_SOURCES_SUBDIR = "sources"
     CACHE_PACKAGES_SUBDIR = "packages"
@@ -78,6 +75,12 @@ class Dependency(object):
         self.libraries[name] = Library(path=name)
         return DependencyLibrary(self, self.libraries[name])
 
+
+    def __str__(self) -> str:
+        return f"{self.name}: Version {self.version} in {self.package_root}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 # Tracks a library and the dependency from which it originates.
 class DependencyLibrary(object):

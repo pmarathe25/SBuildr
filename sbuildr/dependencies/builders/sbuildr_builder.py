@@ -9,13 +9,13 @@ import sys
 import os
 
 class SBuildrBuilder(DependencyBuilder):
-    def __init__(self, build_script_path: str="build.py", project_save_path: str=Project.DEFAULT_SAVED_PROJECT_NAME, install_profile="release"):
+    def __init__(self, build_script_path: str="build.py", project_save_path: str=Project.DEFAULT_SAVED_PROJECT_NAME, install_profile=None):
         f"""
         Builds projects using the SBuildr build system.
 
         :param build_script_path: The path to the build script, relative to the project root. Defaults to "build.py".
         :param project_save_path: The path at which the build script saves the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME}
-        :param install_profile: The profile to use when building targets to install. Defaults to "release".
+        :param install_profile: The profile to use when building targets to install. Defaults to the project's default install profile.
         """
         self.build_script_path = build_script_path
         self.project_save_path = project_save_path
@@ -32,12 +32,19 @@ class SBuildrBuilder(DependencyBuilder):
             G_LOGGER.critical(f"Project was not saved to: {saved_project}. Please ensure this path is correct, and that the build configuration script in {self.build_script_path} is saving the project")
 
         project = Project.load(saved_project)
-        project.install(profile_names=[self.install_profile], header_install_path=header_dir, library_install_path=lib_dir, executable_install_path=exec_dir, dry_run=False)
+
+        self.install_profile = self.install_profile or project.install_profile()
+        project.fetch_dependencies(project.install_targets())
+        project.configure_graph(project.install_targets(), [self.install_profile])
+        project.configure_backend()
+        project.build(project.install_targets(), [self.install_profile])
+
+        project.install(targets=project.install_targets(), profile_names=[self.install_profile], header_install_path=header_dir, library_install_path=lib_dir, executable_install_path=exec_dir, dry_run=False)
 
         libraries = {}
         for name, target in project.libraries.items():
             if not target.internal:
                 lib = target[self.install_profile]
-                libraries[name] = Library(path=lib.path, lib_dirs=lib.lib_dirs)
+                libraries[name] = Library(path=lib.path, libs=lib.libs, lib_dirs=lib.lib_dirs)
         include_dirs = project.files.include_dirs
         return DependencyMetadata(libraries, include_dirs)

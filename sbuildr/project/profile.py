@@ -46,6 +46,7 @@ class Profile(object):
                     # Avoid duplicates in libs/lib_dirs.
                     if inp.name not in node.libs:
                         node.libs.append(inp.name)
+                        node.libs.extend(inp.libs)
                         # Add the dependency's lib_dirs in addition to the directory containing the dependency itself.
                         lib_dirs = ([os.path.dirname(inp.path)] if inp.path else []) + inp.lib_dirs
                         lib_dirs = [dir for dir in lib_dirs if dir not in node.lib_dirs]

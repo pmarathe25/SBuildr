@@ -57,7 +57,10 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
         G_LOGGER.info(f"Headers: {project.public_headers}")
 
 
+    # TODO: Rework configure.
     def configure_backend(args):
+        project.fetch_dependencies()
+        project.configure_graph()
         project.configure_backend()
 
 
@@ -70,6 +73,7 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
     def run(args):
         targets = select_targets(args) or project.all_targets()
         prof_names = select_profile_names(args) or project.all_profile_names()
+        project.build(targets, prof_names)
         project.run(targets, prof_names)
 
 
@@ -82,8 +86,9 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
                 targets.append(project.tests[test_name])
             return targets
 
-        tests = select_test_targets(args)
+        tests = select_test_targets(args) or project.test_targets()
         prof_names = select_profile_names(args)
+        project.build(tests, prof_names)
         project.run_tests(tests, prof_names)
 
 
@@ -99,6 +104,7 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:
 
     def install(args):
         targets, prof_names, headers = get_install_targets(args)
+        project.build(targets, prof_names)
         project.install(targets, prof_names, headers, args.headers, args.libraries, args.executables, dry_run=not args.force)
 
 
@@ -225,7 +231,6 @@ def main():
         G_LOGGER.warning(f"This project was built with an older version of SBuildr. System version: {sbuildr.__version__}, Project version: {proj.sbuildr_version if hasattr(proj, 'sbuildr_version') else 'unknown'}")
 
     status = launch_cli(proj, parser)
-    # TODO(0): Move this into an atexit handler.
     # Save the updated project
     proj.save(project_file)
     return status

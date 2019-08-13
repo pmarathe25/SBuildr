@@ -128,6 +128,8 @@ class Project(object):
 
         # For any DependencyLibrarys in libs, add them to the target's dependencies, and then extract the Library.
         dependent_libraries: List[DependencyLibrary] = [lib for lib in libs if isinstance(lib, DependencyLibrary)]
+        # Inherit dependent_libraries from any input libraries as well
+        [dependent_libraries.extend(lib.dependent_libraries) for lib in libs if isinstance(lib, ProjectTarget)]
         libs: List[Union[ProjectTarget, Library]] = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
 
         source_nodes = get_source_nodes(sources)
@@ -298,14 +300,17 @@ class Project(object):
 
 
     # TODO(0): TEST THIS
-    def fetch_dependencies(self, targets: List[ProjectTarget]) -> None:
+    def fetch_dependencies(self, targets: List[ProjectTarget]=[]) -> None:
         """
         Fetches dependencies for the specified targets. This should be called prior to configure the project's graph with ``configure_graph()``.
+
+        :param targets: The targets for which to fetch dependencies. Defaults to all targets.
         """
+        targets = targets or self.all_targets()
         unique_deps = set()
         for target in targets:
             unique_deps.update(target.dependent_libraries)
-        G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
+        G_LOGGER.info(f"Fetching dependencies: {[dep.dependency for dep in unique_deps]}")
 
         for dep_lib in unique_deps:
             include_dirs = dep_lib.dependency.setup()
@@ -316,10 +321,17 @@ class Project(object):
             G_LOGGER.verbose(f"Adding {dep_lib.library} to file manager.")
 
 
-    def configure_graph(self) -> None:
+    # TODO: Add targets option here
+    def configure_graph(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> None:
         """
         Configures the project's build graph. This must be called prior to configuring a backend with ``configure_backend``.
+
+        :param targets: The targets for which to configure the graph. Defaults to all targets.
+        :param profile_names: The names of profiles for which to configure the graph. Defaults to all profiles.
         """
+        targets = targets or self.all_targets()
+        profile_names = profile_names or self.all_profile_names()
+
         # Scan for headers and propagate libs
         self.files.scan_all()
 
@@ -328,11 +340,10 @@ class Project(object):
 
         # Combine the source graph from file manager and the various profile graphs
         def combined_graph():
-            graph = Graph()
-            graph += self.files.graph
-            for profile in self.profiles.values():
-                graph += profile.graph
-            return graph
+            all_nodes = [target[prof_name] for target in targets for prof_name in profile_names]
+            for node in all_nodes:
+                all_nodes.extend(node.inputs)
+            return Graph(set(all_nodes))
 
         self.graph = combined_graph()
 
@@ -344,20 +355,19 @@ class Project(object):
         :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
         """
         if not self.graph:
-            G_LOGGER.warning(f"Project Graph has not been configured. Attempting to automatically configure the graph. If this does not work, please call `configure_graph()` prior to calling this function")
-            self.configure_graph()
+            G_LOGGER.critical(f"Project graph has not been configured. Please call `configure_graph()` prior to configuring a backend")
 
         self.backend = BackendType(self.build_dir)
         self.files.mkdir(self.build_dir)
         self.backend.configure(self.graph)
 
 
-    def build(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> float:
+    def build(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> float:
         """
         Builds the specified targets for this project. Configuration should be run prior to calling this function.
 
-        :param targets: The targets to build.
-        :param profile_names: The profiles for which to build the targets. If no profiles are specified, the project builds for all profiles.
+        :param targets: The targets to build. Defaults to all targets.
+        :param profile_names: The profiles for which to build the targets. Defaults to all profiles.
 
         :returns: Time elapsed during the build.
         """
@@ -380,20 +390,21 @@ class Project(object):
                         G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
             return nodes
 
-        # TODO: fetch_dependencies(nodes)
-
-        if not self.backend:
-            G_LOGGER.warning(f"A backend has not been configured for this project. Attempting to automatically configure the default backend. If this does not work, please call configure_backend() before attempting to build.")
-            self.fetch_dependencies(targets)
-            self.configure_backend()
+        targets = targets or self.all_targets()
+        profile_names = profile_names or self.all_profile_names()
 
         # Create all required build directories.
         self.files.mkdir(self.common_objs_build_dir)
-        [self.files.mkdir(prof.build_dir) for prof in self.profiles.values()]
-        G_LOGGER.verbose(f"Created build directories: {self.common_objs_build_dir}, {[prof.build_dir for prof in self.profiles.values()]}")
+        profile_build_dirs = [self.profiles[prof_name].build_dir for prof_name in profile_names]
+        [self.files.mkdir(dir) for dir in profile_build_dirs]
+        G_LOGGER.verbose(f"Created build directories: {self.common_objs_build_dir}, {profile_build_dirs}")
 
-        profile_names = profile_names or self.all_profile_names()
         nodes = select_nodes(targets, profile_names)
+        if not nodes:
+            return
+
+        if not self.backend:
+            G_LOGGER.critical(f"Backend has not been configured. Please call `configure_backend()` prior to attempting to build")
         status, time_elapsed = self.backend.build(nodes)
         if status.returncode:
             G_LOGGER.critical(f"Failed with:\n{utils.subprocess_output(status)}\nReconfiguring the project or running a clean build may resolve this.")
@@ -428,11 +439,19 @@ class Project(object):
             if result.returncode:
                 G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
 
-        self.build(targets, profile_names)
         for prof_name in profile_names:
             G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
             for target in targets:
                 run_target(target, prof_name)
+
+
+    def test_targets(self) -> List[ProjectTarget]:
+        """
+        Returns all targets in this project that are tests.
+
+        :returns: A list of targets.
+        """
+        return list(self.tests.values())
 
 
     # TODO(0): Docstring
@@ -444,14 +463,11 @@ class Project(object):
             if target.name not in self.tests:
                 G_LOGGER.critical(f"Could not find test: {target.name} in project.\n\tAvailable tests:\n\t\t{list(self.tests.keys())}")
 
-        tests = targets or list(self.tests.values())
+        tests = targets or self.test_targets()
         profile_names = profile_names or self.all_profile_names()
         if not tests:
             G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
             return
-
-        # Otherwise, build and run the specified tests
-        self.build(tests, profile_names)
 
         class TestResult:
             def __init__(self):
@@ -487,6 +503,22 @@ class Project(object):
                     G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", color=logger.Color.RED)
 
 
+    def install_targets(self) -> List[ProjectTarget]:
+        """
+        Returns all targets that this project can install.
+
+        :returns: A list of targets.
+        """
+        return [target for target in self.all_targets() if not target.internal]
+
+
+    def install_profile(self) -> str:
+        """
+        Returns the name of the profile for which this project will install targets.
+        """
+        return "release"
+
+
     def install(self,
         targets: List[ProjectTarget]=[],
         profile_names: List[str]=[],
@@ -506,12 +538,9 @@ class Project(object):
         :param executable_install_path: The path to which to install executables. This defaults to one of the default locations for the host OS.
         :param dry_run: Whether to perform a dry-run only, with no file copying. Defaults to True.
         """
-        targets = targets or [target for target in self.all_targets() if not target.internal]
-        profile_names = profile_names or ["release"]
+        targets = targets or self.install_targets()
+        profile_names = profile_names or [self.install_profile()]
         headers = [self.find(header) for header in headers] or list(self.public_headers)
-
-        # Build targets then install
-        self.build(targets, profile_names)
 
         if dry_run:
             G_LOGGER.warning(f"Install dry-run, will not copy files.")

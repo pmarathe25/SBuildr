@@ -28,6 +28,11 @@ Dates are in YYYY-MM-DD format.
 - `bin/sbuildr`'s `configure` is now `configure-backend`.
 - Adds deferred library propagation. Profiles can now set up libraries just before the build.
 - `Graph` `layers()` now only returns nodes that are actually in the graph.
+- Moves `dependencies` directory up one level.
+- Adds `single_dependency` example
+- Adds library name propagation in addition to just `lib_dirs` previously
+- `configure_graph()` is now able to construct partial graphs.
+- `Project` API functions no longer automatically call each other.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).
