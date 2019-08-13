@@ -1,7 +1,7 @@
-from sbuildr.project.dependencies.dependency import Dependency
-from sbuildr.project.dependencies.fetchers.git_fetcher import GitFetcher
-from sbuildr.project.dependencies.fetchers.copy_fetcher import CopyFetcher
-from sbuildr.project.dependencies.builders.sbuildr_builder import SBuildrBuilder
+from sbuildr.dependencies.dependency import Dependency
+from sbuildr.dependencies.fetchers.git_fetcher import GitFetcher
+from sbuildr.dependencies.fetchers.copy_fetcher import CopyFetcher
+from sbuildr.dependencies.builders.sbuildr_builder import SBuildrBuilder
 from sbuildr.misc import paths
 from test_tools import PATHS, ROOT, TESTS_ROOT
 

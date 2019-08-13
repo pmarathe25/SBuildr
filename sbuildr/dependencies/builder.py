@@ -1,4 +1,4 @@
-from sbuildr.project.dependencies.meta import DependencyMetadata
+from sbuildr.dependencies.meta import DependencyMetadata
 
 class DependencyBuilder(object):
     def __init__(self):

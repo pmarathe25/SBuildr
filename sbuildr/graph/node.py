@@ -85,7 +85,7 @@ class Library(Node):
         self.lib_dirs = [os.path.abspath(dir) for dir in lib_dirs]
 
     def __str__(self):
-        return f"{self.name}"
+        return f"{self.name}: {self.path} (lib_dirs: {self.lib_dirs})"
 
 # Only CompiledNodes in the inputs list are passed on to the linker.
 class LinkedNode(Library):

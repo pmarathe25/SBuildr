@@ -1,5 +1,5 @@
 from sbuildr.graph.node import Node, CompiledNode, LinkedNode, Library
-from sbuildr.project.dependencies.dependency import DependencyLibrary
+from sbuildr.dependencies.dependency import DependencyLibrary
 from sbuildr.project.file_manager import FileManager
 from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.target import ProjectTarget
@@ -62,6 +62,7 @@ class Project(object):
         # A graph describing the entire project. This is typically not constructed until just before the build
         self.graph: Graph = None
 
+
     @staticmethod
     def load(path: str=None) -> "Project":
         f"""
@@ -90,11 +91,14 @@ class Project(object):
     def __contains__(self, target_name: str) -> bool:
         return target_name in self.executables or target_name in self.libraries
 
+
     def all_targets(self):
         return list(self.libraries.values()) + list(self.executables.values()) + list(self.tests.values())
 
+
     def all_profile_names(self) -> List[str]:
         return list(self.profiles.keys())
+
 
     def _target(self,
                 name: str,
@@ -106,8 +110,8 @@ class Project(object):
                 include_dirs: List[str],
                 linker: linker.Linker,
                 internal: bool) -> ProjectTarget:
-        if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) for lib in libs]):
-            G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library or sbuildr.ProjectTarget")
+        if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) or isinstance(lib, DependencyLibrary) for lib in libs]):
+            G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library, sbuildr.dependencies.DependencyLibrary or sbuildr.ProjectTarget")
 
         # Convert sources to full paths
         def get_source_nodes(sources: List[str]) -> List[CompiledNode]:
@@ -123,11 +127,11 @@ class Project(object):
             return suffixed
 
         # For any DependencyLibrarys in libs, add them to the target's dependencies, and then extract the Library.
-        deps: List[Dependency] = [lib.dependency for lib in libs if isinstance(lib, DependencyLibrary)]
-        libs = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
+        dependent_libraries: List[DependencyLibrary] = [lib for lib in libs if isinstance(lib, DependencyLibrary)]
+        libs: List[Union[ProjectTarget, Library]] = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
 
         source_nodes = get_source_nodes(sources)
-        target = ProjectTarget(name=name, internal=internal, dependencies=deps)
+        target = ProjectTarget(name=name, internal=internal, dependent_libraries=dependent_libraries)
         for profile_name, profile in self.profiles.items():
             # Convert all libraries to nodes. These will be inputs to the target.
             # Profile will later convert them to library names and directories.
@@ -154,6 +158,7 @@ class Project(object):
             G_LOGGER.debug(f"Adding target: {name}, with path: {linked_path} to profile: {profile_name}")
             target[profile_name] = profile.graph.add(linked_node)
         return target
+
 
     # Both of these functions will modify name before passing it to profile so that the filename is correct.
     def executable(self,
@@ -292,23 +297,28 @@ class Project(object):
         return candidates[0]
 
 
+    # TODO(0): TEST THIS
     def fetch_dependencies(self, targets: List[ProjectTarget]) -> None:
         """
-        Fetches dependencies for the specified targets.
+        Fetches dependencies for the specified targets. This should be called prior to configure the project's graph with ``configure_graph()``.
         """
         unique_deps = set()
         for target in targets:
-            unique_deps.update(target.dependencies)
-        for dep in unique_deps:
-            include_dirs = dep.setup()
-            self.files.add_include_dir(dep.header_dir)
+            unique_deps.update(target.dependent_libraries)
+        G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
+
+        for dep_lib in unique_deps:
+            include_dirs = dep_lib.dependency.setup()
+            self.files.add_include_dir(dep_lib.dependency.header_dir)
             [self.files.add_include_dir(dir) for dir in include_dirs]
-        G_LOGGER.critical(unique_deps)
+            # Add all Library targets to the file manager's graph, since they are independent of profiles
+            self.files.graph.add(dep_lib.library)
+            G_LOGGER.verbose(f"Adding {dep_lib.library} to file manager.")
 
 
     def configure_graph(self) -> None:
         """
-        Configures the project's build graph. This must be called prior to configuring a backend.
+        Configures the project's build graph. This must be called prior to configuring a backend with ``configure_backend``.
         """
         # Scan for headers and propagate libs
         self.files.scan_all()
@@ -374,6 +384,7 @@ class Project(object):
 
         if not self.backend:
             G_LOGGER.warning(f"A backend has not been configured for this project. Attempting to automatically configure the default backend. If this does not work, please call configure_backend() before attempting to build.")
+            self.fetch_dependencies(targets)
             self.configure_backend()
 
         # Create all required build directories.

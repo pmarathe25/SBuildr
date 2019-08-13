@@ -16,6 +16,7 @@ import sbuildr
 from typing import List, Tuple
 import argparse
 
+# TODO: Copy this back into sbuildr.cli()
 # Sets up the the command-line interface for the given project/generator combination.
 # When no profile(s) are specified, default_profile will be used.
 def launch_cli(project: Project, parser: argparse.ArgumentParser) -> int:

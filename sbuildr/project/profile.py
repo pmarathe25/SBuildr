@@ -34,6 +34,7 @@ class Profile(object):
         self.graph = Graph()
         self.suffix = suffix
 
+
     # Propagates library dirs from dependencies to their dependees.
     def configure_libraries(self):
         for layer in self.graph.layers():

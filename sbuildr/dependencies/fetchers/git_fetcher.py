@@ -1,4 +1,4 @@
-from sbuildr.project.dependencies.fetchers.fetcher import DependencyFetcher
+from sbuildr.dependencies.fetcher import DependencyFetcher
 from sbuildr.misc import utils
 import subprocess
 import sys

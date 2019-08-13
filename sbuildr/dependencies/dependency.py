@@ -1,6 +1,6 @@
-from sbuildr.project.dependencies.builders.builder import DependencyBuilder
-from sbuildr.project.dependencies.fetchers.fetcher import DependencyFetcher
-from sbuildr.project.dependencies.meta import DependencyMetadata
+from sbuildr.dependencies.builder import DependencyBuilder
+from sbuildr.dependencies.fetcher import DependencyFetcher
+from sbuildr.dependencies.meta import DependencyMetadata
 from sbuildr.graph.node import Library
 from sbuildr.logger import G_LOGGER
 from sbuildr.misc import paths
@@ -44,7 +44,7 @@ class Dependency(object):
 
     def setup(self) -> List[str]:
         """
-        Fetch, build, and install the dependency if the dependency does not exist in the cache. If the dependency is found in the cache, does nothing.
+        Fetch, build, and install the dependency if the dependency does not exist in the cache. After setting up the dependency, all references to libraries in the dependency are updated according to the metadata reported by the builder. If the dependency is found in the cache, loads the metadata from the cache instead.
 
         :returns: A list of include directories from this dependency.
         """
@@ -62,19 +62,20 @@ class Dependency(object):
             meta = DependencyMetadata.load(metadata_path)
 
         # Next, update all libraries that have been requested from this dependency.
-        for name, lib in self.libraries:
+        for name, lib in self.libraries.items():
             if name not in meta.libraries:
                 G_LOGGER.critical(f"Requested library: {name} is not present in dependency: {self.name}")
             metalib = meta.libraries[name]
             lib.path = metalib.path
             lib.lib_dirs.extend(metalib.lib_dirs)
+            G_LOGGER.verbose(f"Correcting library: {name} to {lib}")
 
         return meta.include_dirs
 
 
     def library(self, name: str) -> "DependencyLibrary":
         # The library's lib_dirs and path will be updated during setup in project's configure_graph.
-        self.libraries[name] = Library(name=name)
+        self.libraries[name] = Library(path=name)
         return DependencyLibrary(self, self.libraries[name])
 
 

@@ -1,4 +1,5 @@
 from sbuildr.graph.node import Node
+from sbuildr.logger import G_LOGGER
 from typing import List, Dict, Set, Union
 import copy
 
@@ -25,6 +26,7 @@ class Graph(dict):
     # If the path is present already, but the node is of a different type, it is overwritten.
     def add(self, node: Node) -> Node:
         if node not in self:
+            G_LOGGER.verbose(f"Adding {node} under path: {node.path}")
             self[node.path] = node
         return self[node.path]
 

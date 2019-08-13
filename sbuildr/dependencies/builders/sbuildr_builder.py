@@ -1,5 +1,5 @@
-from sbuildr.project.dependencies.builders.builder import DependencyBuilder
-from sbuildr.project.dependencies.meta import DependencyMetadata
+from sbuildr.dependencies.builder import DependencyBuilder
+from sbuildr.dependencies.meta import DependencyMetadata
 from sbuildr.project.project import Project
 from sbuildr.graph.node import Library
 from sbuildr.logger import G_LOGGER

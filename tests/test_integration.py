@@ -18,6 +18,9 @@ def test_public_imports():
     import sbuildr
     from sbuildr import compiler, linker, BuildFlags, Project, Profile, Library
     from sbuildr.backends import Backend, RBuildBackend
+    from sbuildr.dependencies import DependencyBuilder, DependencyFetcher, Dependency, DependencyLibrary
+    from sbuildr.dependencies.builders import SBuildrBuilder
+    from sbuildr.dependencies.fetchers import CopyFetcher, GitFetcher
 
 class TestIntegration(object):
     @classmethod

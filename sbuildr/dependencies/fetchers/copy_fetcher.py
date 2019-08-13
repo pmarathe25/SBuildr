@@ -1,4 +1,4 @@
-from sbuildr.project.dependencies.fetchers.fetcher import DependencyFetcher
+from sbuildr.dependencies.fetcher import DependencyFetcher
 from sbuildr.logger import G_LOGGER
 
 import filecmp
