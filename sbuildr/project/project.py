@@ -245,12 +245,12 @@ class Project(object):
 
     # Returns a profile if it exists, otherwise creates a new one and returns it.
     def profile(self, name: str, flags: BuildFlags=BuildFlags(), build_dir: str=None, file_suffix: str="") -> Profile:
-        """
+        f"""
         Returns or creates a profile with the specified parameters.
 
         :param name: The name of this profile.
         :param flags: The flags to use for this profile. These will be applied to all targets for this profile. Per-target flags always take precedence.
-        :param build_dir: The name of the build subdirectory to use. This should NOT be a path, as it will always be created as a subdirectory of the project's build directory.
+        :param build_dir: The directory to use for build artifacts. Defaults to {os.path.join(self.build_dir, name)}
         :param file_suffix: A file suffix to attach to all artifacts generated for this profile. For example, the default debug profile attaches a ``_debug`` suffix to all library and executable names.
 
         :returns: :class:`sbuildr.Profile`
@@ -321,7 +321,6 @@ class Project(object):
             G_LOGGER.verbose(f"Adding {dep_lib.library} to file manager.")
 
 
-    # TODO: Add targets option here
     def configure_graph(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> None:
         """
         Configures the project's build graph. This must be called prior to configuring a backend with ``configure_backend``.
@@ -424,10 +423,12 @@ class Project(object):
         return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)
 
 
-    # TODO(0): Docstring
-    def run(self, targets: List[ProjectTarget], profile_names: List[str]=[]):
+    def run(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> None:
         """
         Runs targets from this project.
+
+        :param targets: The targets to run.
+        :param profile_names: The profiles for which to run the targets.
         """
         for target in targets:
             if target.name not in self.executables:
@@ -454,10 +455,12 @@ class Project(object):
         return list(self.tests.values())
 
 
-    # TODO(0): Docstring
     def run_tests(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]):
         """
         Run tests from this project. Runs all tests from the project for all profiles by default.
+
+        :param targets: The test targets to run. Raises an exception if the target is not a test target.
+        :param profile_names: The profiles for which to run the tests. Defaults to all profiles.
         """
         for target in targets:
             if target.name not in self.tests:
@@ -623,25 +626,27 @@ class Project(object):
             uninstall_header(header)
 
 
-    # TODO(0): Docstring
     def clean(self, profile_names: List[str]=[], nuke: bool=False, dry_run: bool=True):
         """
         Removes build directories and project artifacts.
+
+        :param profile_names: The profiles for which to remove build directories. Defaults to all profiles.
+        :param nuke: Whether to remove the project build directory. Note that profile build directories are located within the project's build directory by default.
+        :param dry_run: Whether this is a dry-run, in which case SBuildr will only display which directories would be removed rather than removing them. Defaults to True.
         """
         # TODO(3): Add per-target cleaning.
         to_remove = []
         if dry_run:
             G_LOGGER.warning(f"Clean dry-run, will not remove files.")
 
+        # By default, cleans all targets for all profiles.
+        profile_names = profile_names or self.all_profile_names()
+        to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
+        G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
         if nuke:
             # The nuclear option
             to_remove = [self.build_dir]
             G_LOGGER.info(f"Initiating Nuclear Protocol!")
-        else:
-            # By default, cleans all targets for all profiles.
-            profile_names = profile_names or self.all_profile_names()
-            to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
-            G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
         # Remove
         for path in to_remove:
             if dry_run:
