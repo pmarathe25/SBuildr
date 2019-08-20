@@ -54,7 +54,7 @@ class Project(object):
         self.executables: Dict[str, ProjectTarget] = {}
         self.tests: Dict[str, ProjectTarget] = {}
         self.libraries: Dict[str, ProjectTarget] = {}
-        # Files installed by this project. Maps Nodes to installation paths.
+        # Files installed by this project.
         self.public_headers: Set[str] = {}
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
@@ -100,6 +100,7 @@ class Project(object):
         return list(self.profiles.keys())
 
 
+    # TODO: Handle header-only libraries - maybe through include_dirs?
     def _target(self,
                 name: str,
                 basename: str,
@@ -126,14 +127,19 @@ class Project(object):
             G_LOGGER.verbose(f"Received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
             return suffixed
 
-        # For any DependencyLibrarys in libs, add them to the target's dependencies, and then extract the Library.
-        dependent_libraries: List[DependencyLibrary] = [lib for lib in libs if isinstance(lib, DependencyLibrary)]
-        # Inherit dependent_libraries from any input libraries as well
-        [dependent_libraries.extend(lib.dependent_libraries) for lib in libs if isinstance(lib, ProjectTarget)]
-        libs: List[Union[ProjectTarget, Library]] = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
+        dependencies: List[Dependency] = []
+        for lib in libs:
+            if isinstance(lib, DependencyLibrary):
+                dependencies.append(lib.dependency)
+                # Add all Library targets from dependencies to the file manager's graph, since they are independent of profiles
+                self.files.graph.add(lib.library)
+                G_LOGGER.verbose(f"Adding {lib.library} to file manager.")
+        # Inherit dependencies from any input libraries as well
+        [dependencies.extend(lib.dependencies) for lib in libs if isinstance(lib, ProjectTarget)]
 
+        libs: List[Union[ProjectTarget, Library]] = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
         source_nodes = get_source_nodes(sources)
-        target = ProjectTarget(name=name, internal=internal, dependent_libraries=dependent_libraries)
+        target = ProjectTarget(name=name, internal=internal, dependencies=dependencies)
         for profile_name, profile in self.profiles.items():
             # Convert all libraries to nodes. These will be inputs to the target.
             # Profile will later convert them to library names and directories.
@@ -300,25 +306,24 @@ class Project(object):
 
 
     # TODO(0): TEST THIS
-    def fetch_dependencies(self, targets: List[ProjectTarget]=[]) -> None:
+    def find_dependencies(self, targets: List[ProjectTarget]=[]) -> None:
         """
-        Fetches dependencies for the specified targets. This should be called prior to configuring the project's graph with :func:`configure_graph()` .
+        Finds dependencies for the specified targets. This should be called prior to configuring the project's graph with :func:`configure_graph()` .
 
         :param targets: The targets for which to fetch dependencies. Defaults to all targets.
         """
         targets = targets or self.all_targets()
         unique_deps = set()
         for target in targets:
-            unique_deps.update(target.dependent_libraries)
-        G_LOGGER.info(f"Fetching dependencies: {[dep.dependency for dep in unique_deps]}")
+            unique_deps.update(target.dependencies)
+        G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
 
-        for dep_lib in unique_deps:
-            include_dirs = dep_lib.dependency.setup()
-            self.files.add_include_dir(dep_lib.dependency.header_dir)
+        for dep in unique_deps:
+            # TODO: Dependency.setup() should return DependencyMetadata.
+            include_dirs = dep.setup()
+            self.files.add_include_dir(dep.header_dir)
             [self.files.add_include_dir(dir) for dir in include_dirs]
-            # Add all Library targets to the file manager's graph, since they are independent of profiles
-            self.files.graph.add(dep_lib.library)
-            G_LOGGER.verbose(f"Adding {dep_lib.library} to file manager.")
+
 
 
     def configure_graph(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> None:

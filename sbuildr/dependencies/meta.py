@@ -1,23 +1,37 @@
 from sbuildr.graph.node import Library
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import pickle
+import os
+
+class LibraryMetadata(object):
+    def __init__(self, libs: List[str], lib_dirs: List[str]):
+        self.libs = libs
+        self.lib_dirs = lib_dirs
 
 class DependencyMetadata(object):
-    def __init__(self, libraries: Dict[str, Library], include_dirs: List[str]):
+    def __init__(self, libraries: Dict[str, LibraryMetadata], include_dirs: List[str]):
         """
         Contains metadata about a dependency.
 
-        :param libraries: Maps library names to corresponding Library objects.
+        :param libraries: Maps library names to libs/lib_dirs.
         :param include_dirs: Any include directories required by this dependency.
         """
-        self.libraries: Dict[str, Library] = libraries
+        self.libraries: Dict[str, LibraryMetadata] = libraries
         self.include_dirs = include_dirs
+        self.META_API_VERSION = 1 # Must be tied to the instance due to how pickling works. 
 
+    # Returns None if the loaded Metadata is incompatible, or does not exist.
     @staticmethod
-    def load(path: str) -> "DependencyMetadata":
+    def load(path: str) -> Union[None, "DependencyMetadata"]:
+        if not os.path.exists(path):
+            return None
+
         with open(path, "rb") as f:
-            return pickle.load(f)
+            meta = pickle.load(f)
+        if not hasattr(meta, "API_VERSION") or meta.API_VERSION != DependencyMetadata.API_VERSION:
+            return None
+        return meta
 
     def save(self, path: str):
         with open(path, "wb") as f:

@@ -5,7 +5,6 @@ import sbuildr.dependencies.fetchers as fetchers
 
 import os
 SCRIPT_DIR = os.path.dirname(__file__)
-
 cppstdlib = sbuildr.Library("stdc++")
 
 project = sbuildr.Project()

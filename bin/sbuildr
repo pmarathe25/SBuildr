@@ -61,14 +61,14 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser, project_file: 
     def configure(args):
         targets = project.all_targets()
         profile_names = project.all_profile_names()
-        project.fetch_dependencies(targets)
+        project.find_dependencies(targets)
         project.configure_graph(targets, profile_names)
         project.configure_backend()
 
 
     def fetch_deps(args):
         targets = select_targets(args) or project.all_targets()
-        project.fetch_dependencies(targets)
+        project.find_dependencies(targets)
 
 
     def configure_graph(args):

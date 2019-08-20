@@ -44,6 +44,8 @@ class Node(object):
         node.outputs.remove(self)
         self.inputs.remove(node)
 
+# TODO: Add Header node from which SourceNode inherits.
+
 class SourceNode(Node):
     def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=None):
         super().__init__(path, inputs)
@@ -64,6 +66,7 @@ class CompiledNode(Node):
             G_LOGGER.critical(f"Cannot create a CompiledNode with more than one source. This node already has one input: {self.inputs}")
         super().add_input(node)
 
+# Used to represent an external library. Project libraries are LinkedNodes
 class Library(Node):
     # TODO: Add search_dirs parameter?
     def __init__(self, name: str=None, path: str=None, libs: List[str]=None, lib_dirs: List[str]=None):
@@ -72,7 +75,7 @@ class Library(Node):
 
         :param name: The name of the library.
         :param path: A path to the library.
-        :param libs: Names of libraries this library depends on. 
+        :param libs: Names of libraries this library depends on.
         :param lib_dirs: A list of directories required for loading this library. This would generally include directories containing libraries that this library is linked against. For example, if the project requires ``liba``, and ``liba`` is linked against ``libb``, then ``lib_dirs`` should include the containing directory of ``libb``.
 
         Note that either a name or path must be provided. If a name is provided, then the containing directory for this library should be provided to ``lib_dirs``, unless it is in the default linker/loader search path.

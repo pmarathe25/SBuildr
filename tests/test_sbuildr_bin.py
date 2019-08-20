@@ -31,7 +31,7 @@ class TestSBuildrExecutable(object):
         self.test = self.proj.executable("test", sources=["test.cpp"], libs=[Library("stdc++"), self.libmath])
         [self.header] = self.proj.interfaces(["math.hpp"])
         self.saved_project = tempfile.NamedTemporaryFile()
-        self.proj.fetch_dependencies()
+        self.proj.find_dependencies()
         self.proj.configure_graph()
         self.proj.configure_backend()
         self.proj.export(self.saved_project.name)

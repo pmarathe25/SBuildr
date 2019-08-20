@@ -23,14 +23,14 @@ class TestProject(object):
     def teardown_method(self):
         shutil.rmtree(self.project.build_dir, ignore_errors=True)
 
-    def check_target(self, proj, target):
-        for name in proj.profiles.keys():
+    def check_target(self, target):
+        for name in self.project.profiles.keys():
             assert name in target
         for profile_name, node in target.items():
             # Make sure generated files are in the build directory.
-            build_dir = proj.profile(profile_name).build_dir
+            build_dir = self.project.profile(profile_name).build_dir
             assert os.path.dirname(node.path) == build_dir
-            assert all([os.path.dirname(inp.path) == build_dir or os.path.dirname(inp.path) == proj.common_objs_build_dir for inp in node.inputs])
+            assert all([os.path.dirname(inp.path) == build_dir or os.path.dirname(inp.path) == self.project.common_objs_build_dir for inp in node.inputs])
 
     def test_inits_to_curdir(self):
         proj = Project()
@@ -38,19 +38,19 @@ class TestProject(object):
 
     def test_executable_api(self):
         self.project.configure_graph()
-        self.check_target(self.project, self.test)
+        self.check_target(self.test)
 
     def test_library_api(self):
         self.project.configure_graph()
         for node in self.lib.values():
             assert node.flags._shared
-        self.check_target(self.project, self.lib)
+        self.check_target(self.lib)
 
-    def test_fetch_dependencies_default(self):
-        self.project.fetch_dependencies()
+    def test_find_dependencies_default(self):
+        self.project.find_dependencies()
 
     def test_configure_graph(self):
-        self.project.fetch_dependencies()
+        self.project.find_dependencies()
         self.project.configure_graph()
         # The project's graph is complete at this stage, and should include all the files in PATHS, plus libraries.
         for path in PATHS.values():
@@ -67,17 +67,17 @@ class TestProject(object):
                         assert inp.name != "stdc++"
 
     def test_configure_default_backend(self):
-        self.project.fetch_dependencies()
+        self.project.find_dependencies()
         self.project.configure_graph()
         self.project.configure_backend()
         assert os.path.exists(self.project.backend.config_file)
 
     def test_build(self):
-        self.project.fetch_dependencies()
+        self.project.find_dependencies()
         self.project.configure_graph()
         self.project.configure_backend()
         self.project.build()
-        for target in self.proj.all_targets():
+        for target in self.project.all_targets():
             for node in target.values():
                 assert os.path.exists(node.path)
 
