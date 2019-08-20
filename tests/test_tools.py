@@ -40,19 +40,13 @@ def link_cmd(linker, input_paths, output_name, lib_dirs: List[str]=[], flags: Bu
     return linker.link(input_paths, output_path, lib_dirs=lib_dirs, flags=flags), output_path
 
 class TestCompilers(object):
-    @classmethod
-    def setup_class(cls):
-        cls.teardown_class()
+    def setup_method(self):
         print(f"Creating build directory: {PATHS['build']}")
-        os.mkdir(PATHS["build"])
+        os.makedirs(PATHS["build"], exist_ok=True)
 
-    @classmethod
-    def teardown_class(cls):
+    def teardown_method(self):
         print(f"Removing build directory: {PATHS['build']}")
-        try:
-            shutil.rmtree(PATHS["build"])
-        except FileNotFoundError:
-            pass
+        shutil.rmtree(PATHS["build"], ignore_errors=True)
 
     @staticmethod
     def compile(compiler, input_path: str, include_dirs: List[str]=[], flags: BuildFlags=BuildFlags()):

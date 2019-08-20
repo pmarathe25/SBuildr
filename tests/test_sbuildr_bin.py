@@ -22,20 +22,11 @@ def test_public_imports():
     from sbuildr.dependencies.builders import SBuildrBuilder
     from sbuildr.dependencies.fetchers import CopyFetcher, GitFetcher
 
-class TestIntegration(object):
-    @classmethod
-    def setup_class(cls):
-        cls.teardown_class()
-        print(f"Creating build directory: {PATHS['build']}")
-        os.mkdir(PATHS["build"])
-
-    @classmethod
-    def teardown_class(cls):
-        print(f"Removing build directory: {PATHS['build']}")
-        shutil.rmtree(PATHS["build"], ignore_errors=True)
-
+class TestSBuildrExecutable(object):
     def setup_method(self):
-        self.proj = Project(root=ROOT)
+        print(f"Creating build directory: {PATHS['build']}")
+        os.makedirs(PATHS["build"], exist_ok=True)
+        self.proj = Project(root=ROOT, build_dir=PATHS["build"])
         self.libmath = self.proj.library("math", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
         self.test = self.proj.executable("test", sources=["test.cpp"], libs=[Library("stdc++"), self.libmath])
         [self.header] = self.proj.interfaces(["math.hpp"])
@@ -45,18 +36,31 @@ class TestIntegration(object):
         self.proj.configure_backend()
         self.proj.export(self.saved_project.name)
 
+    def teardown_method(self):
+        print(f"Removing build directory: {PATHS['build']}")
+        shutil.rmtree(PATHS["build"], ignore_errors=True)
+
     def test_help_targets(self):
         subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "help"])
 
-    def test_can_build_project(self):
+    def test_can_default_build_project(self):
         # Build both targets for all profiles.
-        targets = [self.libmath, self.test]
-        self.proj.build(targets)
-
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "build"])
         # Ensure that the targets now exist
-        for target in targets:
+        for target in self.proj.all_targets():
             for node in target.values():
                 assert os.path.exists(node.path)
+
+    def test_can_build_selective_targets(self):
+        # Build one targets for one profile.
+        subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "build", self.libmath.name, "--release"])
+        # Ensure that the targets now exist
+        for target in self.proj.all_targets():
+            for prof_name, node in target.items():
+                if prof_name == "release" and node.name == self.libmath.name:
+                    assert os.path.exists(node.path)
+                else:
+                    assert not os.path.exists(node.path)
 
     def test_default_install_project(self):
         install_path = os.path.join(PATHS["build"], self.libmath["release"].basename)

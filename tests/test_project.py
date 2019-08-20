@@ -1,11 +1,13 @@
 from sbuildr.project.file_manager import FileManager
 from sbuildr.project.project import Project
 from sbuildr.graph.node import Library
+from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.logger import G_LOGGER
 import sbuildr.logger as logger
 
 from test_tools import PATHS, TESTS_ROOT, ROOT
 
+import shutil
 import glob
 import os
 
@@ -14,10 +16,12 @@ G_LOGGER.verbosity = logger.Verbosity.VERBOSE
 # TODO: Move test_integration tests into here.
 class TestProject(object):
     def setup_method(self):
-        self.project = Project(root=ROOT)
-        self.test = self.project.executable("test", sources=["tests/test.cpp"], libs=[Library("stdc++")])
+        self.project = Project(root=ROOT, build_dir=PATHS["build"])
         self.lib = self.project.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
-        self.project.configure_graph()
+        self.test = self.project.executable("test", sources=["tests/test.cpp"], libs=[Library("stdc++"), self.lib])
+
+    def teardown_method(self):
+        shutil.rmtree(self.project.build_dir, ignore_errors=True)
 
     def check_target(self, proj, target):
         for name in proj.profiles.keys():
@@ -33,12 +37,51 @@ class TestProject(object):
         assert proj.files.root_dir == os.path.dirname(__file__)
 
     def test_executable_api(self):
+        self.project.configure_graph()
         self.check_target(self.project, self.test)
 
     def test_library_api(self):
+        self.project.configure_graph()
         for node in self.lib.values():
             assert node.flags._shared
         self.check_target(self.project, self.lib)
+
+    def test_fetch_dependencies_default(self):
+        self.project.fetch_dependencies()
+
+    def test_configure_graph(self):
+        self.project.fetch_dependencies()
+        self.project.configure_graph()
+        # The project's graph is complete at this stage, and should include all the files in PATHS, plus libraries.
+        for path in PATHS.values():
+            if os.path.isfile(path):
+                assert path in self.project.graph
+        # Libraries without associated paths should not be in the project graph.
+        assert "stdc++" not in self.project.graph
+        for target in self.project.all_targets():
+            for node in target.values():
+                assert node.path in self.project.graph
+                # Non-path libraries should have been removed as node inputs
+                for inp in node.inputs:
+                    if isinstance(inp, Library):
+                        assert inp.name != "stdc++"
+
+    def test_configure_default_backend(self):
+        self.project.fetch_dependencies()
+        self.project.configure_graph()
+        self.project.configure_backend()
+        assert os.path.exists(self.project.backend.config_file)
+
+    def test_build(self):
+        self.project.fetch_dependencies()
+        self.project.configure_graph()
+        self.project.configure_backend()
+        self.project.build()
+        for target in self.proj.all_targets():
+            for node in target.values():
+                assert os.path.exists(node.path)
+
+    # TODO: Test run, run_tests, install, uninstall, clean
 
 class TestFileManager(object):
     def setup_method(self):

@@ -79,7 +79,7 @@ class Project(object):
 
     def export(self, path: str=None) -> None:
         f"""
-        Export this project to the specified path. When invoked within an SBuildr configuration script, this enables the project to be used with SBuildr's dependency management system.
+        Export this project to the specified path. This enables the project to be used with SBuildr's dependency management system, as well as with the command-line sbuildr utility.
 
         :param path: The path at which to export the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME} in the project's root directory.
         """
@@ -178,7 +178,7 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either ``ProjectTarget``s, ``DependencyLibrary``s or ``Library``s.
+        :param libs: A list containing either :class:`ProjectTarget` s, :class:`DependencyLibrary` s or :class:`Library` s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
@@ -204,7 +204,7 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either ``ProjectTarget``s, ``DependencyLibrary``s or ``Library``s.
+        :param libs: A list containing either :class:`ProjectTarget` s, :class:`DependencyLibrary` s or :class:`Library` s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
@@ -230,7 +230,7 @@ class Project(object):
         :param name: The name of the target. This should NOT include platform-dependent extensions.
         :param sources: A list of names or paths of source files to include in this target.
         :param flags: Compiler and linker flags. See sbuildr.BuildFlags for details.
-        :param libs: A list containing either ``ProjectTarget``s, ``DependencyLibrary``s or ``Library``s.
+        :param libs: A list containing either :class:`ProjectTarget` s, :class:`DependencyLibrary` s or :class:`Library` s.
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
@@ -302,7 +302,7 @@ class Project(object):
     # TODO(0): TEST THIS
     def fetch_dependencies(self, targets: List[ProjectTarget]=[]) -> None:
         """
-        Fetches dependencies for the specified targets. This should be called prior to configure the project's graph with ``configure_graph()``.
+        Fetches dependencies for the specified targets. This should be called prior to configuring the project's graph with :func:`configure_graph()` .
 
         :param targets: The targets for which to fetch dependencies. Defaults to all targets.
         """
@@ -323,7 +323,7 @@ class Project(object):
 
     def configure_graph(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> None:
         """
-        Configures the project's build graph. This must be called prior to configuring a backend with ``configure_backend``.
+        Configures the project's build graph. This must be called prior to configuring a backend with :func:`configure_backend()` . This function is also responsible for discovering libraries for targets. Before calling this function, target's libs/lib_dirs lists are not guaranteed to be complete.
 
         :param targets: The targets for which to configure the graph. Defaults to all targets.
         :param profile_names: The names of profiles for which to configure the graph. Defaults to all profiles.

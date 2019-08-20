@@ -52,6 +52,6 @@ class Profile(object):
                         lib_dirs = [dir for dir in lib_dirs if dir not in node.lib_dirs]
                         node.lib_dirs.extend(lib_dirs)
                         G_LOGGER.verbose(f"Adding library: {inp.name}, and library directories: {lib_dirs} to {node}")
-                    # Lastly, if this node does not have a path, it needs to be removed from its inp
+                    # Lastly, if this input does not have a path, it needs to be removed
                     if not inp.path:
                         node.remove_input(inp)
