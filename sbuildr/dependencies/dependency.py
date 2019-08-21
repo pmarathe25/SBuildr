@@ -41,7 +41,7 @@ class Dependency(object):
 
     # TODO: Need a switch to force the fetch.
     # TODO: Need to test both code paths - with and without metadata saved.
-    def setup(self) -> List[str]:
+    def setup(self) -> DependencyMetadata:
         """
         Fetch, build, and install the dependency if the dependency does not exist in the cache. After setting up the dependency, all references to libraries in the dependency are updated according to the metadata reported by the builder. If the dependency is found in the cache, loads the metadata from the cache instead.
 
@@ -67,14 +67,13 @@ class Dependency(object):
             lib.lib_dirs.extend(metalib.lib_dirs)
             G_LOGGER.verbose(f"Correcting library: {name} to {lib}")
 
-        return meta.include_dirs
+        return meta
 
 
     def library(self, name: str) -> "DependencyLibrary":
         # The library's lib_dirs and libs will be updated during setup in project's configure_graph.
         self.libraries[name] = Library(path=os.path.join(self.lib_dir, paths.name_to_libname(name)))
         return DependencyLibrary(self, self.libraries[name])
-
 
     def __str__(self) -> str:
         return f"{self.name}: Version {self.version} in {self.package_root}"
@@ -90,3 +89,7 @@ class DependencyLibrary(object):
         """
         self.dependency = dependency
         self.library = library
+
+# TODO: Add DependencyHeader that tracks a dependency and Header node
+class DependencyHeader(object):
+    pass

@@ -19,7 +19,7 @@ class DependencyMetadata(object):
         """
         self.libraries: Dict[str, LibraryMetadata] = libraries
         self.include_dirs = include_dirs
-        self.META_API_VERSION = 1 # Must be tied to the instance due to how pickling works. 
+        self.META_API_VERSION = 1 # Must be tied to the instance due to how pickling works.
 
     # Returns None if the loaded Metadata is incompatible, or does not exist.
     @staticmethod

@@ -13,7 +13,6 @@ import os
 
 G_LOGGER.verbosity = logger.Verbosity.VERBOSE
 
-# TODO: Move test_integration tests into here.
 class TestProject(object):
     def setup_method(self):
         self.project = Project(root=ROOT, build_dir=PATHS["build"])

@@ -100,7 +100,6 @@ class Project(object):
         return list(self.profiles.keys())
 
 
-    # TODO: Handle header-only libraries - maybe through include_dirs?
     def _target(self,
                 name: str,
                 basename: str,
@@ -319,10 +318,9 @@ class Project(object):
         G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
 
         for dep in unique_deps:
-            # TODO: Dependency.setup() should return DependencyMetadata.
-            include_dirs = dep.setup()
+            meta = dep.setup()
             self.files.add_include_dir(dep.header_dir)
-            [self.files.add_include_dir(dir) for dir in include_dirs]
+            [self.files.add_include_dir(dir) for dir in meta.include_dirs]
 
 
 

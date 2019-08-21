@@ -44,8 +44,6 @@ class Node(object):
         node.outputs.remove(self)
         self.inputs.remove(node)
 
-# TODO: Add Header node from which SourceNode inherits.
-
 class SourceNode(Node):
     def __init__(self, path: str, inputs: List["SourceNode"]=[], include_dirs: List[str]=None):
         super().__init__(path, inputs)
