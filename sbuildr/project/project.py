@@ -159,6 +159,7 @@ class Project(object):
                 input_nodes.append(profile.graph.add(obj_node))
 
             # TODO: Add back linker signature, create hard links using always clause in rbuild.
+            # Hard links are needed because during linkage, the library must have a clean name.
             # Finally, add the actual linked node
             linked_path = os.path.join(profile.build_dir, file_suffix(basename, profile.suffix))
             linked_node = LinkedNode(linked_path, input_nodes, linker, flags=flags)
@@ -552,14 +553,14 @@ class Project(object):
             G_LOGGER.warning(f"Install dry-run, will not copy files.")
 
         def install_target(target, prof_name):
-            node = target[prof_name]
+            node: LinkedNode = target[prof_name]
             install_dir = library_install_path if target.is_lib else executable_install_path
-            install_path = os.path.join(install_dir, node.basename)
+            install_path = os.path.join(install_dir, os.path.basename(node.path))
             if dry_run:
-                G_LOGGER.info(f"Would install target: {node.basename} to {install_path}")
+                G_LOGGER.info(f"Would install target: {node.path} to {install_path}")
             else:
                 if utils.copy_path(node.path, install_path):
-                    G_LOGGER.info(f"Installed target: {node.basename} to {install_path}")
+                    G_LOGGER.info(f"Installed target: {node.path} to {install_path}")
 
         for prof_name in profile_names:
             for target in targets:
@@ -604,14 +605,14 @@ class Project(object):
             G_LOGGER.warning(f"Uninstall dry-run, will not remove files.")
 
         def uninstall_target(target, prof_name):
-            node = target[prof_name]
+            node: LinkedNode = target[prof_name]
             uninstall_dir = library_install_path if target.is_lib else executable_install_path
-            uninstall_path = os.path.join(uninstall_dir, node.basename)
+            uninstall_path = os.path.join(uninstall_dir, os.path.basename(node.path))
             if dry_run:
-                G_LOGGER.info(f"Would remove target: {node.basename} from {uninstall_path}")
+                G_LOGGER.info(f"Would remove target: {node.path} from {uninstall_path}")
             else:
                 os.remove(uninstall_path)
-                G_LOGGER.info(f"Uninstalled target: {node.basename} from {uninstall_path}")
+                G_LOGGER.info(f"Uninstalled target: {node.path} from {uninstall_path}")
 
         for prof_name in profile_names:
             for target in targets:

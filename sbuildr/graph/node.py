@@ -11,15 +11,14 @@ import os
 class Node(object):
     def __init__(self, path: str, inputs: List["Node"]=[]):
         self.path = path
-        self.basename = os.path.basename(path) if path else None
         self.inputs: List[Node] = []
         self.outputs: List[Node] = []
-        G_LOGGER.debug(f"Constructing Node with path: {self.path}, basename: {self.basename} with {len(inputs)} inputs: {inputs}")
+        G_LOGGER.debug(f"Constructing Node with path: {self.path}, with {len(inputs)} inputs: {inputs}")
         for inp in inputs:
             self.add_input(inp)
 
     def __str__(self):
-        return f"{self.basename}: {self.path}"
+        return f"{self.path}"
 
     def __repr__(self):
         return f"{self} (at {hex(id(self))})"
@@ -27,7 +26,7 @@ class Node(object):
     # Returns a string representation of the dependency graph for this node.
     def dependency_graph_str(self, tab_depth=0):
         tab = '\t'
-        out = f"{tab * tab_depth}{self.basename}\n"
+        out = f"{tab * tab_depth}{self.path}\n"
         for inp in self.inputs:
             out += f"{inp.dependency_graph_str(tab_depth + 1)}\n"
         return out

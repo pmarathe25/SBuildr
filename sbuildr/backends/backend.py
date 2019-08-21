@@ -10,8 +10,6 @@ class Backend(object):
     # For source nodes and basic nodes this is an empty list, otherwise, it is a compiler/linker command.
     def _node_command(self, node: Node) -> List[str]:
         if isinstance(node, CompiledNode):
-            if len(node.inputs) != 1:
-                G_LOGGER.critical(f"CompiledNodes must have exactly one input, but received {node} with inputs: {node.inputs}")
             source = node.inputs[0]
             # The CompiledNode's include dirs take precedence over the SourceNode's. The ones in the SourceNode are
             # automatically deduced, whereas the ones in the CompiledNode are provided by the user.

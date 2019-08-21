@@ -63,7 +63,7 @@ class TestSBuildrExecutable(object):
                     assert not os.path.exists(node.path)
 
     def test_default_install_project(self):
-        install_path = os.path.join(PATHS["build"], self.libmath["release"].basename)
+        install_path = os.path.join(PATHS["build"], os.path.basename(self.libmath["release"].path))
         # Install release profile
         subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f"] + INSTALL_DIR_ARGS)
         assert os.path.exists(install_path)
@@ -73,8 +73,8 @@ class TestSBuildrExecutable(object):
 
     # Installation when profile is specified
     def test_profile_install_project(self):
-        install_path = os.path.join(PATHS["build"], self.libmath["debug"].basename)
-        release_install = os.path.join(PATHS["build"], self.libmath["release"].basename)
+        install_path = os.path.join(PATHS["build"], os.path.basename(self.libmath["debug"].path))
+        release_install = os.path.join(PATHS["build"], os.path.basename(self.libmath["release"].path))
         # Install
         subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f", "--debug"] + INSTALL_DIR_ARGS)
         assert os.path.exists(install_path)
@@ -85,8 +85,8 @@ class TestSBuildrExecutable(object):
 
     # Installation when target is specified
     def test_target_install_project(self):
-        install_path = os.path.join(PATHS["build"], self.libmath["release"].basename)
-        test_install_path = os.path.join(PATHS["build"], self.test["release"].basename)
+        install_path = os.path.join(PATHS["build"], os.path.basename(self.libmath["release"].path))
+        test_install_path = os.path.join(PATHS["build"], os.path.basename(self.test["release"].path))
         # Install
         subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "install", "-f", "math"] + INSTALL_DIR_ARGS)
         assert os.path.exists(install_path)
