@@ -24,13 +24,13 @@ class RBuildBackend(Backend):
         for layer in build_graph.layers():
             for node in layer:
                 node_ids[node] = id
-                config += f"path {node.path} #{id}\n"
+                config += f"path {node.timestamp_path()} #{id}\n"
                 id += 1
                 # For dependencies, we need to convert to node_ids
                 if node.inputs:
                     config += f"deps {' '.join([str(node_ids[node]) for node in node.inputs])}\n"
-                cmd = self._node_command(node)
-                if cmd:
+
+                for cmd in node.commands():
                     config += "run"
                     for arg in cmd:
                         config += f' "{arg}"'

@@ -162,8 +162,9 @@ class Project(object):
             # Hard links are needed because during linkage, the library must have a clean name.
             # Finally, add the actual linked node
             linked_path = os.path.join(profile.build_dir, file_suffix(basename, profile.suffix))
-            linked_node = LinkedNode(linked_path, input_nodes, linker, flags=flags)
-            G_LOGGER.debug(f"Adding target: {name}, with path: {linked_path} to profile: {profile_name}")
+            internal_path = linked_path
+            linked_node = LinkedNode(linked_path, input_nodes, linker, internal_path=internal_path, flags=flags)
+            G_LOGGER.debug(f"Adding target: {name}, with path: {internal_path} to profile: {profile_name}")
             target[profile_name] = profile.graph.add(linked_node)
         return target
 

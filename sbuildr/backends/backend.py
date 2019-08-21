@@ -6,19 +6,6 @@ from typing import List, Dict
 import subprocess
 
 class Backend(object):
-    # Generate a build command for the given node.
-    # For source nodes and basic nodes this is an empty list, otherwise, it is a compiler/linker command.
-    def _node_command(self, node: Node) -> List[str]:
-        if isinstance(node, CompiledNode):
-            source = node.inputs[0]
-            # The CompiledNode's include dirs take precedence over the SourceNode's. The ones in the SourceNode are
-            # automatically deduced, whereas the ones in the CompiledNode are provided by the user.
-            return node.compiler.compile(source.path, node.path, node.include_dirs + source.include_dirs, node.flags)
-        elif isinstance(node, LinkedNode):
-            # Only link CompiledNodes. All libraries should come from node.libs
-            return node.linker.link([inp.path for inp in node.inputs if isinstance(inp, CompiledNode)], node.path, node.libs, node.lib_dirs, node.flags)
-        return []
-
     def __init__(self, build_dir: str):
         """
         A backend that creates build configuration files for a project, and is able to build arbitrary targets specified in the project. Intermediate build configuration files will be written to the build directory specified by the project's FileManager.

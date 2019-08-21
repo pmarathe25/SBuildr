@@ -17,6 +17,23 @@ class Node(object):
         for inp in inputs:
             self.add_input(inp)
 
+
+    def timestamp_path(self) -> str:
+        """
+        The path to look at to determine the timestamp of this node.
+        """
+        return self.path
+
+
+    def commands(self) -> List[List[str]]:
+        """
+        Commands that can be run to build this node.
+
+        :returns: A list of commands, where each command is a list of strings.
+        """
+        return []
+
+
     def __str__(self):
         return f"{self.path}"
 
@@ -63,6 +80,11 @@ class CompiledNode(Node):
             G_LOGGER.critical(f"Cannot create a CompiledNode with more than one source. This node already has one input: {self.inputs}")
         super().add_input(node)
 
+    def commands(self) -> List[List[str]]:
+        # The CompiledNode's include dirs take precedence over the SourceNode's. The ones in the SourceNode are
+        # automatically deduced, whereas the ones in the CompiledNode are provided by the user.
+        return [self.compiler.compile(self.inputs[0].path, self.path, self.include_dirs + self.inputs[0].include_dirs, self.flags)]
+
 # Used to represent an external library. Project libraries are LinkedNodes
 class Library(Node):
     # TODO: Add search_dirs parameter?
@@ -91,11 +113,24 @@ class Library(Node):
 
 # Only CompiledNodes in the inputs list are passed on to the linker.
 class LinkedNode(Library):
-    def __init__(self, path: str, inputs: List[Node], linker: linker.Linker, libs: List[str]=None, lib_dirs: List[str]=None, flags: BuildFlags=BuildFlags()):
+    def __init__(self, path: str, inputs: List[Node], linker: linker.Linker, internal_path: str, libs: List[str]=None, lib_dirs: List[str]=None, flags: BuildFlags=BuildFlags()):
         super().__init__(path=path, libs=libs, lib_dirs=lib_dirs)
         Node.__init__(self, path, inputs)
+        # path is the externally visiable path, excluding linker signature.
+        # internal path includes linker signature, so should be used for timestamping purposes.
+        self.internal_path = internal_path
         self.linker = linker
         self.flags = flags
+
+
+    def timestamp_path(self) -> str:
+        return self.internal_path
+
+
+    def commands(self) -> List[List[str]]:
+        # Only link CompiledNodes. All libraries should come from self.libs
+        return [self.linker.link([inp.path for inp in self.inputs if isinstance(inp, CompiledNode)], self.internal_path, self.libs, self.lib_dirs, self.flags)]
+
 
     def __str__(self):
         return Node.__str__(self)
