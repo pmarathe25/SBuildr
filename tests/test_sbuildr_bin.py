@@ -40,6 +40,8 @@ class TestSBuildrExecutable(object):
         print(f"Removing build directory: {PATHS['build']}")
         shutil.rmtree(PATHS["build"], ignore_errors=True)
 
+    # TODO: Test configure
+
     def test_help_targets(self):
         subprocess.run([SBUILDR_EXEC, "-p", self.saved_project.name, "help"])
 

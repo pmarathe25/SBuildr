@@ -18,9 +18,10 @@ help:
 
 test:
 	python3 -m pytest tests/
-	# TODO: Move this into test_integration.
+	# TODO: Move these into separate tests.
 	export PYTHONPATH=$(CURDIR); python3 examples/minimal_project/build.py && bin/sbuildr -p examples/minimal_project/project.sbuildr configure -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr build -vv && bin/sbuildr -p examples/minimal_project/project.sbuildr tests -vv
-	export PYTHONPATH=$(CURDIR); python3 examples/single_dependency/build.py && bin/sbuildr -p examples/single_dependency/project.sbuildr configure -vv && bin/sbuildr -p examples/single_dependency/project.sbuildr build -vv && bin/sbuildr -p examples/single_dependency/project.sbuildr tests -vv
+	export PYTHONPATH=$(CURDIR); python3 examples/single_dependency/build.py && bin/sbuildr -p examples/single_dependency/project.sbuildr configure -vv && bin/sbuildr -p examples/single_dependency/project.sbuildr build -vv && bin/sbuildr -p examples/single_dependency/project.sbuildr tests -vv && rm -r ~/.sbuildr/*/minimal_project*
+	export PYTHONPATH=$(CURDIR); python3 examples/nested_dependency/build.py && bin/sbuildr -p examples/nested_dependency/project.sbuildr configure -vv && bin/sbuildr -p examples/nested_dependency/project.sbuildr build -vv && bin/sbuildr -p examples/nested_dependency/project.sbuildr tests -vv && rm -r ~/.sbuildr/*/minimal_project* ~/.sbuildr/*/single_dependency*
 
 wheel:
 	python3 setup.py bdist_wheel

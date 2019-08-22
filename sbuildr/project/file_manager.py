@@ -71,7 +71,9 @@ class FileManager(object):
         self.files.update(self._files_in_dir(dir))
 
     def add_include_dir(self, dir: str):
-        self.header_files.extend(self._files_in_dir(dir))
+        if dir not in self.include_dirs:
+            self.include_dirs.append(dir)
+            self.header_files.extend(self._files_in_dir(dir))
 
     # Adds the specified directory to exclude_dirs, then returns the absolute path to the added directory.
     def add_exclude_dir(self, dir: str) -> str:

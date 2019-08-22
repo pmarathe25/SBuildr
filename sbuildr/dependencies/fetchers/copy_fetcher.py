@@ -10,7 +10,7 @@ class CopyFetcher(DependencyFetcher):
         """
         A dependency fetcher that copies source code from the specified path.
 
-        :param path: A path to the source code to copy. This fetcher will only copy if the path is newer than the cached source from any previous copies.
+        :param path: A path to the source code to copy. This fetcher will only copy if the path is newer than the cached source from any previous copies. The path should not be relative to the project, as that will break nested dependencies.
         """
         self.path = path
         super().__init__(os.path.basename(self.path))

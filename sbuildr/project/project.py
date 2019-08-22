@@ -222,7 +222,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, True)
+        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, internal=True)
         return self.tests[name]
 
 

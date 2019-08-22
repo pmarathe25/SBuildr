@@ -87,6 +87,10 @@ class TestFileManager(object):
         self.manager = FileManager(ROOT)
         self.manager.add_writable_dir(self.manager.add_exclude_dir(PATHS["build"]))
 
+    def test_add_include_dir(self):
+        self.manager.add_include_dir(PATHS["include"])
+        assert self.manager.include_dirs == [PATHS["include"]]
+
     def test_globs_files_from_relpath_into_abspaths(self):
         dirs = [os.path.relpath(os.path.join(os.path.dirname(__file__), "minimal_project"))]
         manager = FileManager(ROOT, dirs=dirs)

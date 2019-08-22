@@ -18,6 +18,7 @@ class Dependency(object):
     PACKAGE_EXECUTABLE_SUBDIR = "bin"
     METADATA_FILENAME = "meta.pkl"
 
+    # TODO: Make cache_root propagate to nested dependencies.
     def __init__(self, fetcher: DependencyFetcher, builder: DependencyBuilder, version: str, cache_root: str=paths.dependency_cache_root()):
         """
         Manages a fetcher-builder pair for a single dependency.
