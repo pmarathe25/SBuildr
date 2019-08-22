@@ -1,7 +1,7 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
-## vNext ()
+## v0.5.0 (2019-08-21)
 - `tests` in CLI now runs all profiles by default.
 - `tests` now displays a summary at the end.
 - Project's `install` has been modified to `interfaces` and now only accepts headers. Libraries and executables are now marked for installation by default, unless `internal=True` is specified.
