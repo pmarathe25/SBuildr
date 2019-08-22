@@ -36,6 +36,8 @@ Dates are in YYYY-MM-DD format.
 - `Project` API functions no longer automatically call each other.
 - `SBuildrBuilder` now proapagates `sys.path` to the `PYTHONPATH` environment variable correctly.
 - Adds versioning for `DependencyMetadata` so dependencies in the cache with old versions of Metadata will automatically be rebuilt.
+- Adds support for multiple build artifacts from nodes. Only the final artifact is usable by other nodes.
+- All targets are now created in the common build directory. The per-profile build directories have hard-links to the targets in the common directory for ease-of-use.
 
 ## v0.4.1 (2019-07-11)
 - Changes generator to favor false positives (longer builds) for `needs_configure()` rather than false negatives (broken builds).

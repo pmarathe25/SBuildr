@@ -43,7 +43,7 @@ class Project(object):
         # The build directory will be writable, and excluded when the FileManager is searching for paths.
         self.build_dir = self.files.add_writable_dir(self.files.add_exclude_dir(build_dir or os.path.join(self.files.root_dir, "build")))
         # TODO: Make this a parameter?
-        self.common_objs_build_dir = os.path.join(self.build_dir, "common")
+        self.common_build_dir = os.path.join(self.build_dir, "common")
         # Backend
         self.backend = None
         # Profiles consist of a graph of compiled/linked nodes. Each linked node is a
@@ -142,7 +142,8 @@ class Project(object):
         for profile_name, profile in self.profiles.items():
             # Convert all libraries to nodes. These will be inputs to the target.
             # Profile will later convert them to library names and directories.
-            input_nodes = [lib[profile_name] if isinstance(lib, ProjectTarget) else lib for lib in libs]
+            lib_nodes: List[Library] = [lib[profile_name] if isinstance(lib, ProjectTarget) else lib for lib in libs]
+            input_nodes = [lib for lib in lib_nodes]
             G_LOGGER.verbose(f"Library inputs for target: {name} are: {input_nodes}")
 
             # Per-target flags always overwrite profile flags.
@@ -153,19 +154,22 @@ class Project(object):
                 # Only the include dirs provided by the user are part of the hash. When the automatically deduced
                 # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
                 obj_sig = compiler.signature(source_node.path, include_dirs, flags)
-                obj_path = os.path.join(self.common_objs_build_dir, file_suffix(source_node.path, f".{obj_sig}", ".o"))
+                obj_path = os.path.join(self.common_build_dir, file_suffix(source_node.path, f".{obj_sig}", ".o"))
                 # User defined includes are always prepended the ones deduced for SourceNodes.
                 obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
                 input_nodes.append(profile.graph.add(obj_node))
 
-            # TODO: Add back linker signature, create hard links using always clause in rbuild.
+            # Though we know all the libraries being linked against, we don't know exactly where they're coming from yet (lib_dirs). Thus, the signature omits this information
+            lib_names = [lib.name for lib in lib_nodes]
+            for lib in lib_nodes:
+                lib_names.extend([lib_name for lib_name in lib.libs if lib_name not in lib_names])
+
             # Hard links are needed because during linkage, the library must have a clean name.
-            # Finally, add the actual linked node
-            linked_path = os.path.join(profile.build_dir, file_suffix(basename, profile.suffix))
-            internal_path = linked_path
-            linked_node = LinkedNode(linked_path, input_nodes, linker, internal_path=internal_path, flags=flags)
-            G_LOGGER.debug(f"Adding target: {name}, with path: {internal_path} to profile: {profile_name}")
-            target[profile_name] = profile.graph.add(linked_node)
+            linked_sig = linker.signature([node.path or "" for node in input_nodes], lib_names, [], flags)
+            hashed_path = os.path.join(self.common_build_dir, file_suffix(basename, f".{linked_sig}"))
+            public_path = os.path.join(profile.build_dir, file_suffix(basename, profile.suffix))
+            target[profile_name] = profile.graph.add(LinkedNode(public_path, input_nodes, linker, hashed_path, flags=flags))
+            G_LOGGER.debug(f"Adding target: {name}, with hashed path: {hashed_path}, public path: {public_path} to profile: {profile_name}")
         return target
 
 
@@ -398,10 +402,10 @@ class Project(object):
         profile_names = profile_names or self.all_profile_names()
 
         # Create all required build directories.
-        self.files.mkdir(self.common_objs_build_dir)
+        self.files.mkdir(self.common_build_dir)
         profile_build_dirs = [self.profiles[prof_name].build_dir for prof_name in profile_names]
         [self.files.mkdir(dir) for dir in profile_build_dirs]
-        G_LOGGER.verbose(f"Created build directories: {self.common_objs_build_dir}, {profile_build_dirs}")
+        G_LOGGER.verbose(f"Created build directories: {self.common_build_dir}, {profile_build_dirs}")
 
         nodes = select_nodes(targets, profile_names)
         if not nodes:

@@ -1,8 +1,12 @@
 # Platform independent paths and file naming conventions.
+from typing import List
 import pathlib
 import os
 
-# TODO: Edit these functions to take into account other platforms
+# TODO: Edit these functions to take into account other platforms, and maybe move to another location.
+def force_hardlink_cmd(source: str, dest: str) -> List[str]:
+    return ["ln", "-f", source, dest]
+
 def dependency_cache_root():
     """
     Returns the path to the root of the dependency cache directory.

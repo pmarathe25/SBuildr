@@ -23,18 +23,27 @@ class RBuildBackend(Backend):
         id = 0
         for layer in build_graph.layers():
             for node in layer:
-                node_ids[node] = id
-                config += f"path {node.timestamp_path()} #{id}\n"
-                id += 1
-                # For dependencies, we need to convert to node_ids
-                if node.inputs:
-                    config += f"deps {' '.join([str(node_ids[node]) for node in node.inputs])}\n"
+                for artifact in node.artifacts():
+                    config += f"path {artifact.path} #{id}\n"
 
-                for cmd in node.commands():
-                    config += "run"
-                    for arg in cmd:
-                        config += f' "{arg}"'
-                    config += '\n'
+                    if artifact.dependencies:
+                        config += f"deps {' '.join([str(node_ids[node]) for node in artifact.dependencies])}\n"
+
+                    for cmd in artifact.commands:
+                        config += "run"
+                        for arg in cmd:
+                            config += f' "{arg}"'
+                        config += '\n'
+
+                    for cmd in artifact.always:
+                        config += "always"
+                        for arg in cmd:
+                            config += f' "{arg}"'
+                        config += '\n'
+
+                    # Only the id for the final artifact is used by other nodes
+                    node_ids[node] = id
+                    id += 1
 
         G_LOGGER.info(f"Generating configuration files in build directory: {self.build_dir}")
         with open(self.config_file, "w") as f:

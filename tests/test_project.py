@@ -29,7 +29,7 @@ class TestProject(object):
             # Make sure generated files are in the build directory.
             build_dir = self.project.profile(profile_name).build_dir
             assert os.path.dirname(node.path) == build_dir
-            assert all([os.path.dirname(inp.path) == build_dir or os.path.dirname(inp.path) == self.project.common_objs_build_dir for inp in node.inputs])
+            assert all([os.path.dirname(inp.path) == build_dir or os.path.dirname(inp.path) == self.project.common_build_dir for inp in node.inputs])
 
     def test_inits_to_curdir(self):
         proj = Project()

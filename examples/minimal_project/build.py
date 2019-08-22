@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# DEBUG:
-import sys
-print(sys.path)
-
 import sbuildr
 cppstdlib = sbuildr.Library("stdc++")
 

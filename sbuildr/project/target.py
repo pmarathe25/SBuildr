@@ -1,5 +1,4 @@
 from sbuildr.dependencies.dependency import Dependency
-from sbuildr.graph.node import LinkedNode
 from sbuildr.logger import G_LOGGER
 from typing import Dict, List
 
