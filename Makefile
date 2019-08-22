@@ -23,14 +23,14 @@ test:
 	export PYTHONPATH=$(CURDIR); python3 examples/single_dependency/build.py && bin/sbuildr -p examples/single_dependency/project.sbuildr configure -vv && bin/sbuildr -p examples/single_dependency/project.sbuildr build -vv && bin/sbuildr -p examples/single_dependency/project.sbuildr tests -vv && rm -r ~/.sbuildr/*/minimal_project*
 	export PYTHONPATH=$(CURDIR); python3 examples/nested_dependency/build.py && bin/sbuildr -p examples/nested_dependency/project.sbuildr configure -vv && bin/sbuildr -p examples/nested_dependency/project.sbuildr build -vv && bin/sbuildr -p examples/nested_dependency/project.sbuildr tests -vv && rm -r ~/.sbuildr/*/minimal_project* ~/.sbuildr/*/single_dependency*
 
-wheel:
+clean:
+	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SBuildr.egg-info
+
+wheel: clean
 	python3 setup.py bdist_wheel
 
 install: wheel
 	python3 -m pip install dist/*.whl --user --upgrade --force-reinstall
-
-clean:
-	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SBuildr.egg-info
 
 upload: wheel
 	python3 -m twine upload dist/*
