@@ -1,5 +1,5 @@
 from sbuildr.graph.node import Node, CompiledNode, LinkedNode, Library
-from sbuildr.dependencies.dependency import DependencyLibrary
+from sbuildr.dependencies.dependency import Dependency, DependencyLibrary
 from sbuildr.project.file_manager import FileManager
 from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.target import ProjectTarget
@@ -56,6 +56,8 @@ class Project(object):
         self.libraries: Dict[str, ProjectTarget] = {}
         # Files installed by this project.
         self.public_headers: Set[str] = {}
+        # Dependencies required for the public headers.
+        self.public_header_dependencies: List[Dependency] = []
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
         self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG"), file_suffix="_debug")
@@ -68,11 +70,11 @@ class Project(object):
         f"""
         Load a project from the specified path.
 
-        :param path: The path from which to load the project. Defaults to {os.path.abspath(Project.DEFAULT_SAVED_PROJECT_NAME)}
+        :param path: The path from which to load the project. Defaults to {os.path.abspath(os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME))}
 
         :returns: The loaded project.
         """
-        path = path or os.path.abspath(Project.DEFAULT_SAVED_PROJECT_NAME)
+        path = path or os.path.abspath(os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME))
         with open(path, "rb") as f:
             return pickle.load(f)
 
@@ -81,9 +83,10 @@ class Project(object):
         f"""
         Export this project to the specified path. This enables the project to be used with SBuildr's dependency management system, as well as with the command-line sbuildr utility.
 
-        :param path: The path at which to export the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME} in the project's root directory.
+        :param path: The path at which to export the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME} in the project's build directory.
         """
-        path = path or os.path.join(self.files.root_dir, Project.DEFAULT_SAVED_PROJECT_NAME)
+        path = path or os.path.join(self.build_dir, Project.DEFAULT_SAVED_PROJECT_NAME)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
@@ -100,6 +103,7 @@ class Project(object):
         return list(self.profiles.keys())
 
 
+    # TODO: Test header only libraries with depends
     def _target(self,
                 name: str,
                 basename: str,
@@ -109,6 +113,7 @@ class Project(object):
                 compiler: compiler.Compiler,
                 include_dirs: List[str],
                 linker: linker.Linker,
+                depends: List[Dependency],
                 internal: bool) -> ProjectTarget:
         if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) or isinstance(lib, DependencyLibrary) for lib in libs]):
             G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library, sbuildr.dependencies.DependencyLibrary or sbuildr.ProjectTarget")
@@ -126,7 +131,7 @@ class Project(object):
             G_LOGGER.verbose(f"Received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
             return suffixed
 
-        dependencies: List[Dependency] = []
+        dependencies: List[Dependency] = [] + depends # Create copy
         for lib in libs:
             if isinstance(lib, DependencyLibrary):
                 dependencies.append(lib.dependency)
@@ -182,6 +187,7 @@ class Project(object):
                     compiler: compiler.Compiler = compiler.clang,
                     include_dirs: List[str] = [],
                     linker: linker.Linker = linker.clang,
+                    depends: List[Dependency] = [],
                     internal = False) -> ProjectTarget:
         """
         Adds an executable target to all profiles within this project.
@@ -193,11 +199,12 @@ class Project(object):
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
+        :param depends: Any additional dependencies not already captured in libs. This may include header only packages for example.
         :param internal: Whether this target is internal to the project, in which case it will not be installed.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, internal)
+        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal)
         return self.executables[name]
 
 
@@ -208,7 +215,8 @@ class Project(object):
                 libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
-                linker: linker.Linker = linker.clang) -> ProjectTarget:
+                linker: linker.Linker = linker.clang,
+                depends: List[Dependency] = []) -> ProjectTarget:
         """
         Adds an executable target to all profiles within this project. Test targets can be automatically built and run by using the ``test`` command on the CLI.
 
@@ -219,10 +227,11 @@ class Project(object):
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
+        :param depends: Any additional dependencies not already captured in libs. This may include header only packages for example.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, internal=True)
+        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal=True)
         return self.tests[name]
 
 
@@ -234,6 +243,7 @@ class Project(object):
                 compiler: compiler.Compiler = compiler.clang,
                 include_dirs: List[str] = [],
                 linker: linker.Linker = linker.clang,
+                depends: List[Dependency] = [],
                 internal = False) -> ProjectTarget:
         """
         Adds a library target to all profiles within this project.
@@ -245,11 +255,12 @@ class Project(object):
         :param compiler: The compiler to use for this target. Defaults to clang.
         :param include_dirs: A list of paths for preprocessor include directories. These directories take precedence over automatically deduced include directories.
         :param linker: The linker to use for this target. Defaults to clang.
+        :param depends: Any additional dependencies not already captured in libs. This may include header only packages for example.
         :param internal: Whether this target is internal to the project, in which case it will not be installed.
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, internal)
+        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, depends, internal)
         self.libraries[name].is_lib = True
         return self.libraries[name]
 
@@ -273,7 +284,7 @@ class Project(object):
         return self.profiles[name]
 
 
-    def interfaces(self, headers: List[str]) -> List[str]:
+    def interfaces(self, headers: List[str], depends: List[Dependency]=[]) -> List[str]:
         """
         Specifies headers that are part of this project's public interface.
         When running the ``install`` command on the CLI, the headers specified via this function will be copied to installation directories.
@@ -291,6 +302,7 @@ class Project(object):
                 G_LOGGER.critical(f"For installation target: {target}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate.")
             discovered_paths.append(candidates[0])
         self.public_headers = set(discovered_paths)
+        self.public_header_dependencies.extend(depends)
         return discovered_paths
 
 
@@ -318,12 +330,13 @@ class Project(object):
         :param targets: The targets for which to fetch dependencies. Defaults to all targets.
         """
         targets = targets or self.all_targets()
-        unique_deps = set()
+        unique_deps: Set[Dependency] = set()
         for target in targets:
             unique_deps.update(target.dependencies)
         G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
 
-        for dep in unique_deps:
+        required_deps = self.public_header_dependencies + list(unique_deps)
+        for dep in required_deps:
             meta = dep.setup()
             self.files.add_include_dir(dep.header_dir)
             [self.files.add_include_dir(dir) for dir in meta.include_dirs]
