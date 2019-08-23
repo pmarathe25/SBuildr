@@ -1,3 +1,4 @@
+from sbuildr.logger import G_LOGGER
 from typing import List
 import subprocess
 import shutil

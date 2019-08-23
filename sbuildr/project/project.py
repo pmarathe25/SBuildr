@@ -36,10 +36,10 @@ class Project(object):
     def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None):
         self.sbuildr_version = sbuildr.__version__
         # The assumption is that the caller of the init function is the SBuildr file for the build.
-        self.config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
+        config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
         # to contain no duplicates as well.
-        self.files = FileManager(root or os.path.abspath(os.path.dirname(self.config_file)), dirs)
+        self.files = FileManager(root or os.path.abspath(os.path.dirname(config_file)), dirs)
         # The build directory will be writable, and excluded when the FileManager is searching for paths.
         self.build_dir = self.files.add_writable_dir(self.files.add_exclude_dir(build_dir or os.path.join(self.files.root_dir, "build")))
         # TODO: Make this a parameter?
@@ -75,6 +75,7 @@ class Project(object):
         :returns: The loaded project.
         """
         path = path or os.path.abspath(os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME))
+        G_LOGGER.info(f"Loading project from {path}")
         with open(path, "rb") as f:
             return pickle.load(f)
 
@@ -87,12 +88,13 @@ class Project(object):
         """
         path = path or os.path.join(self.build_dir, Project.DEFAULT_SAVED_PROJECT_NAME)
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        G_LOGGER.info(f"Exporting project to {path}")
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
 
     def __contains__(self, target_name: str) -> bool:
-        return target_name in self.executables or target_name in self.libraries
+        return any([tgt.name == target_name for tgt in self.all_targets()])
 
 
     def all_targets(self):
@@ -459,7 +461,7 @@ class Project(object):
         def run_target(target: ProjectTarget, prof_name: str):
             G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}", color=logger.Color.GREEN)
             status = self._run_linked_node(target[prof_name])
-            if result.returncode:
+            if status.returncode:
                 G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
 
         for prof_name in profile_names:
@@ -662,9 +664,9 @@ class Project(object):
             G_LOGGER.warning(f"Clean dry-run, will not remove files.")
 
         # By default, cleans all targets for all profiles.
-        profile_names = self.all_profile_names() if args.nuke or not profile_names else profile_names
+        profile_names = self.all_profile_names() if nuke or not profile_names else profile_names
         to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
-        G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
+        G_LOGGER.info(f"Cleaning targets for profiles: {profile_names}")
         if nuke:
             # The nuclear option
             to_remove += [self.build_dir]
@@ -674,4 +676,4 @@ class Project(object):
             if dry_run:
                 G_LOGGER.info(f"Would remove: {path}")
             else:
-                project.files.rm(path)
+                self.files.rm(path)

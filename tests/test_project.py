@@ -71,16 +71,43 @@ class TestProject(object):
         self.project.configure_backend()
         assert os.path.exists(self.project.backend.config_file)
 
-    def test_build(self):
+    def build(self):
         self.project.find_dependencies()
         self.project.configure_graph()
         self.project.configure_backend()
         self.project.build()
+
+    def test_default_build(self):
+        self.build()
         for target in self.project.all_targets():
             for node in target.values():
                 assert os.path.exists(node.path)
 
-    # TODO: Test run, run_tests, install, uninstall, clean
+    def test_default_clean_dry_run(self):
+        self.build()
+        self.project.clean()
+        for target in self.project.all_targets():
+            for node in target.values():
+                assert os.path.exists(node.path)
+
+    def test_default_clean(self):
+        self.build()
+        self.project.clean(dry_run=False)
+        for prof in self.project.profiles.values():
+            assert not os.path.exists(prof.build_dir)
+
+    def test_single_profile_clean(self):
+        self.build()
+        clean_profs = ["release"]
+        self.project.clean(profile_names=clean_profs, dry_run=False)
+        for name, prof in self.project.profiles.items():
+            build_dir_exists = os.path.exists(prof.build_dir)
+            if name in clean_profs:
+                assert not build_dir_exists
+            else:
+                assert build_dir_exists
+
+    # TODO: Test run, run_tests, install, uninstall
 
 class TestFileManager(object):
     def setup_method(self):
