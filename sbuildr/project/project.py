@@ -653,7 +653,7 @@ class Project(object):
         Removes build directories and project artifacts.
 
         :param profile_names: The profiles for which to remove build directories. Defaults to all profiles.
-        :param nuke: Whether to remove the project build directory. Note that profile build directories are located within the project's build directory by default.
+        :param nuke: Whether to remove all build directories associated with the project, including profile build directories.
         :param dry_run: Whether this is a dry-run, in which case SBuildr will only display which directories would be removed rather than removing them. Defaults to True.
         """
         # TODO(3): Add per-target cleaning.
@@ -662,12 +662,12 @@ class Project(object):
             G_LOGGER.warning(f"Clean dry-run, will not remove files.")
 
         # By default, cleans all targets for all profiles.
-        profile_names = profile_names or self.all_profile_names()
+        profile_names = self.all_profile_names() if args.nuke or not profile_names else profile_names
         to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
         G_LOGGER.info(f"Cleaning targets for profiles: {prof_names}")
         if nuke:
             # The nuclear option
-            to_remove = [self.build_dir]
+            to_remove += [self.build_dir]
             G_LOGGER.info(f"Initiating Nuclear Protocol!")
         # Remove
         for path in to_remove:

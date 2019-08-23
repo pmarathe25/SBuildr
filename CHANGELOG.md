@@ -3,6 +3,7 @@ Dates are in YYYY-MM-DD format.
 
 ## vNext ()
 - Adds `depends` argument to `Project.library()`, `Project.executable()`, `Project.test()`, and `Project.interfaces()`. This can be used to specify any dependencies not captured in the `libs` argument - for example, header-only packages.
+- The `nuke` option in `Project.clean()` now removes all build directories rather than just the Project's build directory.
 
 ## v0.5.0 (2019-08-21)
 - `tests` in CLI now runs all profiles by default.
