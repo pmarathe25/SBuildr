@@ -1,11 +1,14 @@
 from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
-from sbuildr.logger import G_LOGGER
-from sbuildr.misc import paths
+from sbuildr.logger import G_LOGGER, Color
+from sbuildr.misc import paths, utils
 
 from typing import List
 import copy
 import os
+
+def pretty_path(path: str) -> str:
+    return os.path.normpath(path)
 
 class Artifact(object):
     def __init__(self, path: str, dependencies: List["Node"], commands: List[List[str]]=None, always: List[List[str]]=None):
@@ -89,7 +92,8 @@ class CompiledNode(Node):
     def artifacts(self) -> List[Artifact]:
         # The CompiledNode's include dirs take precedence over the SourceNode's. The ones in the SourceNode are
         # automatically deduced, whereas the ones in the CompiledNode are provided by the user.
-        commands = [self.compiler.compile(self.inputs[0].path, self.path, self.include_dirs + self.inputs[0].include_dirs, self.flags)]
+        commands = [utils.color_print_cmd(f"COMPILING\t{pretty_path(self.inputs[0].path)}", [Color.LIGHT_BLUE])]
+        commands.append(self.compiler.compile(self.inputs[0].path, self.path, self.include_dirs + self.inputs[0].include_dirs, self.flags))
         return [Artifact(self.path, self.inputs, commands)]
 
 # Used to represent an external library. Project libraries are LinkedNodes
@@ -129,7 +133,8 @@ class LinkedNode(Library):
 
     def artifacts(self) -> List[Artifact]:
         # Only link CompiledNodes. All libraries should come from self.libs
-        commands = [self.linker.link([inp.path for inp in self.inputs if isinstance(inp, CompiledNode)], self.hashed_path, self.libs, self.lib_dirs, self.flags)]
+        commands = [utils.color_print_cmd(f"LINKING\t\t{pretty_path(self.path)}", [Color.BOLD, Color.CYAN])]
+        commands.append(self.linker.link([inp.path for inp in self.inputs if isinstance(inp, CompiledNode)], self.hashed_path, self.libs, self.lib_dirs, self.flags))
         hashed_artifact = Artifact(self.hashed_path, self.inputs, commands)
 
         always = [] if self.hashed_path == self.path else [paths.force_hardlink_cmd(self.hashed_path, self.path)]

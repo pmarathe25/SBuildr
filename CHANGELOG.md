@@ -8,7 +8,8 @@ Dates are in YYYY-MM-DD format.
 - Removes subcommands under `configure` in the `sbuildr` executable. Additionally, configure can now export a project using a specified build script.
 - Changes `tests` back to `test` in the `sbuildr` executable.
 - Adds Project API version so that old saved projects can be detected.
-- Fetchers now support versioning. `GitFetcher` can checkout a specific commit, tag or branch. 
+- Fetchers now support versioning. `GitFetcher` can checkout a specific commit, tag or branch.
+- `Node`s now supply print commands to the backend, so that informative messages are shown during the build.
 
 ## v0.5.0 (2019-08-21)
 - `tests` in CLI now runs all profiles by default.

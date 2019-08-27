@@ -1,4 +1,4 @@
-from sbuildr.logger import G_LOGGER
+from sbuildr.logger import G_LOGGER, Color, color_string
 from typing import List
 import subprocess
 import shutil
@@ -8,7 +8,7 @@ import os
 
 def time_subprocess(cmd: List[str], *args, **kwargs) -> (subprocess.CompletedProcess, float):
     start = time.time()
-    status = subprocess.run(cmd, capture_output=True, *args, **kwargs)
+    status = subprocess.run(cmd, *args, **kwargs)
     end = time.time()
     return status, end - start
 
@@ -29,3 +29,8 @@ def copy_path(src: str, dst: str) -> bool:
     except PermissionError:
         G_LOGGER.error(f"Could not write to {dst}. Do you have sufficient privileges?")
         return False
+
+# Returns a platform-independent command that can be used to display a message in the specified color.
+# TODO: Make this platform-independent
+def color_print_cmd(message: str, color: Color=Color.DEFAULT) -> List[str]:
+    return ["echo", color_string(message, color)]

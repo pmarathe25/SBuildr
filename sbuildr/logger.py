@@ -4,6 +4,31 @@ import enum
 import sys
 import os
 
+class SBuildrException(Exception):
+    pass
+
+class Color(enum.Enum):
+    DEFAULT = "0m"
+    BOLD = "1m"
+    RED = "31m"
+    GREEN = "32m"
+    BLUE = "34m"
+    MAGENTA = "35m"
+    CYAN = "36m"
+    GRAY = "90m"
+    LIGHT_RED = "91m"
+    LIGHT_GREEN = "92m"
+    LIGHT_BLUE = "94m"
+    LIGHT_MAGENTA = "95m"
+
+class Verbosity(enum.IntEnum):
+    VERBOSE = 0
+    DEBUG = 10
+    INFO = 20
+    WARNING = 30
+    ERROR = 40
+    CRITICAL = 50
+
 def plural(text: str, num: int):
     return f"{num} {text}{'s' if num > 1 else ''}"
 
@@ -17,23 +42,12 @@ def split_path(path) -> List[str]:
     head, tail = os.path.split(path)
     return [head] if head == path else split_path(head) + [tail]
 
-class SBuildrException(Exception):
-    pass
+def color_string(message, colors: List[Color]) -> str:
+    def prefix_join(prefix: str, joinable: List[object]) -> str:
+        return (prefix if joinable else "") + prefix.join(joinable)
 
-class Color(enum.Enum):
-    DEFAULT = "0m"
-    GRAY = "90m"
-    GREEN = "92m"
-    PURPLE = "95m"
-    RED = "31m"
-
-class Verbosity(enum.IntEnum):
-    VERBOSE = 0
-    DEBUG = 10
-    INFO = 20
-    WARNING = 30
-    ERROR = 40
-    CRITICAL = 50
+    color_prefix = prefix_join("\033[", [color.value for color in colors])
+    return f"{color_prefix}{message}\033[0m"
 
 class Logger(object):
     def __init__(self, verbosity=Verbosity.INFO, path_depth=3):
@@ -64,29 +78,29 @@ class Logger(object):
             filename = os.path.join(*split_path(filename)[-self.path_depth:])
             return f"{prefix} [{filename}:{sys._getframe(stack_depth).f_lineno}] {message}"
 
-    def log(self, message, verbosity=Verbosity.INFO, color=Color.DEFAULT):
+    def log(self, message: str, verbosity: Verbosity=Verbosity.INFO, colors: List[Color]=[Color.DEFAULT]):
         # Disable logging when running with -O.
         if __debug__ and verbosity >= self.verbosity:
-            print("\033[1;{:}{:}\033[0m".format(color.value, message))
+            print(color_string(message, colors))
 
-    def verbose(self, message, color=Color.GRAY):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="V"), verbosity=Verbosity.VERBOSE, color=color)
+    def verbose(self, message):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="V"), verbosity=Verbosity.VERBOSE, colors=[Color.BOLD, Color.GRAY])
 
-    def debug(self, message, color=Color.DEFAULT):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="D"), verbosity=Verbosity.DEBUG, color=color)
+    def debug(self, message):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="D"), verbosity=Verbosity.DEBUG)
 
-    def info(self, message, color=Color.GREEN):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="I"), verbosity=Verbosity.INFO, color=color)
+    def info(self, message):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="I"), verbosity=Verbosity.INFO, colors=[Color.BOLD, Color.GREEN])
 
-    def warning(self, message, color=Color.PURPLE):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="W"), verbosity=Verbosity.WARNING, color=color)
+    def warning(self, message):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="W"), verbosity=Verbosity.WARNING, colors=[Color.BOLD, Color.MAGENTA])
 
-    def error(self, message, color=Color.RED):
-        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), verbosity=Verbosity.ERROR, color=color)
+    def error(self, message):
+        self.log(self.assemble_message(message, stack_depth=2, prefix="E"), verbosity=Verbosity.ERROR, colors=[Color.BOLD, Color.RED])
 
-    def critical(self, message, color=Color.RED):
-        message = self.assemble_message(message, stack_depth=2, prefix="E")
-        self.log(message, verbosity=Verbosity.ERROR, color=color)
-        raise SBuildrException
+    def critical(self, message):
+        message = self.assemble_message(message, stack_depth=2, prefix="C")
+        self.log(message, verbosity=Verbosity.CRITICAL, colors=[Color.BOLD, Color.RED])
+        raise SBuildrException(message)
 
 G_LOGGER = Logger()

@@ -4,7 +4,7 @@ from sbuildr.project.file_manager import FileManager
 from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.target import ProjectTarget
 from sbuildr.backends.backend import Backend
-from sbuildr.logger import G_LOGGER, plural
+from sbuildr.logger import G_LOGGER, plural, Color
 from sbuildr.project.profile import Profile
 from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
@@ -431,7 +431,7 @@ class Project(object):
             G_LOGGER.critical(f"Backend has not been configured. Please call `configure_backend()` prior to attempting to build")
         status, time_elapsed = self.backend.build(nodes)
         if status.returncode:
-            G_LOGGER.critical(f"Failed with:\n{utils.subprocess_output(status)}\nReconfiguring the project or running a clean build may resolve this.")
+            G_LOGGER.critical(f"Failed with to build. Reconfiguring the project or running a clean build may resolve this.")
         G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds.")
         return time_elapsed
 
@@ -444,7 +444,7 @@ class Project(object):
         for lib_dir in node.lib_dirs:
             loader_path += f"{os.pathsep}{lib_dir}"
         G_LOGGER.debug(f"Using loader paths: {loader_path}")
-        G_LOGGER.log(f"{paths.loader_path_env_var()}={loader_path} {node.path}\n", color=logger.Color.GREEN)
+        G_LOGGER.log(f"{paths.loader_path_env_var()}={loader_path} {node.path}\n", colors=[Color.BOLD, Color.GREEN])
         return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)
 
 
@@ -460,13 +460,13 @@ class Project(object):
                 G_LOGGER.critical(f"Could not find target: {target.name} in project executables. Note: Available executables are: {list(self.executables.keys())}")
 
         def run_target(target: ProjectTarget, prof_name: str):
-            G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}", color=logger.Color.GREEN)
+            G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}", colors=[Color.BOLD, Color.GREEN])
             status = self._run_linked_node(target[prof_name])
             if status.returncode:
                 G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
 
         for prof_name in profile_names:
-            G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
+            G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", colors=[Color.BOLD, Color.GREEN])
             for target in targets:
                 run_target(target, prof_name)
 
@@ -503,32 +503,32 @@ class Project(object):
                 self.passed = 0
 
         def run_test(test, prof_name):
-            G_LOGGER.log(f"\nRunning test: {test}, for profile: {prof_name}", color=logger.Color.GREEN)
+            G_LOGGER.log(f"\nRunning test: {test}, for profile: {prof_name}", colors=[Color.BOLD, Color.GREEN])
             status = self._run_linked_node(test[prof_name])
             if status.returncode:
-                G_LOGGER.log(f"\nFAILED {test}, for profile: {prof_name}:\n{test[prof_name].path}", color=logger.Color.RED)
+                G_LOGGER.log(f"\nFAILED {test}, for profile: {prof_name}:\n{test[prof_name].path}", colors=[Color.BOLD, Color.RED])
                 test_results[prof_name].failed += 1
                 failed_targets[prof_name].add(test[prof_name].name)
             else:
-                G_LOGGER.log(f"\nPASSED {test}", color=logger.Color.GREEN)
+                G_LOGGER.log(f"\nPASSED {test}", colors=[Color.BOLD, Color.GREEN])
                 test_results[prof_name].passed += 1
 
         test_results = defaultdict(TestResult)
         failed_targets = defaultdict(set)
         for prof_name in profile_names:
-            G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", color=logger.Color.GREEN)
+            G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", colors=[Color.BOLD, Color.GREEN])
             for test in tests:
                 run_test(test, prof_name)
 
         # Display summary
-        G_LOGGER.log(f"\n{utils.wrap_str(f' Test Results Summary ')}\n", color=logger.Color.GREEN)
+        G_LOGGER.log(f"\n{utils.wrap_str(f' Test Results Summary ')}\n", colors=[Color.BOLD, Color.GREEN])
         for prof_name, result in test_results.items():
             if result.passed or result.failed:
-                G_LOGGER.log(f"Profile: {prof_name}", color=logger.Color.GREEN)
+                G_LOGGER.log(f"Profile: {prof_name}", colors=[Color.BOLD, Color.GREEN])
                 if result.passed:
-                    G_LOGGER.log(f"\tPASSED {plural('test', result.passed)}", color=logger.Color.GREEN)
+                    G_LOGGER.log(f"\tPASSED {plural('test', result.passed)}", colors=[Color.BOLD, Color.GREEN])
                 if result.failed:
-                    G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", color=logger.Color.RED)
+                    G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", colors=[Color.BOLD, Color.RED])
 
 
     def install_targets(self) -> List[ProjectTarget]:
