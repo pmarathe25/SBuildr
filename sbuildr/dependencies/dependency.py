@@ -38,6 +38,13 @@ class Dependency(object):
         self.lib_dir = os.path.join(self.package_root, Dependency.PACKAGE_LIBRARY_SUBDIR)
         self.exec_dir = os.path.join(self.package_root, Dependency.PACKAGE_EXECUTABLE_SUBDIR)
         self.libraries: Dict[str, Library] = {}
+        # TODO: Dependencies should be fetched in the constructor, that way fetcher can provide version info.
+
+
+    def library(self, name: str) -> "DependencyLibrary":
+        # The library's lib_dirs and libs will be updated during setup in project's configure_graph.
+        self.libraries[name] = Library(name=name)
+        return DependencyLibrary(self, self.libraries[name])
 
 
     # TODO: Need a switch to force the fetch.
@@ -64,17 +71,13 @@ class Dependency(object):
             if name not in meta.libraries:
                 G_LOGGER.critical(f"Requested library: {name} is not present in dependency: {self.name}")
             metalib = meta.libraries[name]
+            lib.path = metalib.path
             lib.libs.extend(metalib.libs)
             lib.lib_dirs.extend(metalib.lib_dirs)
             G_LOGGER.verbose(f"Correcting library: {name} to {lib}")
 
         return meta
 
-
-    def library(self, name: str) -> "DependencyLibrary":
-        # The library's lib_dirs and libs will be updated during setup in project's configure_graph.
-        self.libraries[name] = Library(path=os.path.join(self.lib_dir, paths.name_to_libname(name)))
-        return DependencyLibrary(self, self.libraries[name])
 
     def __str__(self) -> str:
         return f"{self.name}: Version {self.version} in {self.package_root}"

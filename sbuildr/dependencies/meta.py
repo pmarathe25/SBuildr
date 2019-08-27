@@ -5,7 +5,8 @@ import pickle
 import os
 
 class LibraryMetadata(object):
-    def __init__(self, libs: List[str], lib_dirs: List[str]):
+    def __init__(self, path: str, libs: List[str], lib_dirs: List[str]):
+        self.path = path
         self.libs = libs
         self.lib_dirs = lib_dirs
 
@@ -19,7 +20,7 @@ class DependencyMetadata(object):
         """
         self.libraries: Dict[str, LibraryMetadata] = libraries
         self.include_dirs = include_dirs
-        self.META_API_VERSION = 1 # Must be tied to the instance due to how pickling works.
+        self.META_API_VERSION = 1.1 # Must be tied to the instance due to how pickling works.
 
     # Returns None if the loaded Metadata is incompatible, or does not exist.
     @staticmethod
@@ -29,7 +30,7 @@ class DependencyMetadata(object):
 
         with open(path, "rb") as f:
             meta = pickle.load(f)
-        if not hasattr(meta, "API_VERSION") or meta.API_VERSION != DependencyMetadata.API_VERSION:
+        if meta.API_VERSION != DependencyMetadata.API_VERSION:
             return None
         return meta
 

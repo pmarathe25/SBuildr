@@ -3,7 +3,7 @@ from sbuildr.dependencies.meta import DependencyMetadata, LibraryMetadata
 from sbuildr.project.project import Project
 from sbuildr.graph.node import Library
 from sbuildr.logger import G_LOGGER
-from sbuildr.misc import utils
+from sbuildr.misc import utils, paths
 import subprocess
 import sys
 import os
@@ -14,7 +14,7 @@ class SBuildrBuilder(DependencyBuilder):
         Builds projects using the SBuildr build system.
 
         :param build_script_path: The path to the build script, relative to the project root. Defaults to "build.py".
-        :param project_save_path: The path at which the build script saves the project. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME}
+        :param project_save_path: The path at which the build script saves the project, relative to the project root. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME}
         :param install_profile: The profile to use when building targets to install. Defaults to the project's default install profile.
         """
         self.build_script_path = build_script_path
@@ -22,7 +22,7 @@ class SBuildrBuilder(DependencyBuilder):
         self.install_profile = install_profile
 
     def install(self, source_dir: str, header_dir: str, lib_dir: str, exec_dir: str) -> DependencyMetadata:
-        # Configuration scripts should save the project.
+        # Configuration scripts should export the project.
         configure_status = subprocess.run([sys.executable, self.build_script_path], capture_output=True, cwd=source_dir, env={"PYTHONPATH": os.pathsep.join(sys.path)})
         if configure_status.returncode:
             G_LOGGER.critical(f"Failed to run build configuration script: {self.build_script_path} in {source_dir} with:\n{utils.subprocess_output(configure_status)}")
@@ -45,6 +45,6 @@ class SBuildrBuilder(DependencyBuilder):
         for name, target in project.libraries.items():
             if not target.internal:
                 lib = target[self.install_profile]
-                libraries[name] = LibraryMetadata(libs=lib.libs, lib_dirs=lib.lib_dirs)
+                libraries[name] = LibraryMetadata(path=os.path.join(lib_dir, paths.name_to_libname(name)), libs=lib.libs, lib_dirs=lib.lib_dirs)
         include_dirs = project.files.include_dirs
         return DependencyMetadata(libraries, include_dirs)
