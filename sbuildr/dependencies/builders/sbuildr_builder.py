@@ -9,12 +9,12 @@ import sys
 import os
 
 class SBuildrBuilder(DependencyBuilder):
-    def __init__(self, build_script_path: str="build.py", project_save_path: str=Project.DEFAULT_SAVED_PROJECT_NAME, install_profile=None):
+    def __init__(self, build_script_path: str="build.py", project_save_path: str=os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME), install_profile=None):
         f"""
         Builds projects using the SBuildr build system.
 
         :param build_script_path: The path to the build script, relative to the project root. Defaults to "build.py".
-        :param project_save_path: The path at which the build script saves the project, relative to the project root. Defaults to {Project.DEFAULT_SAVED_PROJECT_NAME}
+        :param project_save_path: The path at which the build script saves the project, relative to the project root. Defaults to {os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME)}
         :param install_profile: The profile to use when building targets to install. Defaults to the project's default install profile.
         """
         self.build_script_path = build_script_path
@@ -32,6 +32,8 @@ class SBuildrBuilder(DependencyBuilder):
             G_LOGGER.critical(f"Project was not saved to: {saved_project}. Please ensure this path is correct, and that the build configuration script in {self.build_script_path} is saving the project")
 
         project = Project.load(saved_project)
+        if project.PROJECT_API_VERSION != Project.PROJECT_API_VERSION:
+            G_LOGGER.critical(f"This project has an older API version. System Project API version: {Project.PROJECT_API_VERSION}, Project version: {project.PROJECT_API_VERSION}. Please specify the path to which the project is saved by this dependency's build script using the project_save_path parameter.")
 
         self.install_profile = self.install_profile or project.install_profile()
         project.find_dependencies(project.install_targets())

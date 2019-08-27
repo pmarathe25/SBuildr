@@ -19,7 +19,7 @@ class Dependency(object):
     METADATA_FILENAME = "meta.pkl"
 
     # TODO: Make cache_root propagate to nested dependencies.
-    def __init__(self, fetcher: DependencyFetcher, builder: DependencyBuilder, version: str, cache_root: str=paths.dependency_cache_root()):
+    def __init__(self, fetcher: DependencyFetcher, builder: DependencyBuilder, cache_root: str=paths.dependency_cache_root()):
         """
         Manages a fetcher-builder pair for a single dependency.
 
@@ -28,17 +28,14 @@ class Dependency(object):
         :param version: The version number of the dependency to fetch.
         :param cache_root: The root directory to use for caching dependencies.
         """
-        self.fetcher = fetcher
-        self.builder = builder
-        self.name = self.fetcher.dependency_name
-        self.version = version
         self.cache_root = cache_root
-        self.package_root = os.path.join(self.cache_root, Dependency.CACHE_PACKAGES_SUBDIR, f"{self.name}-{self.version}")
-        self.header_dir = os.path.join(self.package_root, Dependency.PACKAGE_HEADER_SUBDIR)
-        self.lib_dir = os.path.join(self.package_root, Dependency.PACKAGE_LIBRARY_SUBDIR)
-        self.exec_dir = os.path.join(self.package_root, Dependency.PACKAGE_EXECUTABLE_SUBDIR)
+        self.fetcher = fetcher
+        self.fetcher.set_dest_dir(os.path.join(self.cache_root, Dependency.CACHE_SOURCES_SUBDIR, self.fetcher.dependency_name))
+        self.builder = builder
         self.libraries: Dict[str, Library] = {}
-        # TODO: Dependencies should be fetched in the constructor, that way fetcher can provide version info.
+
+        self.package_root = None
+        self.version = None
 
 
     def library(self, name: str) -> "DependencyLibrary":
@@ -47,23 +44,42 @@ class Dependency(object):
         return DependencyLibrary(self, self.libraries[name])
 
 
-    # TODO: Need a switch to force the fetch.
+    def include_dir(self) -> str:
+        """
+        Return the directory containing the headers required for this dependency. Must be called after setup().
+        """
+        if not self.package_root:
+            G_LOGGER.critical(f"include_dir() must not be called before setup()")
+        return os.path.join(self.package_root, Dependency.PACKAGE_HEADER_SUBDIR)
+
+
     # TODO: Need to test both code paths - with and without metadata saved.
-    def setup(self) -> DependencyMetadata:
+    def setup(self, force=False) -> DependencyMetadata:
         """
         Fetch, build, and install the dependency if the dependency does not exist in the cache. After setting up the dependency, all references to libraries in the dependency are updated according to the metadata reported by the builder. If the dependency is found in the cache, loads the metadata from the cache instead.
 
+        :param force: Force the dependency to be fetched, built and installed, even if it already exists in the cache.
+
         :returns: A list of include directories from this dependency.
         """
+        name = self.fetcher.dependency_name
+        self.version = self.fetcher.version()
+        dir = f"{name}-{self.version}" if self.version else name
+        self.package_root = os.path.join(self.cache_root, Dependency.CACHE_PACKAGES_SUBDIR, dir)
+
         metadata_path = os.path.join(self.package_root, Dependency.METADATA_FILENAME)
-        meta = DependencyMetadata.load(metadata_path)
-        if not meta:
+        meta = None
+        if os.path.exists(metadata_path):
+            meta = DependencyMetadata.load(metadata_path)
+
+        if force or meta is None or meta.META_API_VERSION != DependencyMetadata.META_API_VERSION:
             G_LOGGER.info(f"{self.package_root} does not contain package metadata. Fetching dependency.")
             # Fetch
-            dep_dir = os.path.join(self.cache_root, Dependency.CACHE_SOURCES_SUBDIR, self.name)
-            self.fetcher.fetch(dep_dir, self.version)
+            self.fetcher.fetch()
             # Install
-            meta = self.builder.install(dep_dir, header_dir=self.header_dir, lib_dir=self.lib_dir, exec_dir=self.exec_dir)
+            lib_dir = os.path.join(self.package_root, Dependency.PACKAGE_LIBRARY_SUBDIR)
+            exec_dir = os.path.join(self.package_root, Dependency.PACKAGE_EXECUTABLE_SUBDIR)
+            meta = self.builder.install(self.fetcher.dest_dir, header_dir=self.include_dir(), lib_dir=lib_dir, exec_dir=exec_dir)
             meta.save(metadata_path)
 
         # Next, update all libraries that have been requested from this dependency.
@@ -75,15 +91,16 @@ class Dependency(object):
             lib.libs.extend(metalib.libs)
             lib.lib_dirs.extend(metalib.lib_dirs)
             G_LOGGER.verbose(f"Correcting library: {name} to {lib}")
-
         return meta
 
 
     def __str__(self) -> str:
-        return f"{self.name}: Version {self.version} in {self.package_root}"
+        return f"{self.fetcher.dependency_name}: Version {self.version} in {self.package_root}"
+
 
     def __repr__(self) -> str:
         return self.__str__()
+
 
 # Tracks a library and the dependency from which it originates.
 class DependencyLibrary(object):
@@ -93,7 +110,3 @@ class DependencyLibrary(object):
         """
         self.dependency = dependency
         self.library = library
-
-# TODO: Add DependencyHeader that tracks a dependency and Header node
-class DependencyHeader(object):
-    pass

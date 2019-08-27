@@ -7,6 +7,7 @@ import sbuildr.logger as logger
 
 from test_tools import PATHS, TESTS_ROOT, ROOT
 
+import tempfile
 import shutil
 import glob
 import os
@@ -106,6 +107,14 @@ class TestProject(object):
                 assert not build_dir_exists
             else:
                 assert build_dir_exists
+
+    def test_api_version_preserved_on_save(self):
+        self.project.PROJECT_API_VERSION = -1
+        f = tempfile.NamedTemporaryFile()
+        self.project.export(f.name)
+        loaded_project = Project.load(f.name)
+        assert loaded_project.PROJECT_API_VERSION == self.project.PROJECT_API_VERSION
+        assert loaded_project.PROJECT_API_VERSION != Project.PROJECT_API_VERSION
 
     # TODO: Test run, run_tests, install, uninstall
 

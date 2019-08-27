@@ -6,22 +6,24 @@ import shutil
 import os
 
 class CopyFetcher(DependencyFetcher):
-    def __init__(self, path: str):
+    def __init__(self, path: str, version: str=""):
         """
         A dependency fetcher that copies source code from the specified path.
 
         :param path: A path to the source code to copy. This fetcher will only copy if the path is newer than the cached source from any previous copies. The path should not be relative to the project, as that will break nested dependencies.
+        :param version: The version of the dependency at the specified path. This is optional, and is used for caching dependency source code.
         """
         self.path = path
+        self.version_tag = version
         super().__init__(os.path.basename(self.path))
 
-    def fetch(self, dest_dir: str, version: str=None) -> str:
-        if version is not None:
-            G_LOGGER.warning(f"The copy fetcher ignores version numbers. Please ensure that {self.path} contains version {version} of the project.")
-        # Only copy if dest_dir is out of date.
-        should_copy = not os.path.exists(dest_dir) or filecmp.dircmp(self.path, dest_dir).left_only or os.path.getmtime(self.path) > os.path.getmtime(dest_dir)
-        if should_copy:
-            shutil.rmtree(dest_dir, ignore_errors=True)
-            shutil.copytree(self.path, dest_dir)
-        # Use the timestamp of the source, as dest_dir timestamp will change every time the source is copied.
-        return str(os.path.getmtime(self.path))
+
+    def fetch(self) -> str:
+        super().fetch()
+        shutil.rmtree(self.dest_dir, ignore_errors=True)
+        return shutil.copytree(self.path, self.dest_dir)
+
+
+    def version(self) -> str:
+        super().version()
+        return self.version_tag

@@ -23,6 +23,7 @@ import os
 
 class Project(object):
     DEFAULT_SAVED_PROJECT_NAME = "project.sbuildr"
+    PROJECT_API_VERSION = 1
     """
     Represents a project. Projects include two default profiles with the following configuration:
     ``release``: ``BuildFlags().O(3).std(17).march("native").fpic()``
@@ -34,7 +35,7 @@ class Project(object):
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
     """
     def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None):
-        self.sbuildr_version = sbuildr.__version__
+        self.PROJECT_API_VERSION = Project.PROJECT_API_VERSION
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
         # Keep track of all files present in project dirs. Since dirs is a set, files is guaranteed
@@ -340,7 +341,7 @@ class Project(object):
         required_deps = self.public_header_dependencies + list(unique_deps)
         for dep in required_deps:
             meta = dep.setup()
-            self.files.add_include_dir(dep.header_dir)
+            self.files.add_include_dir(dep.include_dir())
             [self.files.add_include_dir(dir) for dir in meta.include_dirs]
 
 

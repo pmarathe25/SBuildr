@@ -10,10 +10,8 @@ cppstdlib = sbuildr.Library("stdc++")
 project = sbuildr.Project()
 
 # Assumes that minimal_project is located in single_dependency/../minimal_project
-# CopyFetcher does not support the version parameter, so we provide no version here.
-# For other fetchers, the correct version should be provided.
 minimal_project_path = os.path.abspath(os.path.join(pathlib.Path.home(), "Python", "SBuildr", "examples", "minimal_project"))
-minimal_project = sbuildr.dependencies.Dependency(fetchers.CopyFetcher(minimal_project_path), builders.SBuildrBuilder(), version="")
+minimal_project = sbuildr.dependencies.Dependency(fetchers.CopyFetcher(minimal_project_path), builders.SBuildrBuilder())
 
 # Add targets for this project
 project.interfaces(["dep.hpp"])

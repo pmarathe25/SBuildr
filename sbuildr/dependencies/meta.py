@@ -11,6 +11,8 @@ class LibraryMetadata(object):
         self.lib_dirs = lib_dirs
 
 class DependencyMetadata(object):
+    META_API_VERSION = 1.1
+
     def __init__(self, libraries: Dict[str, LibraryMetadata], include_dirs: List[str]):
         """
         Contains metadata about a dependency.
@@ -20,19 +22,12 @@ class DependencyMetadata(object):
         """
         self.libraries: Dict[str, LibraryMetadata] = libraries
         self.include_dirs = include_dirs
-        self.META_API_VERSION = 1.1 # Must be tied to the instance due to how pickling works.
+        self.META_API_VERSION = DependencyMetadata.META_API_VERSION # Must be tied to the instance due to how pickling works.
 
-    # Returns None if the loaded Metadata is incompatible, or does not exist.
     @staticmethod
     def load(path: str) -> Union[None, "DependencyMetadata"]:
-        if not os.path.exists(path):
-            return None
-
         with open(path, "rb") as f:
-            meta = pickle.load(f)
-        if meta.API_VERSION != DependencyMetadata.API_VERSION:
-            return None
-        return meta
+            return pickle.load(f)
 
     def save(self, path: str):
         with open(path, "wb") as f:

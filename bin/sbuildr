@@ -207,16 +207,25 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser, subparsers) ->
 
 
 def main():
+    def load_project(args) -> Project:
+        if not os.path.exists(args.project_file):
+            G_LOGGER.warning(f"Saved project: {args.project_file} does not exist. Has the project been configured? Please provide a path to the saved project using the -p/--project-file option. ")
+            parser.print_help()
+            sys.exit(0)
+        return Project.load(args.project_file)
+
     def configure(args) -> Project:
         args.build_script = os.path.abspath(args.build_script)
         if not os.path.exists(args.build_script):
             G_LOGGER.critical(f"Specified build script: {args.build_script} does not exist")
 
-        status = subprocess.run([sys.executable, args.build_script])
+        status = subprocess.run([sys.executable, args.build_script], capture_output=True)
         if status.returncode:
             G_LOGGER.critical(f"Failed to run build script with:\n{utils.subprocess_output(status)}")
+        else:
+            G_LOGGER.info(f"Successfully ran build script:\n{utils.subprocess_output(status)}")
 
-        project = Project.load(args.project_file)
+        project = load_project(args)
 
         targets = select_targets(project, args) or project.all_targets()
         profile_names = project.all_profile_names()
@@ -227,16 +236,6 @@ def main():
         # Save the configured project
         project.export(args.project_file)
         return project
-
-
-    def load_project(args) -> Project:
-        if not os.path.exists(args.project_file):
-            G_LOGGER.warning(f"Saved project: {args.project_file} does not exist. Has the project been configured? Please provide a path to a saved project using the -p/--project-file option. ")
-            parser.print_help()
-            sys.exit(0)
-
-        return Project.load(args.project_file)
-
 
     # The project needs to be loaded before the main parser can take over. However, with add_help=True, the help
     # message for the CLI parser will not display, so use this workaround to get both help messages to show.
@@ -276,8 +275,8 @@ def main():
     args.project_file = os.path.abspath(args.project_file)
 
     project = configure(args) if configure_called(args) else load_project(args)
-    if not hasattr(project, "sbuildr_version") or project.sbuildr_version < sbuildr.__version__:
-        G_LOGGER.warning(f"This project was built with an older version of SBuildr. System version: {sbuildr.__version__}, Project version: {project.sbuildr_version if hasattr(project, 'sbuildr_version') else 'unknown'}")
+    if project.PROJECT_API_VERSION != Project.PROJECT_API_VERSION:
+        G_LOGGER.critical(f"This project has an older API version. System Project API version: {Project.PROJECT_API_VERSION}, Project version: {project.PROJECT_API_VERSION}. Please reconfigure the project.")
 
     status = launch_cli(project, parser, subparsers)
     return status
