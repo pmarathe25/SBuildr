@@ -5,6 +5,7 @@ from sbuildr.logger import G_LOGGER
 from sbuildr.misc import utils
 
 from typing import List, Dict
+import multiprocessing
 import subprocess
 import time
 import os
@@ -57,6 +58,6 @@ class RBuildBackend(Backend):
             return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"No targets specified"), 0
 
         paths = [node.path for node in nodes]
-        cmd = ["rbuild", f"{self.config_file}"] + paths
+        cmd = ["rbuild", "--threads", str(multiprocessing.cpu_count()), f"{self.config_file}"] + paths
         G_LOGGER.verbose(f"Build command: {' '.join(cmd)}\nTarget file paths: {paths}")
         return utils.time_subprocess(cmd)
