@@ -36,9 +36,7 @@ class SBuildrBuilder(DependencyBuilder):
             G_LOGGER.critical(f"This project has an older API version. System Project API version: {Project.PROJECT_API_VERSION}, Project version: {project.PROJECT_API_VERSION}. Please specify the path to which the project is saved by this dependency's build script using the project_save_path parameter.")
 
         self.install_profile = self.install_profile or project.install_profile()
-        project.find_dependencies(project.install_targets())
-        project.configure_graph(project.install_targets(), [self.install_profile])
-        project.configure_backend()
+        project.configure(project.install_targets(), profile_names=[self.install_profile])
         project.build(project.install_targets(), [self.install_profile])
 
         project.install(targets=project.install_targets(), profile_names=[self.install_profile], header_install_path=header_dir, library_install_path=lib_dir, executable_install_path=exec_dir, dry_run=False)

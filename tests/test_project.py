@@ -37,21 +37,17 @@ class TestProject(object):
         assert proj.files.root_dir == os.path.dirname(__file__)
 
     def test_executable_api(self):
-        self.project.configure_graph()
+        self.project.configure()
         self.check_target(self.test)
 
     def test_library_api(self):
-        self.project.configure_graph()
+        self.project.configure()
         for node in self.lib.values():
             assert node.flags._shared
         self.check_target(self.lib)
 
-    def test_find_dependencies_default(self):
-        self.project.find_dependencies()
-
-    def test_configure_graph(self):
-        self.project.find_dependencies()
-        self.project.configure_graph()
+    def test_configure_defaults(self):
+        self.project.configure()
         # The project's graph is complete at this stage, and should include all the files in PATHS, plus libraries.
         for path in PATHS.values():
             if os.path.isfile(path):
@@ -65,17 +61,10 @@ class TestProject(object):
                 for inp in node.inputs:
                     if isinstance(inp, Library):
                         assert inp.name != "stdc++"
-
-    def test_configure_default_backend(self):
-        self.project.find_dependencies()
-        self.project.configure_graph()
-        self.project.configure_backend()
         assert os.path.exists(self.project.backend.config_file)
 
     def build(self):
-        self.project.find_dependencies()
-        self.project.configure_graph()
-        self.project.configure_backend()
+        self.project.configure()
         self.project.build()
 
     def test_default_build(self):

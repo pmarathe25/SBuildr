@@ -39,7 +39,7 @@ class Dependency(object):
 
 
     def library(self, name: str) -> "DependencyLibrary":
-        # The library's lib_dirs and libs will be updated during setup in project's configure_graph.
+        # The library's lib_dirs and libs will be updated during setup in project's configure().
         self.libraries[name] = Library(name=name)
         return DependencyLibrary(self, self.libraries[name])
 

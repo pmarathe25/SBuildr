@@ -32,9 +32,7 @@ class TestSBuildrExecutable(object):
         self.test = self.proj.test("test", sources=["test.cpp"], libs=[Library("stdc++"), self.libmath])
         [self.header] = self.proj.interfaces(["math.hpp"])
         self.saved_project = tempfile.NamedTemporaryFile()
-        self.proj.find_dependencies()
-        self.proj.configure_graph()
-        self.proj.configure_backend()
+        self.proj.configure()
         self.proj.export(self.saved_project.name)
 
     def teardown_method(self):

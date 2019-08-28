@@ -10,6 +10,7 @@ Dates are in YYYY-MM-DD format.
 - Adds Project API version so that old saved projects can be detected.
 - Fetchers now support versioning. `GitFetcher` can checkout a specific commit, tag or branch.
 - `Node`s now supply print commands to the backend, so that informative messages are shown during the build.
+- Combines `Project`'s `find_dependencies`, `configure_graph` and `configure_backend` into `configure()`
 
 ## v0.5.0 (2019-08-21)
 - `tests` in CLI now runs all profiles by default.

@@ -326,64 +326,55 @@ class Project(object):
 
 
     # TODO(0): TEST THIS
-    def find_dependencies(self, targets: List[ProjectTarget]=[]) -> None:
+    def configure(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[], BackendType: type=RBuildBackend) -> None:
         """
-        Finds dependencies for the specified targets. This should be called prior to configuring the project's graph with :func:`configure_graph()` .
+        Configure does 3 things:
+        1. Finds dependencies for the specified targets. This involves potentially fetching and building dependencies if they do not exist in the cache.
+        2. Configures the project's build graph after discovering libraries for targets. Before calling configure(), a target's libs/lib_dirs lists are not guaranteed to be complete.
+        3. Configure the project for build using the specified backend type. This includes generating any build configuration files required by this project's backend.
 
-        :param targets: The targets for which to fetch dependencies. Defaults to all targets.
-        """
-        targets = targets or self.all_targets()
-        unique_deps: Set[Dependency] = set()
-        for target in targets:
-            unique_deps.update(target.dependencies)
-        G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
+        This function must be called prior to building.
 
-        required_deps = self.public_header_dependencies + list(unique_deps)
-        for dep in required_deps:
-            meta = dep.setup()
-            self.files.add_include_dir(dep.include_dir())
-            [self.files.add_include_dir(dir) for dir in meta.include_dirs]
-
-
-
-    def configure_graph(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> None:
-        """
-        Configures the project's build graph. This must be called prior to configuring a backend with :func:`configure_backend()` . This function is also responsible for discovering libraries for targets. Before calling this function, target's libs/lib_dirs lists are not guaranteed to be complete.
-
-        :param targets: The targets for which to configure the graph. Defaults to all targets.
-        :param profile_names: The names of profiles for which to configure the graph. Defaults to all profiles.
+        :param targets: The targets for which to configure the project. Defaults to all targets.
+        :param profile_names: The names of profiles for which to configure the project. Defaults to all profiles.
+        :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
         """
         targets = targets or self.all_targets()
         profile_names = profile_names or self.all_profile_names()
 
-        # Scan for headers and propagate libs
-        self.files.scan_all()
+        def find_dependencies():
+            unique_deps: Set[Dependency] = set()
+            for target in targets:
+                unique_deps.update(target.dependencies)
+            G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
 
-        for profile in self.profiles.values():
-            profile.configure_libraries()
+            required_deps = self.public_header_dependencies + list(unique_deps)
+            for dep in required_deps:
+                meta = dep.setup()
+                self.files.add_include_dir(dep.include_dir())
+                [self.files.add_include_dir(dir) for dir in meta.include_dirs]
 
-        # Combine the source graph from file manager and the various profile graphs
-        def combined_graph():
-            all_nodes = [target[prof_name] for target in targets for prof_name in profile_names]
-            for node in all_nodes:
-                all_nodes.extend(node.inputs)
-            return Graph(set(all_nodes))
+        def configure_graph():
+            self.files.scan_all()
+            for profile in self.profiles.values():
+                profile.configure_libraries()
 
-        self.graph = combined_graph()
+            def combined_graph():
+                all_nodes = [target[prof_name] for target in targets for prof_name in profile_names]
+                for node in all_nodes:
+                    all_nodes.extend(node.inputs)
+                return Graph(set(all_nodes))
 
+            self.graph = combined_graph()
 
-    def configure_backend(self, BackendType: type=RBuildBackend) -> None:
-        """
-        Configure the project for build using the specified backend type. This includes generating any build configuration files required by this project's backend. This must be called prior to building.
+        def configure_backend():
+            self.backend = BackendType(self.build_dir)
+            self.files.mkdir(self.build_dir)
+            self.backend.configure(self.graph)
 
-        :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
-        """
-        if not self.graph:
-            G_LOGGER.critical(f"Project graph has not been configured. Please call `configure_graph()` prior to configuring a backend")
-
-        self.backend = BackendType(self.build_dir)
-        self.files.mkdir(self.build_dir)
-        self.backend.configure(self.graph)
+        find_dependencies()
+        configure_graph()
+        configure_backend()
 
 
     def build(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> float:
@@ -428,7 +419,7 @@ class Project(object):
             return
 
         if not self.backend:
-            G_LOGGER.critical(f"Backend has not been configured. Please call `configure_backend()` prior to attempting to build")
+            G_LOGGER.critical(f"Backend has not been configured. Please call `configure()` prior to attempting to build")
         status, time_elapsed = self.backend.build(nodes)
         if status.returncode:
             G_LOGGER.critical(f"Failed with to build. Reconfiguring the project or running a clean build may resolve this.")

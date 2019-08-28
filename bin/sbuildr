@@ -231,9 +231,7 @@ def main():
         targets = select_targets(project, args) or project.all_targets()
         profile_names = project.all_profile_names()
 
-        project.find_dependencies(targets)
-        project.configure_graph(targets, profile_names)
-        project.configure_backend()
+        project.configure(targets, profile_names)
         # Save the configured project
         project.export(args.project_file)
         return project
