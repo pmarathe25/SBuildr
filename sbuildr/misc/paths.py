@@ -1,9 +1,18 @@
 # Platform independent paths and file naming conventions.
+from sbuildr.logger import G_LOGGER
+
 from typing import List
 import pathlib
 import os
 
 # TODO: Edit these functions to take into account other platforms, and maybe move to another location.
+# Inserts suffix into path, just before the extension
+def insert_suffix(path: str, suffix: str) -> str:
+    split = os.path.splitext(path)
+    suffixed = f"{split[0]}{suffix}{(split[1] or '')}"
+    G_LOGGER.verbose(f"Received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
+    return suffixed
+
 def force_hardlink_cmd(source: str, dest: str) -> List[str]:
     return ["ln", "-f", source, dest]
 

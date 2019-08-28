@@ -109,7 +109,7 @@ class Project(object):
     # TODO: Test header only libraries with depends
     def _target(self,
                 name: str,
-                basename: str,
+                ext_path: str,
                 sources: List[str],
                 flags: BuildFlags,
                 libs: List[Union[DependencyLibrary, ProjectTarget, Library]],
@@ -118,21 +118,9 @@ class Project(object):
                 linker: linker.Linker,
                 depends: List[Dependency],
                 internal: bool) -> ProjectTarget:
+
         if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) or isinstance(lib, DependencyLibrary) for lib in libs]):
             G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library, sbuildr.dependencies.DependencyLibrary or sbuildr.ProjectTarget")
-
-        # Convert sources to full paths
-        def get_source_nodes(sources: List[str]) -> List[CompiledNode]:
-            source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
-            G_LOGGER.verbose(f"For sources: {sources}, found source paths: {source_nodes}")
-            return source_nodes
-
-        # Inserts suffix into path, just before the extension
-        def file_suffix(path: str, suffix: str, ext: str = None) -> str:
-            split = os.path.splitext(os.path.basename(path))
-            suffixed = f"{split[0]}{suffix}{(ext or split[1] or '')}"
-            G_LOGGER.verbose(f"Received path: {path}, split into {split}. Using suffix: {suffix}, generated final name: {suffixed}")
-            return suffixed
 
         dependencies: List[Dependency] = [] + depends # Create copy
         for lib in libs:
@@ -145,7 +133,10 @@ class Project(object):
         [dependencies.extend(lib.dependencies) for lib in libs if isinstance(lib, ProjectTarget)]
 
         libs: List[Union[ProjectTarget, Library]] = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
-        source_nodes = get_source_nodes(sources)
+
+        source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
+        G_LOGGER.verbose(f"For sources: {sources}, found source paths: {source_nodes}")
+
         target = ProjectTarget(name=name, internal=internal, dependencies=dependencies)
         for profile_name, profile in self.profiles.items():
             # Convert all libraries to nodes. These will be inputs to the target.
@@ -159,26 +150,16 @@ class Project(object):
 
             # First, add or retrieve object nodes for each source.
             for source_node in source_nodes:
-                # Only the include dirs provided by the user are part of the hash. When the automatically deduced
-                # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
-                # TODO: Move obj_sig and linked_sig to just before the project graph is configured. 
-                obj_sig = compiler.signature(source_node.path, include_dirs, flags)
-                obj_path = os.path.join(self.common_build_dir, file_suffix(source_node.path, f".{obj_sig}", ".o"))
+                obj_path = os.path.join(self.common_build_dir, f"{os.path.splitext(os.path.basename(source_node.path))[0]}.o")
                 # User defined includes are always prepended the ones deduced for SourceNodes.
                 obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
                 input_nodes.append(profile.graph.add(obj_node))
 
-            # Though we know all the libraries being linked against, we don't know exactly where they're coming from yet (lib_dirs). Thus, the signature omits this information
-            lib_names = [lib.name for lib in lib_nodes]
-            for lib in lib_nodes:
-                lib_names.extend([lib_name for lib_name in lib.libs if lib_name not in lib_names])
-
             # Hard links are needed because during linkage, the library must have a clean name.
-            linked_sig = linker.signature([node.path or "" for node in input_nodes], lib_names, [], flags)
-            hashed_path = os.path.join(self.common_build_dir, file_suffix(basename, f".{linked_sig}"))
-            public_path = os.path.join(profile.build_dir, file_suffix(basename, profile.suffix))
-            target[profile_name] = profile.graph.add(LinkedNode(public_path, input_nodes, linker, hashed_path, flags=flags))
-            G_LOGGER.debug(f"Adding target: {name}, with hashed path: {hashed_path}, public path: {public_path} to profile: {profile_name}")
+            hashed_path = os.path.join(self.common_build_dir, ext_path)
+            path = os.path.join(profile.build_dir, paths.insert_suffix(ext_path, profile.suffix))
+            target[profile_name] = profile.graph.add(LinkedNode(path, input_nodes, linker, hashed_path=hashed_path, flags=flags))
+            G_LOGGER.debug(f"Adding target: {name}, with hashed path: {hashed_path}, public path: {path} to profile: {profile_name}")
         return target
 
 
@@ -326,7 +307,6 @@ class Project(object):
         return candidates[0]
 
 
-    # TODO(0): TEST THIS
     def configure(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[], BackendType: type=RBuildBackend) -> None:
         """
         Configure does 3 things:
@@ -364,7 +344,19 @@ class Project(object):
                 all_nodes = [target[prof_name] for target in targets for prof_name in profile_names]
                 for node in all_nodes:
                     all_nodes.extend(node.inputs)
-                return Graph(set(all_nodes))
+                graph = Graph(set(all_nodes))
+
+                # Need to rename all the files in the build graph so that they have hashes.
+                for layer in graph.layers():
+                    for node in layer:
+                        if isinstance(node, CompiledNode):
+                            signature = node.compiler.signature(node.inputs[0].path, node.include_dirs, node.flags)
+                            node.path = paths.insert_suffix(node.path, f".{signature}")
+                        elif isinstance(node, LinkedNode):
+                            signature = node.linker.signature([inp.path for inp in node.inputs], node.libs, node.lib_dirs, node.flags)
+                            node.hashed_path = paths.insert_suffix(node.hashed_path, f".{signature}")
+
+                return graph
 
             self.graph = combined_graph()
 
