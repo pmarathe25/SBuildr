@@ -51,12 +51,12 @@ class TestProject(object):
         # The project's graph is complete at this stage, and should include all the files in PATHS, plus libraries.
         for path in PATHS.values():
             if os.path.isfile(path):
-                assert path in self.project.graph
+                assert self.project.graph.contains_path(path)
         # Libraries without associated paths should not be in the project graph.
-        assert "stdc++" not in self.project.graph
+        assert not self.project.graph.contains_path("stdc++")
         for target in self.project.all_targets():
             for node in target.values():
-                assert node.path in self.project.graph
+                assert self.project.graph.contains_path(node.path)
                 # Non-path libraries should have been removed as node inputs
                 for inp in node.inputs:
                     if isinstance(inp, Library):
@@ -161,4 +161,4 @@ class TestFileManager(object):
         assert test_cpp.include_dirs == sorted(set([PATHS["src"]] + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
         # Make sure that the source graph has been populated
         for file in ["factorial.hpp", "fibonacci.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
-            assert PATHS[file] in self.manager.graph
+            assert self.manager.graph.contains_path(PATHS[file])

@@ -48,7 +48,7 @@ class TestGraph(object):
         assert len(layers) == 3
         assert all([len(layer) == 1 for layer in layers])
         # Test get functionality
-        assert graph["C"].path == "C"
+        assert layers[-1].pop().path == "C"
 
 class TestNodes(object):
     def test_linear_outputs_correct(self):

@@ -51,7 +51,7 @@ class TestRBuild(object):
         gen.configure(graph)
         assert subprocess.run(["rbuild", gen.config_file])
         # All paths should exist after building.
-        for node in graph.values():
+        for node in graph:
             assert os.path.exists(node.path)
 
     # Call build without specifying nodes

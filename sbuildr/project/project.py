@@ -161,6 +161,7 @@ class Project(object):
             for source_node in source_nodes:
                 # Only the include dirs provided by the user are part of the hash. When the automatically deduced
                 # include_dirs change, it means the file is stale, so name collisions don't matter (i.e. OK to overwrite.)
+                # TODO: Move obj_sig and linked_sig to just before the project graph is configured. 
                 obj_sig = compiler.signature(source_node.path, include_dirs, flags)
                 obj_path = os.path.join(self.common_build_dir, file_suffix(source_node.path, f".{obj_sig}", ".o"))
                 # User defined includes are always prepended the ones deduced for SourceNodes.
