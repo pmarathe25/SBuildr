@@ -1,7 +1,7 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
-## vNext ()
+## v0.6.0 (2019-08-27)
 - Adds `depends` argument to `Project.library()`, `Project.executable()`, `Project.test()`, and `Project.interfaces()`. This can be used to specify any dependencies not captured in the `libs` argument - for example, header-only packages.
 - The `nuke` option in `Project.clean()` now removes all build directories rather than just the Project's build directory.
 - Fixes a bug that prevented the `sbuildr` executable script from building test targets.
@@ -11,7 +11,7 @@ Dates are in YYYY-MM-DD format.
 - Fetchers now support versioning. `GitFetcher` can checkout a specific commit, tag or branch.
 - `Node`s now supply print commands to the backend, so that informative messages are shown during the build.
 - Combines `Project`'s `find_dependencies`, `configure_graph` and `configure_backend` into `configure()`
-- Hashes for build artifacts now take more variables into account, thereby preventing collisions. 
+- Hashes for build artifacts now take more variables into account, thereby preventing collisions.
 
 ## v0.5.0 (2019-08-21)
 - `tests` in CLI now runs all profiles by default.

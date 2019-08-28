@@ -9,7 +9,7 @@ import os
 cppstdlib = sbuildr.Library("stdc++")
 project = sbuildr.Project()
 
-# Assumes that single_dependency is located in nested_dependency/../single_dependency
+# Assumes that single_dependency is located in ~/Python/SBuildr/examples/single_dependency
 single_dependency_path = os.path.abspath(os.path.join(pathlib.Path.home(), "Python", "SBuildr", "examples", "single_dependency"))
 single_dependency = sbuildr.dependencies.Dependency(fetchers.CopyFetcher(single_dependency_path), builders.SBuildrBuilder())
 
