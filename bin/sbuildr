@@ -46,7 +46,7 @@ def select_targets(project, args, search_dicts=["libraries", "executables", "tes
 
 # Sets up the the command-line interface for the given project/generator combination.
 # When no profile(s) are specified, default_profile will be used.
-def launch_cli(project: Project, parser: argparse.ArgumentParser, subparsers) -> int:
+def add_project_specific_subcommands(project: Project, parser: argparse.ArgumentParser, subparsers) -> int:
     """
     Adds the SBuildr command-line interface to the Python script invoking this function. For detailed usage information, you can run the Python code invoking this function with ``--help``.
 
@@ -207,7 +207,7 @@ def launch_cli(project: Project, parser: argparse.ArgumentParser, subparsers) ->
     return 0
 
 
-def main():
+def add_project_generic_subcommands(args, parser: argparse.ArgumentParser) -> int:
     def load_project(args) -> Project:
         if not os.path.exists(args.project_file):
             G_LOGGER.warning(f"Saved project: {args.project_file} does not exist. Has the project been configured? Please provide a path to the saved project using the -p/--project-file option. ")
@@ -236,17 +236,6 @@ def main():
         project.export(args.project_file)
         return project
 
-    # The project needs to be loaded before the main parser can take over. However, with add_help=True, the help
-    # message for the CLI parser will not display, so use this workaround to get both help messages to show.
-    parser = argparse.ArgumentParser(add_help=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-h", "--help", help="Show this help message and exit.", action="store_true")
-    parser.add_argument("-p", "--project-file", help="A path to a saved project file.", default=os.path.abspath(os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME)))
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
-    parser.add_argument("-vv", "--very-verbose", action="store_true", help="Enable very verbose logging.")
-
-    # Parse without configure to get global options (configure_parser will block all parsing if a non-configure subcommand is used)
-    args, _ = parser.parse_known_args()
-
     subparsers = parser.add_subparsers()
 
     # Configure
@@ -267,18 +256,32 @@ def main():
         # This means a subcommand other than configure was called, so proceed as normal.
         pass
 
+    project = configure(args) if configure_called(args) else load_project(args)
+    if project.PROJECT_API_VERSION != Project.PROJECT_API_VERSION:
+        G_LOGGER.critical(f"This project has an older API version. System Project API version: {Project.PROJECT_API_VERSION}, Project version: {project.PROJECT_API_VERSION}. Please reconfigure the project.")
+
+    status = add_project_specific_subcommands(project, parser, subparsers)
+    return status
+
+
+def main():
+    # The project needs to be loaded before the main parser can take over. However, with add_help=True, the help
+    # message for the CLI parser will not display, so use this workaround to get both help messages to show.
+    parser = argparse.ArgumentParser(add_help=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-h", "--help", help="Show this help message and exit.", action="store_true")
+    parser.add_argument("-p", "--project-file", help="A path to a saved project file.", default=os.path.abspath(os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME)))
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
+    parser.add_argument("-vv", "--very-verbose", action="store_true", help="Enable very verbose logging.")
+
+    # Parse without any subparsers to get global options (subparses will block all parsing if an unrecognized subcommand is used)
+    args, _ = parser.parse_known_args()
     if args.very_verbose:
         G_LOGGER.verbosity = logger.Verbosity.VERBOSE
     elif args.verbose:
         G_LOGGER.verbosity = logger.Verbosity.DEBUG
     args.project_file = os.path.abspath(args.project_file)
 
-    project = configure(args) if configure_called(args) else load_project(args)
-    if project.PROJECT_API_VERSION != Project.PROJECT_API_VERSION:
-        G_LOGGER.critical(f"This project has an older API version. System Project API version: {Project.PROJECT_API_VERSION}, Project version: {project.PROJECT_API_VERSION}. Please reconfigure the project.")
-
-    status = launch_cli(project, parser, subparsers)
-    return status
+    return add_project_generic_subcommands(args, parser)
 
 
 if __name__ == '__main__':
