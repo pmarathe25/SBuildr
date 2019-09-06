@@ -8,6 +8,8 @@ Dates are in YYYY-MM-DD format.
 - Fixes default list arguments in public API. Now, an empty list is distinguishable from a default argument.
 - Fixes `FileManager`'s logic for disambiguating includes.
 - Fixes `FileManager`'s logic for finding source nodes. This prevents headers from being scanned multiple times.
+- Adds checks so that invalid target names are caught early.
+- Adds default profiles to `sbuildr test`.
 
 ## v0.6.0 (2019-08-27)
 - Adds `depends` argument to `Project.library()`, `Project.executable()`, `Project.test()`, and `Project.interfaces()`. This can be used to specify any dependencies not captured in the `libs` argument - for example, header-only packages.

@@ -123,6 +123,9 @@ class Project(object):
         if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) or isinstance(lib, DependencyLibrary) for lib in libs]):
             G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library, sbuildr.dependencies.DependencyLibrary or sbuildr.ProjectTarget")
 
+        if os.path.basename(ext_path) != ext_path:
+            G_LOGGER.critical(f"Target: {ext_path} looks like a path. Target names should not contain characters that are unsupported by the filesystem.")
+
         dependencies: List[Dependency] = [] + depends # Create copy
         for lib in libs:
             if isinstance(lib, DependencyLibrary):

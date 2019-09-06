@@ -91,7 +91,7 @@ def add_project_specific_subcommands(project: Project, parser: argparse.Argument
 
     def tests(args):
         tests = select_targets(project, args, search_dicts=["tests"]) or project.test_targets()
-        profile_names = select_profile_names(args)
+        profile_names = select_profile_names(args) or project.all_profile_names()
         try_build(tests, profile_names)
         project.run_tests(tests, profile_names)
 
