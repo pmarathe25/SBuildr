@@ -50,6 +50,15 @@ class TestGraph(object):
         # Test get functionality
         assert layers[-1].pop().path == "C"
 
+    def test_graph_layers_with_external_output_node(self):
+        A, B, C = linear_graph()
+        D = Node(inputs=[C], path="D")
+        graph = Graph([A, B, C])
+        assert graph.layers()
+        assert A in graph.layers()[0]
+        assert B in graph.layers()[1]
+        assert C in graph.layers()[2]
+
 class TestNodes(object):
     def test_linear_outputs_correct(self):
         A, B, C = linear_graph()

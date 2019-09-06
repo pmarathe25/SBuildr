@@ -117,7 +117,8 @@ class Project(object):
                 include_dirs: List[str],
                 linker: linker.Linker,
                 depends: List[Dependency],
-                internal: bool) -> ProjectTarget:
+                internal: bool,
+                is_lib: bool) -> ProjectTarget:
 
         if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) or isinstance(lib, DependencyLibrary) for lib in libs]):
             G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library, sbuildr.dependencies.DependencyLibrary or sbuildr.ProjectTarget")
@@ -137,7 +138,7 @@ class Project(object):
         source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
         G_LOGGER.verbose(f"For sources: {sources}, found source paths: {source_nodes}")
 
-        target = ProjectTarget(name=name, internal=internal, dependencies=dependencies)
+        target = ProjectTarget(name=name, internal=internal, is_lib=is_lib, dependencies=dependencies)
         for profile_name, profile in self.profiles.items():
             # Convert all libraries to nodes. These will be inputs to the target.
             # Profile will later convert them to library names and directories.
@@ -189,7 +190,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal)
+        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal, is_lib=False)
         return self.executables[name]
 
 
@@ -216,7 +217,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal=True)
+        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal=True, is_lib=False)
         return self.tests[name]
 
 
@@ -245,8 +246,7 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, depends, internal)
-        self.libraries[name].is_lib = True
+        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, depends, internal, is_lib=True)
         return self.libraries[name]
 
 
@@ -327,9 +327,9 @@ class Project(object):
             unique_deps: Set[Dependency] = set()
             for target in targets:
                 unique_deps.update(target.dependencies)
-            G_LOGGER.info(f"Fetching dependencies: {unique_deps}")
 
             required_deps = self.public_header_dependencies + list(unique_deps)
+            G_LOGGER.info(f"Fetching dependencies: {required_deps}")
             for dep in required_deps:
                 meta = dep.setup()
                 self.files.add_include_dir(dep.include_dir())

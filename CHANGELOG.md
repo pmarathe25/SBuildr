@@ -1,6 +1,10 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
+## vNext ()
+- Fixed a bug where tests were not being marked as `internal`.
+- Fixed a bug where `configure` would not work if the specified targets had dependent targets that were not specified to `configure`.
+
 ## v0.6.0 (2019-08-27)
 - Adds `depends` argument to `Project.library()`, `Project.executable()`, `Project.test()`, and `Project.interfaces()`. This can be used to specify any dependencies not captured in the `libs` argument - for example, header-only packages.
 - The `nuke` option in `Project.clean()` now removes all build directories rather than just the Project's build directory.

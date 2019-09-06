@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import filecmp
 import pytest
+import shutil
 import sys
 import os
 
@@ -53,7 +54,6 @@ class TestGitFetcher(object):
             commit_hash = head_status.stdout.strip().decode(sys.stdout.encoding)
             assert commit_hash == fetcher2_commit_hash
 
-
 class TestCopyFetcher(object):
     def setup_method(self):
         self.fetcher = CopyFetcher(ROOT)
@@ -83,6 +83,9 @@ class TestSBuildrBuilder(object):
         self.builder.install(ROOT, self.header_dir, self.lib_dir, self.exec_dir)
         assert os.path.exists(os.path.join(self.header_dir, "math.hpp"))
         assert os.path.exists(os.path.join(self.lib_dir, paths.name_to_libname("math")))
+
+    def teardown_method(self):
+        shutil.rmtree(PATHS["build"], ignore_errors=True)
 
 class TestDependency(object):
     def setup_method(self):

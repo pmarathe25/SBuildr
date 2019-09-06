@@ -16,7 +16,11 @@ class Graph(set):
     # Note that this will exclude any nodes that are not in this graph, even if they are inputs/outputs
     # to nodes that are in the graph.
     def layers(self) -> List[Set[Node]]:
-        outputs = set([node for node in self if not node.outputs])
+        # Graph output nodes do not have any outputs within the graph.
+        def is_graph_output(node):
+            return all([out not in self for out in node.outputs])
+
+        outputs = set([node for node in self if is_graph_output(node)])
         # The layers of the graph.
         graph_layers: List[Set[Node]] = []
         graph_layers.append(outputs)

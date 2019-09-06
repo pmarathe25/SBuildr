@@ -2,9 +2,11 @@ from sbuildr.dependencies.dependency import Dependency
 from sbuildr.logger import G_LOGGER
 from typing import Dict, List
 
+import copy
+
 # A Dict[str, LinkedNode] that maps profile names to the LinkedNodes for a target
 class ProjectTarget(dict):
-    def __init__(self, name, internal: bool=False, dependencies: List[Dependency]=[], *args, **kwargs):
+    def __init__(self, name, internal: bool, is_lib: bool, dependencies: List[Dependency]=[], *args, **kwargs):
         """
         Represents a single target in a project.
 
@@ -13,9 +15,9 @@ class ProjectTarget(dict):
         """
         super().__init__(self, *args, **kwargs)
         self.name = name
-        self.internal = False
-        self.is_lib = False
-        self.dependencies: List[Dependency] = dependencies
+        self.internal = internal
+        self.is_lib = is_lib
+        self.dependencies: List[Dependency] = copy.copy(dependencies)
         G_LOGGER.verbose(f"Created ProjectTarget: {self.name} (internal: {self.internal}), (is_lib: {self.is_lib}), with dependencies: {self.dependencies}")
 
 

@@ -18,7 +18,8 @@ class TestProject(object):
     def setup_method(self):
         self.project = Project(root=ROOT, build_dir=PATHS["build"])
         self.lib = self.project.library("test", sources=["factorial.cpp", "fibonacci.cpp"], libs=[Library("stdc++")])
-        self.test = self.project.executable("test", sources=["tests/test.cpp"], libs=[Library("stdc++"), self.lib])
+        self.exec = self.project.executable("test", sources=["tests/test.cpp"], libs=[Library("stdc++"), self.lib])
+        self.test = self.project.test("test2", sources=["tests/test.cpp"], libs=[Library("stdc++"), self.lib])
 
     def teardown_method(self):
         shutil.rmtree(self.project.build_dir, ignore_errors=True)
@@ -38,13 +39,20 @@ class TestProject(object):
 
     def test_executable_api(self):
         self.project.configure()
-        self.check_target(self.test)
+        self.check_target(self.exec)
+        assert not self.exec.is_lib
 
     def test_library_api(self):
         self.project.configure()
         for node in self.lib.values():
             assert node.flags._shared
         self.check_target(self.lib)
+        assert self.lib.is_lib
+
+    def test_test_api(self):
+        self.project.configure()
+        assert self.test.internal
+        assert not self.test.is_lib
 
     def test_configure_defaults(self):
         self.project.configure()
