@@ -6,7 +6,7 @@ import pytest
 import shutil
 import os
 
-TESTS_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "examples"))
+TESTS_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, "examples"))
 ROOT = os.path.join(TESTS_ROOT, "minimal_project")
 PATHS = {
     "include": os.path.join(ROOT, "include"),

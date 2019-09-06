@@ -3,7 +3,7 @@
 import sys
 import os
 SCRIPT_ROOT = os.path.dirname(__file__)
-SBUILDR_ROOT = os.path.abspath(os.path.join(SCRIPT_ROOT, os.pardir))
+SBUILDR_ROOT = os.path.abspath(os.path.join(SCRIPT_ROOT, os.path.pardir))
 sys.path.insert(0, SBUILDR_ROOT)
 
 from sbuildr.project.target import ProjectTarget

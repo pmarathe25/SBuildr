@@ -11,7 +11,7 @@ import sys
 import os
 
 INSTALL_DIR_ARGS = ["-I", PATHS["build"], "-L", PATHS["build"], "-X", PATHS["build"]]
-SBUILDR_ROOT = os.path.abspath(os.path.join(TESTS_ROOT, os.pardir))
+SBUILDR_ROOT = os.path.abspath(os.path.join(TESTS_ROOT, os.path.pardir))
 SBUILDR_EXEC = os.path.join(SBUILDR_ROOT, "bin", "sbuildr")
 
 def test_public_imports():

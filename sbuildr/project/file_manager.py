@@ -165,19 +165,20 @@ class FileManager(object):
         def disambiguate_included_file(included_token: str, include_path: str) -> str:
             # TODO: Handle paths that start with ../
             # Such paths should always be relative to the file itself, otherwise it's an error.
-            if include_path.startswith(os.pardir):
-                raise NotImplementedError(f"FileManager does not currently support includes containing {os.pardir}")
+            if include_path.startswith(os.path.pardir):
+                raise NotImplementedError(f"FileManager does not currently support includes containing {os.path.pardir}")
 
             candidates = self.find(included_token, search_include_dirs=True)
             if len(candidates) == 0:
                 return None
 
+            # TODO: Move this into misc.paths, add test case.
             # Determines how "close together" files are. Smaller numbers mean they are further apart in the tree.
-            def _file_proximity(path_a: str, path_b: str) -> int:
-                return len(os.path.split(os.path.commonpath([path_a, path_b])))
+            def file_proximity(path_a: str, path_b: str) -> int:
+                return len(os.path.commonpath([path_a, path_b]).split(os.path.sep))
 
             # Return the path that is closest to the including file
-            closest_path = max(candidates, key=lambda candidate: _file_proximity(candidate, include_path))
+            closest_path = max(candidates, key=lambda candidate: file_proximity(candidate, include_path))
 
             if len(candidates) > 1:
                 G_LOGGER.warning(f"For {include_path}, found multiple possible headers, but determined that {closest_path} best matches include for {included_token}. If this is not the case, please provide a longer path in the include to disambiguate, or manually provide the correct include directories. Note, candidates were: {candidates}")

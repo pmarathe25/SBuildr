@@ -6,6 +6,7 @@ Dates are in YYYY-MM-DD format.
 - Fixes a bug where `configure` would not work if the specified targets had dependent targets that were not specified to `configure`.
 - Fixes a bug where `configure` would configure all targets if an empty list of targets was provided.
 - Fixes default list arguments in public API. Now, an empty list is distinguishable from a default argument.
+- Fixes `FileManager`'s logic for disambiguating includes. 
 
 ## v0.6.0 (2019-08-27)
 - Adds `depends` argument to `Project.library()`, `Project.executable()`, `Project.test()`, and `Project.interfaces()`. This can be used to specify any dependencies not captured in the `libs` argument - for example, header-only packages.

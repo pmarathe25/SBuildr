@@ -425,7 +425,7 @@ class Project(object):
         loader_path = os.environ[paths.loader_path_env_var()]
         G_LOGGER.verbose(f"Running linked node: {node}")
         for lib_dir in node.lib_dirs:
-            loader_path += f"{os.pathsep}{lib_dir}"
+            loader_path += f"{os.path.pathsep}{lib_dir}"
         G_LOGGER.debug(f"Using loader paths: {loader_path}")
         G_LOGGER.log(f"{paths.loader_path_env_var()}={loader_path} {node.path}\n", colors=[Color.BOLD, Color.GREEN])
         return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)

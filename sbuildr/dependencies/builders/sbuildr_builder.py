@@ -23,7 +23,7 @@ class SBuildrBuilder(DependencyBuilder):
 
     def install(self, source_dir: str, header_dir: str, lib_dir: str, exec_dir: str) -> DependencyMetadata:
         # Configuration scripts should export the project.
-        configure_status = subprocess.run([sys.executable, self.build_script_path], capture_output=True, cwd=source_dir, env={"PYTHONPATH": os.pathsep.join(sys.path)})
+        configure_status = subprocess.run([sys.executable, self.build_script_path], capture_output=True, cwd=source_dir, env={"PYTHONPATH": os.path.pathsep.join(sys.path)})
         if configure_status.returncode:
             G_LOGGER.critical(f"Failed to run build configuration script: {self.build_script_path} in {source_dir} with:\n{utils.subprocess_output(configure_status)}")
 
