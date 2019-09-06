@@ -307,7 +307,7 @@ class Project(object):
         return candidates[0]
 
 
-    def configure(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[], BackendType: type=RBuildBackend) -> None:
+    def configure(self, targets: List[ProjectTarget]=None, profile_names: List[str]=None, BackendType: type=RBuildBackend) -> None:
         """
         Configure does 3 things:
         1. Finds dependencies for the specified targets. This involves potentially fetching and building dependencies if they do not exist in the cache.
@@ -320,8 +320,8 @@ class Project(object):
         :param profile_names: The names of profiles for which to configure the project. Defaults to all profiles.
         :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
         """
-        targets = targets or self.all_targets()
-        profile_names = profile_names or self.all_profile_names()
+        targets = self.all_targets() if targets is None else targets
+        profile_names = self.all_profile_names() if profile_names is None else profile_names
 
         def find_dependencies():
             unique_deps: Set[Dependency] = set()

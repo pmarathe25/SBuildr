@@ -54,6 +54,14 @@ class TestProject(object):
         assert self.test.internal
         assert not self.test.is_lib
 
+    def test_configure_empty_targets(self):
+        self.project.configure(targets=[])
+        assert not self.project.graph
+
+    def test_configure_empty_profiles(self):
+        self.project.configure(profile_names=[])
+        assert not self.project.graph
+
     def test_configure_defaults(self):
         self.project.configure()
         # The project's graph is complete at this stage, and should include all the files in PATHS, plus libraries.
