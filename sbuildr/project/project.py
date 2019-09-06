@@ -131,6 +131,7 @@ class Project(object):
             if isinstance(lib, DependencyLibrary):
                 dependencies.append(lib.dependency)
                 # Add all Library targets from dependencies to the file manager's graph, since they are independent of profiles
+                # TODO: Add `library` function to FileManager
                 self.files.graph.add(lib.library)
                 G_LOGGER.verbose(f"Adding {lib.library} to file manager.")
         # Inherit dependencies from any input libraries as well

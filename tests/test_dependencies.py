@@ -104,6 +104,10 @@ class TestDependency(object):
     def test_string_function_works(self):
         assert str(self.dependency) == f"minimal_project: Version None in {self.dependency.package_root}"
 
+    def test_dependency_library_returns_same_object(self):
+        NAME = "testlibname"
+        assert self.dependency.library(NAME).library is self.dependency.library(NAME).library
+
 class TestDependencyMetadata(object):
     def setup_method(self):
         self.dummy_meta = DependencyMetadata({}, [])

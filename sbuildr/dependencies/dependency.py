@@ -40,7 +40,8 @@ class Dependency(object):
 
     def library(self, name: str) -> "DependencyLibrary":
         # The library's lib_dirs and libs will be updated during setup in project's configure().
-        self.libraries[name] = Library(name=name)
+        if name not in self.libraries:
+            self.libraries[name] = Library(name=name)
         return DependencyLibrary(self, self.libraries[name])
 
 
@@ -82,6 +83,7 @@ class Dependency(object):
             meta = self.builder.install(self.fetcher.dest_dir, header_dir=self.include_dir(), lib_dir=lib_dir, exec_dir=exec_dir)
             meta.save(metadata_path)
 
+        # TODO: FIXME: Make this more resilient to copies by moving this logic to Project. FileManager already tracks all dependency libraries as Library nodes.
         # Next, update all libraries that have been requested from this dependency.
         for name, lib in self.libraries.items():
             if name not in meta.libraries:
