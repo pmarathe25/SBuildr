@@ -7,6 +7,9 @@ import time
 import sys
 import os
 
+def default_value(val, default):
+    return default if val is None else val
+
 def time_subprocess(cmd: List[str], *args, **kwargs) -> (subprocess.CompletedProcess, float):
     start = time.time()
     status = subprocess.run(cmd, *args, **kwargs)

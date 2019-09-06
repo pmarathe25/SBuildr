@@ -320,8 +320,8 @@ class Project(object):
         :param profile_names: The names of profiles for which to configure the project. Defaults to all profiles.
         :param BackendType: The type of backend to use. Since SBuildr is a meta-build system, it can support multiple backends to perform builds. For example, RBuild (i.e. ``sbuildr.backends.RBuildBackend``) can be used for fast incremental builds. Note that this should be a type rather than an instance of a backend.
         """
-        targets = self.all_targets() if targets is None else targets
-        profile_names = self.all_profile_names() if profile_names is None else profile_names
+        targets = utils.default_value(targets, self.all_targets())
+        profile_names = utils.default_value(profile_names, self.all_profile_names())
 
         def find_dependencies():
             unique_deps: Set[Dependency] = set()
@@ -370,7 +370,7 @@ class Project(object):
         configure_backend()
 
 
-    def build(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]) -> float:
+    def build(self, targets: List[ProjectTarget]=None, profile_names: List[str]=None) -> float:
         """
         Builds the specified targets for this project. Configuration should be run prior to calling this function.
 
@@ -379,6 +379,8 @@ class Project(object):
 
         :returns: Time elapsed during the build.
         """
+        targets = utils.default_value(targets, self.all_targets())
+        profile_names = utils.default_value(profile_names, self.all_profile_names())
         G_LOGGER.info(f"Building targets: {[target.name for target in targets]} for profiles: {profile_names}")
         G_LOGGER.debug(f"Targets: {targets}")
 
@@ -398,18 +400,15 @@ class Project(object):
                         G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
             return nodes
 
-        targets = targets or self.all_targets()
-        profile_names = profile_names or self.all_profile_names()
+        nodes = select_nodes(targets, profile_names)
+        if not nodes:
+            return
 
         # Create all required build directories.
         self.files.mkdir(self.common_build_dir)
         profile_build_dirs = [self.profiles[prof_name].build_dir for prof_name in profile_names]
         [self.files.mkdir(dir) for dir in profile_build_dirs]
         G_LOGGER.verbose(f"Created build directories: {self.common_build_dir}, {profile_build_dirs}")
-
-        nodes = select_nodes(targets, profile_names)
-        if not nodes:
-            return
 
         if not self.backend:
             G_LOGGER.critical(f"Backend has not been configured. Please call `configure()` prior to attempting to build")
@@ -464,7 +463,7 @@ class Project(object):
         return list(self.tests.values())
 
 
-    def run_tests(self, targets: List[ProjectTarget]=[], profile_names: List[str]=[]):
+    def run_tests(self, targets: List[ProjectTarget]=None, profile_names: List[str]=None):
         """
         Run tests from this project. Runs all tests from the project for all profiles by default.
 
@@ -475,8 +474,8 @@ class Project(object):
             if target.name not in self.tests:
                 G_LOGGER.critical(f"Could not find test: {target.name} in project.\n\tAvailable tests:\n\t\t{list(self.tests.keys())}")
 
-        tests = targets or self.test_targets()
-        profile_names = profile_names or self.all_profile_names()
+        tests = utils.default_value(targets, self.test_targets())
+        profile_names = utils.default_value(profile_names, self.all_profile_names())
         if not tests:
             G_LOGGER.warning(f"No tests found. Have you registered tests using project.test()?")
             return
@@ -532,9 +531,9 @@ class Project(object):
 
 
     def install(self,
-        targets: List[ProjectTarget]=[],
-        profile_names: List[str]=[],
-        headers: List[str]=[],
+        targets: List[ProjectTarget]=None,
+        profile_names: List[str]=None,
+        headers: List[str]=None,
         header_install_path: str=paths.default_header_install_path(),
         library_install_path: str=paths.default_library_install_path(),
         executable_install_path: str=paths.default_executable_install_path(),
@@ -550,9 +549,9 @@ class Project(object):
         :param executable_install_path: The path to which to install executables. This defaults to one of the default locations for the host OS.
         :param dry_run: Whether to perform a dry-run only, with no file copying. Defaults to True.
         """
-        targets = targets or self.install_targets()
-        profile_names = profile_names or [self.install_profile()]
-        headers = [self.find(header) for header in headers] or list(self.public_headers)
+        targets = utils.default_value(targets, self.install_targets())
+        profile_names = utils.default_value(profile_names, [self.install_profile()])
+        headers = [self.find(header) for header in headers] if headers is not None else list(self.public_headers)
 
         if dry_run:
             G_LOGGER.warning(f"Install dry-run, will not copy files.")
@@ -584,9 +583,9 @@ class Project(object):
 
 
     def uninstall(self,
-        targets: List[ProjectTarget]=[],
-        profile_names: List[str]=[],
-        headers: List[str]=[],
+        targets: List[ProjectTarget]=None,
+        profile_names: List[str]=None,
+        headers: List[str]=None,
         header_install_path: str=paths.default_header_install_path(),
         library_install_path: str=paths.default_library_install_path(),
         executable_install_path: str=paths.default_executable_install_path(),
@@ -602,9 +601,9 @@ class Project(object):
         :param executable_install_path: The path from which to uninstall executables. This defaults to one of the default locations for the host OS.
         :param dry_run: Whether to perform a dry-run only, with no file copying. Defaults to True.
         """
-        targets = targets or [target for target in self.all_targets() if not target.internal]
-        profile_names = profile_names or ["release"]
-        headers = [self.find(header) for header in headers] or list(self.public_headers)
+        targets = utils.default_value(targets, [target for target in self.all_targets() if not target.internal])
+        profile_names = utils.default_value(profile_names, ["release"])
+        headers = [self.find(header) for header in headers] if headers is not None else list(self.public_headers)
 
         if dry_run:
             G_LOGGER.warning(f"Uninstall dry-run, will not remove files.")
@@ -635,7 +634,7 @@ class Project(object):
             uninstall_header(header)
 
 
-    def clean(self, profile_names: List[str]=[], nuke: bool=False, dry_run: bool=True):
+    def clean(self, profile_names: List[str]=None, nuke: bool=False, dry_run: bool=True):
         """
         Removes build directories and project artifacts.
 
@@ -649,7 +648,7 @@ class Project(object):
             G_LOGGER.warning(f"Clean dry-run, will not remove files.")
 
         # By default, cleans all targets for all profiles.
-        profile_names = self.all_profile_names() if nuke or not profile_names else profile_names
+        profile_names = self.all_profile_names() if (nuke or profile_names is None) else profile_names
         to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
         G_LOGGER.info(f"Cleaning targets for profiles: {profile_names}")
         if nuke:

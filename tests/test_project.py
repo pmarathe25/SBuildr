@@ -83,24 +83,38 @@ class TestProject(object):
         self.project.configure()
         self.project.build()
 
-    def test_default_build(self):
-        self.build()
+    def check_build_artifacts(self, exist=True):
         for target in self.project.all_targets():
             for node in target.values():
-                assert os.path.exists(node.path)
+                assert os.path.exists(node.path) == exist
+
+    def test_default_build(self):
+        self.build()
+        self.check_build_artifacts()
+
+    def test_empty_build_without_configure_does_not_throw(self):
+        self.project.build([])
+        self.check_build_artifacts(exist=False)
+
+    def test_empty_targets_build(self):
+        self.project.configure()
+        self.project.build([])
+        self.check_build_artifacts(exist=False)
+
+    def test_empty_profiles_build(self):
+        self.project.configure()
+        self.project.build(profile_names=[])
+        self.check_build_artifacts(exist=False)
 
     def test_default_clean_dry_run(self):
         self.build()
         self.project.clean()
-        for target in self.project.all_targets():
-            for node in target.values():
-                assert os.path.exists(node.path)
+        self.check_build_artifacts()
 
     def test_default_clean(self):
         self.build()
         self.project.clean(dry_run=False)
-        for prof in self.project.profiles.values():
-            assert not os.path.exists(prof.build_dir)
+        self.check_build_artifacts(exist=False)
 
     def test_single_profile_clean(self):
         self.build()
