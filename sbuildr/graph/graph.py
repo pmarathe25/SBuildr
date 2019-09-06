@@ -1,10 +1,13 @@
 from sbuildr.graph.node import Node
 from sbuildr.logger import G_LOGGER
-from typing import List, Set
+from typing import List, Set, Union
 
 class Graph(set):
-    def contains_path(self, path: str) -> bool:
-        return any([node.path == path for node in self])
+    def find_node_with_path(self, path: str) -> Union[Node, None]:
+        for node in self:
+            if node.path == path:
+                return node
+        return None
 
     def add(self, node: Node) -> Node:
         set.add(self, node)

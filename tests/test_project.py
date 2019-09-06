@@ -67,12 +67,12 @@ class TestProject(object):
         # The project's graph is complete at this stage, and should include all the files in PATHS, plus libraries.
         for path in PATHS.values():
             if os.path.isfile(path):
-                assert self.project.graph.contains_path(path)
+                assert self.project.graph.find_node_with_path(path)
         # Libraries without associated paths should not be in the project graph.
-        assert not self.project.graph.contains_path("stdc++")
+        assert not self.project.graph.find_node_with_path("stdc++")
         for target in self.project.all_targets():
             for node in target.values():
-                assert self.project.graph.contains_path(node.path)
+                assert self.project.graph.find_node_with_path(node.path)
                 # Non-path libraries should have been removed as node inputs
                 for inp in node.inputs:
                     if isinstance(inp, Library):
@@ -167,6 +167,12 @@ class TestFileManager(object):
         node = self.manager.source("tests/test.cpp")
         assert node.path == PATHS["test.cpp"]
 
+    def test_can_find_sources_does_not_create_duplicates(self):
+        node = self.manager.source("tests/test.cpp")
+        initial_graph_len = len(self.manager.graph)
+        node = self.manager.source("tests/test.cpp")
+        assert len(self.manager.graph) == initial_graph_len
+
     def test_source(self):
         factorial_hpp = self.manager.source(PATHS["factorial.hpp"])
         fibonacci_hpp = self.manager.source(PATHS["fibonacci.hpp"])
@@ -191,4 +197,4 @@ class TestFileManager(object):
         assert test_cpp.include_dirs == sorted(set([PATHS["src"]] + fibonacci_hpp.include_dirs + factorial_hpp.include_dirs))
         # Make sure that the source graph has been populated
         for file in ["factorial.hpp", "fibonacci.hpp", "test.cpp", "factorial.cpp", "fibonacci.cpp", "utils.hpp"]:
-            assert self.manager.graph.contains_path(PATHS[file])
+            assert self.manager.graph.find_node_with_path(PATHS[file])

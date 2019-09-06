@@ -149,8 +149,11 @@ class FileManager(object):
             G_LOGGER.warning(f"For {path}, found multiple candidates: {candidates}. Using {candidates[0]}. If this is incorrect, please disambiguate by providing either an absolute path, or a longer relative path.")
         elif len(candidates) == 0:
             G_LOGGER.critical(f"Could not find {path}. Does it exist?")
-        node = SourceNode(candidates[0])
-        return self.graph.add(node)
+        path = candidates[0]
+        node = self.graph.find_node_with_path(path)
+        if not node:
+            return self.graph.add(SourceNode(candidates[0]))
+        return node
 
     def scan_all(self) -> None:
         # scan() will modify the graph, so cannot iterate over values() directly
@@ -160,6 +163,8 @@ class FileManager(object):
 
     # Finds all required include directories for a given managed file. Adds nodes to the graph if missing.
     def scan(self, node: str) -> None:
+        G_LOGGER.info(f"Scanning {node.path}")
+
         # Finds the file path for the file included in `include_path` by the `included_token` token.
         # This always returns an absolute path, since self.find always returns absolute paths.
         def disambiguate_included_file(included_token: str, include_path: str) -> str:
