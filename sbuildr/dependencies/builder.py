@@ -7,6 +7,7 @@ class DependencyBuilder(object):
         """
         pass
 
+    # TODO: Make this only install things actually needed by the dependee. 
     def install(self, source_dir: str, header_dir: str, lib_dir: str, exec_dir: str) -> DependencyMetadata:
         """
         Builds a dependency and installs artifacts into the specified directories.

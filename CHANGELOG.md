@@ -11,6 +11,7 @@ Dates are in YYYY-MM-DD format.
 - Adds checks so that invalid target names are caught early.
 - Adds default profiles to `sbuildr test`.
 - Fixes a bug where multiple requests to a Dependency for the same library would result in only the last request being valid.
+- Fixes a bug in `GitFetcher` when checking out different commits from different dependencies for the same source repository.
 
 ## v0.6.0 (2019-08-27)
 - Adds `depends` argument to `Project.library()`, `Project.executable()`, `Project.test()`, and `Project.interfaces()`. This can be used to specify any dependencies not captured in the `libs` argument - for example, header-only packages.
