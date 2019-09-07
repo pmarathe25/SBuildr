@@ -1,7 +1,7 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
-## vNext ()
+## v0.6.1 (2019-09-07)
 - Fixes a bug where tests were not being marked as `internal`.
 - Fixes a bug where `configure` would not work if the specified targets had dependent targets that were not specified to `configure`.
 - Fixes a bug where `configure` would configure all targets if an empty list of targets was provided.
