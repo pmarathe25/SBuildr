@@ -4,6 +4,6 @@ from sbuildr.tools.flags import BuildFlags
 from sbuildr.tools import compiler, linker
 from sbuildr.graph.node import Library
 from sbuildr.logger import G_LOGGER, SBuildrException, Verbosity
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 
 G_LOGGER.info(f"Loading SBuildr {__version__} from {__path__}")
