@@ -76,7 +76,7 @@ class Project(object):
         :returns: The loaded project.
         """
         path = path or os.path.abspath(os.path.join("build", Project.DEFAULT_SAVED_PROJECT_NAME))
-        G_LOGGER.info(f"Loading project from {path}")
+        G_LOGGER.debug(f"Loading project from {path}")
         with open(path, "rb") as f:
             return pickle.load(f)
 
@@ -638,11 +638,10 @@ class Project(object):
             uninstall_header(header)
 
 
-    def clean(self, profile_names: List[str]=None, nuke: bool=False, dry_run: bool=True):
+    def clean(self, nuke: bool=False, dry_run: bool=True):
         """
         Removes build directories and project artifacts.
 
-        :param profile_names: The profiles for which to remove build directories. Defaults to all profiles.
         :param nuke: Whether to remove all build directories associated with the project, including profile build directories.
         :param dry_run: Whether this is a dry-run, in which case SBuildr will only display which directories would be removed rather than removing them. Defaults to True.
         """
@@ -652,9 +651,8 @@ class Project(object):
             G_LOGGER.warning(f"Clean dry-run, will not remove files.")
 
         # By default, cleans all targets for all profiles.
-        profile_names = self.all_profile_names() if (nuke or profile_names is None) else profile_names
-        to_remove = [self.profiles[prof_name].build_dir for prof_name in profile_names]
-        G_LOGGER.info(f"Cleaning targets for profiles: {profile_names}")
+        to_remove = [self.profiles[prof_name].build_dir for prof_name in self.all_profile_names()] + [self.common_build_dir]
+        G_LOGGER.info(f"Cleaning targets for profiles: {self.all_profile_names()}")
         if nuke:
             # The nuclear option
             to_remove += [self.build_dir]

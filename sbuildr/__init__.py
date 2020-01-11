@@ -6,4 +6,4 @@ from sbuildr.graph.node import Library
 from sbuildr.logger import G_LOGGER, SBuildrException, Verbosity
 __version__ = "0.6.2"
 
-G_LOGGER.info(f"Loading SBuildr {__version__} from {__path__}")
+G_LOGGER.debug(f"Loading SBuildr {__version__} from {__path__}")

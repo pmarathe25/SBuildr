@@ -116,17 +116,6 @@ class TestProject(object):
         self.project.clean(dry_run=False)
         self.check_build_artifacts(exist=False)
 
-    def test_single_profile_clean(self):
-        self.build()
-        clean_profs = ["release"]
-        self.project.clean(profile_names=clean_profs, dry_run=False)
-        for name, prof in self.project.profiles.items():
-            build_dir_exists = os.path.exists(prof.build_dir)
-            if name in clean_profs:
-                assert not build_dir_exists
-            else:
-                assert build_dir_exists
-
     def test_api_version_preserved_on_save(self):
         self.project.PROJECT_API_VERSION = -1
         f = tempfile.NamedTemporaryFile()

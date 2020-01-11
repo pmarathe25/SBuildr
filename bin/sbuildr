@@ -119,8 +119,7 @@ def add_project_specific_subcommands(project: Project, parser: argparse.Argument
 
 
     def clean(args):
-        profile_names = select_profile_names(args) or project.all_profile_names()
-        project.clean(profile_names, nuke=args.nuke, dry_run=not args.force)
+        project.clean(nuke=args.nuke, dry_run=not args.force)
         if args.force and args.nuke:
             shutil.rmtree(args.project_file, ignore_errors=True)
             G_LOGGER.info(f"Removed exported project file: {args.project_file}")
@@ -186,8 +185,6 @@ def add_project_specific_subcommands(project: Project, parser: argparse.Argument
     clean_parser = subparsers.add_parser("clean", help="Clean project targets", description="Clean one or more project targets. By default, cleans all targets for the default profiles.")
     clean_parser.add_argument("--nuke", help="The nuclear option. Removes the entire build directory, including all targets for all profiles, meaning that the project must be reconfigured before subsequent builds.", action="store_true")
     clean_parser.add_argument("-f", "--force", help="Removes targets. Without this flag, clean will only do a dry-run.", action="store_true")
-
-    add_profile_args(clean_parser, "Clean")
     clean_parser.set_defaults(func=clean)
 
 

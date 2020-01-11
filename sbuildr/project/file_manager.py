@@ -163,7 +163,7 @@ class FileManager(object):
 
     # Finds all required include directories for a given managed file. Adds nodes to the graph if missing.
     def scan(self, node: str) -> None:
-        G_LOGGER.info(f"Scanning {node.path}")
+        G_LOGGER.debug(f"Scanning {node.path}")
 
         # Finds the file path for the file included in `include_path` by the `included_token` token.
         # This always returns an absolute path, since self.find always returns absolute paths.
@@ -229,7 +229,7 @@ class FileManager(object):
             else:
                 external_includes.add(included)
         if external_includes:
-            G_LOGGER.info(f"For {path}, could not find headers: {external_includes}. Assuming they are external. If this is not the case, please add the appropriate directories to the project definition.")
+            G_LOGGER.debug(f"For {path}, could not find headers: {external_includes}. Assuming they are external. If this is not the case, please add the appropriate directories to the project definition.")
 
         include_dirs = sorted(include_dirs)
         node.include_dirs = include_dirs
