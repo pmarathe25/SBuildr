@@ -101,7 +101,7 @@ class Dependency(object):
 
 
     def __str__(self) -> str:
-        return f"{self.fetcher.dependency_name}: Version {self.version} in {self.package_root}"
+        return f"{self.fetcher.dependency_name}"
 
 
     def __repr__(self) -> str:

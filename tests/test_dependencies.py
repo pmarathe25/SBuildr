@@ -102,7 +102,7 @@ class TestDependency(object):
         assert os.path.exists(os.path.join(self.dependency.include_dir(), "math.hpp"))
 
     def test_string_function_works(self):
-        assert str(self.dependency) == f"minimal_project: Version None in {self.dependency.package_root}"
+        assert str(self.dependency) == f"minimal_project"
 
     def test_dependency_library_returns_same_object(self):
         NAME = "testlibname"
