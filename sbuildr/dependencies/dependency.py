@@ -63,11 +63,16 @@ class Dependency(object):
 
         :returns: A list of include directories from this dependency.
         """
-        name = self.fetcher.dependency_name
-        self.version = self.fetcher.version()
-        dir = f"{name}-{self.version}" if self.version else name
-        self.package_root = os.path.join(self.cache_root, Dependency.CACHE_PACKAGES_SUBDIR, dir)
+        # Create the destination directory for the fetcher
+        os.makedirs(self.fetcher.dest_dir, exist_ok=True)
 
+        def update_package_root():
+            name = self.fetcher.dependency_name
+            self.version = self.fetcher.version()
+            dir = f"{name}-{self.version}" if self.version else name
+            self.package_root = os.path.join(self.cache_root, Dependency.CACHE_PACKAGES_SUBDIR, dir)
+
+        update_package_root()
         metadata_path = os.path.join(self.package_root, Dependency.METADATA_FILENAME)
         meta = None
         if os.path.exists(metadata_path):
@@ -75,7 +80,6 @@ class Dependency(object):
 
         if force or meta is None or meta.META_API_VERSION != DependencyMetadata.META_API_VERSION:
             G_LOGGER.info(f"{self.package_root} does not contain package metadata. Fetching dependency.")
-            # Fetch
             self.fetcher.fetch()
             # Install
             lib_dir = os.path.join(self.package_root, Dependency.PACKAGE_LIBRARY_SUBDIR)

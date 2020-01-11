@@ -1,6 +1,9 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
+## vNext ()
+- `Dependency` will now create destination directories for fetchers if they do not exist.
+
 ## v0.6.1 (2019-09-07)
 - Fixes a bug where tests were not being marked as `internal`.
 - Fixes a bug where `configure` would not work if the specified targets had dependent targets that were not specified to `configure`.
