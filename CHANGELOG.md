@@ -1,6 +1,9 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
+## v0.6.4 (2022-03-03)
+- Updated CLI to inherit environment variables
+
 ## v0.6.3 (2022-03-03)
 - Reduces logging output for builds.
 - Changes `clean` behavior - will now always remove the common build directory, including artifacts for all profiles.

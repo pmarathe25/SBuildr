@@ -1,21 +1,22 @@
-from sbuildr.graph.node import Node, CompiledNode, LinkedNode, Library
-from sbuildr.dependencies.dependency import Dependency, DependencyLibrary
-from sbuildr.project.file_manager import FileManager
+import copy
+import inspect
+import os
+import pickle
+import subprocess
+from collections import defaultdict
+from typing import Dict, List, Set, Union
+
 from sbuildr.backends.rbuild import RBuildBackend
-from sbuildr.project.target import ProjectTarget
-from sbuildr.logger import G_LOGGER, plural, Color
+from sbuildr.dependencies.dependency import Dependency, DependencyLibrary
+from sbuildr.graph.graph import Graph
+from sbuildr.graph.node import CompiledNode, Library, LinkedNode, Node
+from sbuildr.logger import G_LOGGER, Color, plural
+from sbuildr.misc import paths, utils
+from sbuildr.project.file_manager import FileManager
 from sbuildr.project.profile import Profile
+from sbuildr.project.target import ProjectTarget
 from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
-from sbuildr.graph.graph import Graph
-from sbuildr.misc import paths, utils
-
-from typing import List, Set, Union, Dict
-from collections import defaultdict
-import subprocess
-import inspect
-import pickle
-import os
 
 
 class Project(object):
@@ -502,7 +503,9 @@ class Project(object):
             loader_path += f"{os.path.pathsep}{lib_dir}"
         G_LOGGER.debug(f"Using loader paths: {loader_path}")
         G_LOGGER.log(f"{paths.loader_path_env_var()}={loader_path} {node.path}\n", colors=[Color.BOLD, Color.GREEN])
-        return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)
+        env = copy.copy(os.environ)
+        env[paths.loader_path_env_var()] = loader_path
+        return subprocess.run([node.path], *args, env=env, **kwargs)
 
     def run(self, targets: List[ProjectTarget], profile_names: List[str] = []) -> None:
         """
