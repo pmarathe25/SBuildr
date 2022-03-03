@@ -3,23 +3,20 @@ from sbuildr.dependencies.dependency import Dependency, DependencyLibrary
 from sbuildr.project.file_manager import FileManager
 from sbuildr.backends.rbuild import RBuildBackend
 from sbuildr.project.target import ProjectTarget
-from sbuildr.backends.backend import Backend
 from sbuildr.logger import G_LOGGER, plural, Color
 from sbuildr.project.profile import Profile
 from sbuildr.tools import compiler, linker
 from sbuildr.tools.flags import BuildFlags
 from sbuildr.graph.graph import Graph
 from sbuildr.misc import paths, utils
-from sbuildr import logger
-import sbuildr
 
-from typing import List, Set, Union, Dict, Tuple
-from collections import OrderedDict, defaultdict
+from typing import List, Set, Union, Dict
+from collections import defaultdict
 import subprocess
 import inspect
 import pickle
-import sys
 import os
+
 
 class Project(object):
     DEFAULT_SAVED_PROJECT_NAME = "project.sbuildr"
@@ -34,7 +31,8 @@ class Project(object):
     :param dirs: Additional directories outside the root directory that are part of the project. These directories and all contents will be considered during searches for files.
     :param build_dir: The build directory to use. If no build directory is provided, a directory named 'build' is created in the root directory.
     """
-    def __init__(self, root: str=None, dirs: Set[str]=set(), build_dir: str=None):
+
+    def __init__(self, root: str = None, dirs: Set[str] = set(), build_dir: str = None):
         self.PROJECT_API_VERSION = Project.PROJECT_API_VERSION
         # The assumption is that the caller of the init function is the SBuildr file for the build.
         config_file = os.path.abspath(inspect.stack()[1][0].f_code.co_filename)
@@ -42,7 +40,9 @@ class Project(object):
         # to contain no duplicates as well.
         self.files = FileManager(root or os.path.abspath(os.path.dirname(config_file)), dirs)
         # The build directory will be writable, and excluded when the FileManager is searching for paths.
-        self.build_dir = self.files.add_writable_dir(self.files.add_exclude_dir(build_dir or os.path.join(self.files.root_dir, "build")))
+        self.build_dir = self.files.add_writable_dir(
+            self.files.add_exclude_dir(build_dir or os.path.join(self.files.root_dir, "build"))
+        )
         # TODO: Make this a parameter?
         self.common_build_dir = os.path.join(self.build_dir, "common")
         # Backend
@@ -61,13 +61,14 @@ class Project(object):
         self.public_header_dependencies: List[Dependency] = []
         # Add default profiles
         self.profile(name="release", flags=BuildFlags().O(3).std(17).march("native").fpic())
-        self.profile(name="debug", flags=BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG"), file_suffix="_debug")
+        self.profile(
+            name="debug", flags=BuildFlags().O(0).std(17).debug().fpic().define("S_DEBUG"), file_suffix="_debug"
+        )
         # A graph describing the entire project. This is typically not constructed until just before the build
         self.graph: Graph = None
 
-
     @staticmethod
-    def load(path: str=None) -> "Project":
+    def load(path: str = None) -> "Project":
         f"""
         Load a project from the specified path.
 
@@ -80,8 +81,7 @@ class Project(object):
         with open(path, "rb") as f:
             return pickle.load(f)
 
-
-    def export(self, path: str=None) -> None:
+    def export(self, path: str = None) -> None:
         f"""
         Export this project to the specified path. This enables the project to be used with SBuildr's dependency management system, as well as with the command-line sbuildr utility.
 
@@ -93,40 +93,47 @@ class Project(object):
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
-
     def __contains__(self, target_name: str) -> bool:
         return any([tgt.name == target_name for tgt in self.all_targets()])
-
 
     def all_targets(self):
         return list(self.libraries.values()) + list(self.executables.values()) + list(self.tests.values())
 
-
     def all_profile_names(self) -> List[str]:
         return list(self.profiles.keys())
 
-
     # TODO: Test header only libraries with depends
-    def _target(self,
-                name: str,
-                ext_path: str,
-                sources: List[str],
-                flags: BuildFlags,
-                libs: List[Union[DependencyLibrary, ProjectTarget, Library]],
-                compiler: compiler.Compiler,
-                include_dirs: List[str],
-                linker: linker.Linker,
-                depends: List[Dependency],
-                internal: bool,
-                is_lib: bool) -> ProjectTarget:
+    def _target(
+        self,
+        name: str,
+        ext_path: str,
+        sources: List[str],
+        flags: BuildFlags,
+        libs: List[Union[DependencyLibrary, ProjectTarget, Library]],
+        compiler: compiler.Compiler,
+        include_dirs: List[str],
+        linker: linker.Linker,
+        depends: List[Dependency],
+        internal: bool,
+        is_lib: bool,
+    ) -> ProjectTarget:
 
-        if not all([isinstance(lib, ProjectTarget) or isinstance(lib, Library) or isinstance(lib, DependencyLibrary) for lib in libs]):
-            G_LOGGER.critical(f"Libraries must be instances of either sbuildr.Library, sbuildr.dependencies.DependencyLibrary or sbuildr.ProjectTarget")
+        if not all(
+            [
+                isinstance(lib, ProjectTarget) or isinstance(lib, Library) or isinstance(lib, DependencyLibrary)
+                for lib in libs
+            ]
+        ):
+            G_LOGGER.critical(
+                f"Libraries must be instances of either sbuildr.Library, sbuildr.dependencies.DependencyLibrary or sbuildr.ProjectTarget"
+            )
 
         if os.path.basename(ext_path) != ext_path:
-            G_LOGGER.critical(f"Target: {ext_path} looks like a path. Target names should not contain characters that are unsupported by the filesystem.")
+            G_LOGGER.critical(
+                f"Target: {ext_path} looks like a path. Target names should not contain characters that are unsupported by the filesystem."
+            )
 
-        dependencies: List[Dependency] = [] + depends # Create copy
+        dependencies: List[Dependency] = [] + depends  # Create copy
         for lib in libs:
             if isinstance(lib, DependencyLibrary):
                 dependencies.append(lib.dependency)
@@ -137,7 +144,9 @@ class Project(object):
         # Inherit dependencies from any input libraries as well
         [dependencies.extend(lib.dependencies) for lib in libs if isinstance(lib, ProjectTarget)]
 
-        libs: List[Union[ProjectTarget, Library]] = [lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs]
+        libs: List[Union[ProjectTarget, Library]] = [
+            lib.library if isinstance(lib, DependencyLibrary) else lib for lib in libs
+        ]
 
         source_nodes: List[CompiledNode] = [self.files.source(path) for path in sources]
         G_LOGGER.verbose(f"For sources: {sources}, found source paths: {source_nodes}")
@@ -155,7 +164,9 @@ class Project(object):
 
             # First, add or retrieve object nodes for each source.
             for source_node in source_nodes:
-                obj_path = os.path.join(self.common_build_dir, f"{os.path.splitext(os.path.basename(source_node.path))[0]}.o")
+                obj_path = os.path.join(
+                    self.common_build_dir, f"{os.path.splitext(os.path.basename(source_node.path))[0]}.o"
+                )
                 # User defined includes are always prepended the ones deduced for SourceNodes.
                 obj_node = CompiledNode(obj_path, source_node, compiler, include_dirs, flags)
                 input_nodes.append(profile.graph.add(obj_node))
@@ -163,22 +174,27 @@ class Project(object):
             # Hard links are needed because during linkage, the library must have a clean name.
             hashed_path = os.path.join(self.common_build_dir, ext_path)
             path = os.path.join(profile.build_dir, paths.insert_suffix(ext_path, profile.suffix))
-            target[profile_name] = profile.graph.add(LinkedNode(path, input_nodes, linker, hashed_path=hashed_path, flags=flags))
-            G_LOGGER.debug(f"Adding target: {name}, with hashed path: {hashed_path}, public path: {path} to profile: {profile_name}")
+            target[profile_name] = profile.graph.add(
+                LinkedNode(path, input_nodes, linker, hashed_path=hashed_path, flags=flags)
+            )
+            G_LOGGER.debug(
+                f"Adding target: {name}, with hashed path: {hashed_path}, public path: {path} to profile: {profile_name}"
+            )
         return target
 
-
     # Both of these functions will modify name before passing it to profile so that the filename is correct.
-    def executable(self,
-                    name: str,
-                    sources: List[str],
-                    flags: BuildFlags = BuildFlags(),
-                    libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
-                    compiler: compiler.Compiler = compiler.clang,
-                    include_dirs: List[str] = [],
-                    linker: linker.Linker = linker.clang,
-                    depends: List[Dependency] = [],
-                    internal = False) -> ProjectTarget:
+    def executable(
+        self,
+        name: str,
+        sources: List[str],
+        flags: BuildFlags = BuildFlags(),
+        libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
+        compiler: compiler.Compiler = compiler.clang,
+        include_dirs: List[str] = [],
+        linker: linker.Linker = linker.clang,
+        depends: List[Dependency] = [],
+        internal=False,
+    ) -> ProjectTarget:
         """
         Adds an executable target to all profiles within this project.
 
@@ -194,19 +210,32 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.executables[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal, is_lib=False)
+        self.executables[name] = self._target(
+            name,
+            paths.name_to_execname(name),
+            sources,
+            flags,
+            libs,
+            compiler,
+            include_dirs,
+            linker,
+            depends,
+            internal,
+            is_lib=False,
+        )
         return self.executables[name]
 
-
-    def test(self,
-                name: str,
-                sources: List[str],
-                flags: BuildFlags = BuildFlags(),
-                libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
-                compiler: compiler.Compiler = compiler.clang,
-                include_dirs: List[str] = [],
-                linker: linker.Linker = linker.clang,
-                depends: List[Dependency] = []) -> ProjectTarget:
+    def test(
+        self,
+        name: str,
+        sources: List[str],
+        flags: BuildFlags = BuildFlags(),
+        libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
+        compiler: compiler.Compiler = compiler.clang,
+        include_dirs: List[str] = [],
+        linker: linker.Linker = linker.clang,
+        depends: List[Dependency] = [],
+    ) -> ProjectTarget:
         """
         Adds an executable target to all profiles within this project. Test targets can be automatically built and run by using the ``test`` command on the CLI.
 
@@ -221,20 +250,33 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.tests[name] = self._target(name, paths.name_to_execname(name), sources, flags, libs, compiler, include_dirs, linker, depends, internal=True, is_lib=False)
+        self.tests[name] = self._target(
+            name,
+            paths.name_to_execname(name),
+            sources,
+            flags,
+            libs,
+            compiler,
+            include_dirs,
+            linker,
+            depends,
+            internal=True,
+            is_lib=False,
+        )
         return self.tests[name]
 
-
-    def library(self,
-                name: str,
-                sources: List[str],
-                flags: BuildFlags = BuildFlags(),
-                libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
-                compiler: compiler.Compiler = compiler.clang,
-                include_dirs: List[str] = [],
-                linker: linker.Linker = linker.clang,
-                depends: List[Dependency] = [],
-                internal = False) -> ProjectTarget:
+    def library(
+        self,
+        name: str,
+        sources: List[str],
+        flags: BuildFlags = BuildFlags(),
+        libs: List[Union[DependencyLibrary, ProjectTarget, Library]] = [],
+        compiler: compiler.Compiler = compiler.clang,
+        include_dirs: List[str] = [],
+        linker: linker.Linker = linker.clang,
+        depends: List[Dependency] = [],
+        internal=False,
+    ) -> ProjectTarget:
         """
         Adds a library target to all profiles within this project.
 
@@ -250,12 +292,25 @@ class Project(object):
 
         :returns: :class:`sbuildr.project.target.ProjectTarget`
         """
-        self.libraries[name] = self._target(name, paths.name_to_libname(name), sources, flags + BuildFlags()._enable_shared(), libs, compiler, include_dirs, linker, depends, internal, is_lib=True)
+        self.libraries[name] = self._target(
+            name,
+            paths.name_to_libname(name),
+            sources,
+            flags + BuildFlags()._enable_shared(),
+            libs,
+            compiler,
+            include_dirs,
+            linker,
+            depends,
+            internal,
+            is_lib=True,
+        )
         return self.libraries[name]
 
-
     # Returns a profile if it exists, otherwise creates a new one and returns it.
-    def profile(self, name: str, flags: BuildFlags=BuildFlags(), build_dir: str=None, file_suffix: str="") -> Profile:
+    def profile(
+        self, name: str, flags: BuildFlags = BuildFlags(), build_dir: str = None, file_suffix: str = ""
+    ) -> Profile:
         f"""
         Returns or creates a profile with the specified parameters.
 
@@ -267,13 +322,14 @@ class Project(object):
         :returns: :class:`sbuildr.Profile`
         """
         if name not in self.profiles:
-            build_dir = self.files.add_writable_dir(self.files.add_exclude_dir(os.path.abspath(build_dir or os.path.join(self.build_dir, name))))
+            build_dir = self.files.add_writable_dir(
+                self.files.add_exclude_dir(os.path.abspath(build_dir or os.path.join(self.build_dir, name)))
+            )
             G_LOGGER.verbose(f"Setting build directory for profile: {name} to: {build_dir}")
             self.profiles[name] = Profile(flags=flags, build_dir=build_dir, suffix=file_suffix)
         return self.profiles[name]
 
-
-    def interfaces(self, headers: List[str], depends: List[Dependency]=[]) -> List[str]:
+    def interfaces(self, headers: List[str], depends: List[Dependency] = []) -> List[str]:
         """
         Specifies headers that are part of this project's public interface.
         When running the ``install`` command on the CLI, the headers specified via this function will be copied to installation directories.
@@ -288,12 +344,13 @@ class Project(object):
             if len(candidates) == 0:
                 G_LOGGER.critical(f"Could not find installation target: {target}")
             if len(candidates) > 1:
-                G_LOGGER.critical(f"For installation target: {target}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate.")
+                G_LOGGER.critical(
+                    f"For installation target: {target}, found multiple installation candidates: {candidates}. Please provide a longer path to disambiguate."
+                )
             discovered_paths.append(candidates[0])
         self.public_headers = set(discovered_paths)
         self.public_header_dependencies.extend(depends)
         return discovered_paths
-
 
     def find(self, path) -> str:
         """
@@ -307,11 +364,14 @@ class Project(object):
         if len(candidates) == 0:
             G_LOGGER.critical(f"Could not find path: {path}")
         elif len(candidates) > 1:
-            G_LOGGER.critical(f"For path: {path}, found multiple candidates: {candidates}. Please provide a longer path to disambiguate.")
+            G_LOGGER.critical(
+                f"For path: {path}, found multiple candidates: {candidates}. Please provide a longer path to disambiguate."
+            )
         return candidates[0]
 
-
-    def configure(self, targets: List[ProjectTarget]=None, profile_names: List[str]=None, BackendType: type=RBuildBackend) -> None:
+    def configure(
+        self, targets: List[ProjectTarget] = None, profile_names: List[str] = None, BackendType: type = RBuildBackend
+    ) -> None:
         """
         Configure does 3 things:
         1. Finds dependencies for the specified targets. This involves potentially fetching and building dependencies if they do not exist in the cache.
@@ -357,7 +417,9 @@ class Project(object):
                             signature = node.compiler.signature(node.inputs[0].path, node.include_dirs, node.flags)
                             node.path = paths.insert_suffix(node.path, f".{signature}")
                         elif isinstance(node, LinkedNode):
-                            signature = node.linker.signature([inp.path for inp in node.inputs], node.libs, node.lib_dirs, node.flags)
+                            signature = node.linker.signature(
+                                [inp.path for inp in node.inputs], node.libs, node.lib_dirs, node.flags
+                            )
                             node.hashed_path = paths.insert_suffix(node.hashed_path, f".{signature}")
 
                 return graph
@@ -373,8 +435,7 @@ class Project(object):
         configure_graph()
         configure_backend()
 
-
-    def build(self, targets: List[ProjectTarget]=None, profile_names: List[str]=None) -> float:
+    def build(self, targets: List[ProjectTarget] = None, profile_names: List[str] = None) -> float:
         """
         Builds the specified targets for this project. Configuration should be run prior to calling this function.
 
@@ -393,7 +454,9 @@ class Project(object):
             nodes = []
             for prof_name in profile_names:
                 if prof_name not in self.profiles:
-                    G_LOGGER.critical(f"Profile {prof_name} does not exist in the project. Available profiles: {self.all_profile_names()}")
+                    G_LOGGER.critical(
+                        f"Profile {prof_name} does not exist in the project. Available profiles: {self.all_profile_names()}"
+                    )
                 # Populate nodes.
                 for target in targets:
                     if prof_name in target:
@@ -401,7 +464,9 @@ class Project(object):
                         G_LOGGER.verbose(f"For target: {target}, profile: {prof_name}, found path: {node.path}")
                         nodes.append(node)
                     else:
-                        G_LOGGER.debug(f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist.")
+                        G_LOGGER.debug(
+                            f"Skipping target: {target.name} for profile: {prof_name}, as it does not exist."
+                        )
             return nodes
 
         nodes = select_nodes(targets, profile_names)
@@ -415,18 +480,23 @@ class Project(object):
         G_LOGGER.verbose(f"Created build directories: {self.common_build_dir}, {profile_build_dirs}")
 
         if not self.backend:
-            G_LOGGER.critical(f"Backend has not been configured. Please call `configure()` prior to attempting to build")
+            G_LOGGER.critical(
+                f"Backend has not been configured. Please call `configure()` prior to attempting to build"
+            )
         status, time_elapsed = self.backend.build(nodes)
         if status.returncode:
-            G_LOGGER.critical(f"Failed with to build. Reconfiguring the project or running a clean build may resolve this.")
-        G_LOGGER.info(f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds.")
+            G_LOGGER.critical(
+                f"Failed with to build. Reconfiguring the project or running a clean build may resolve this."
+            )
+        G_LOGGER.info(
+            f"Built {plural('target', len(targets))} for {plural('profile', len(profile_names))} in {time_elapsed} seconds."
+        )
         return time_elapsed
-
 
     # Sets up the environment correctly to be able to run the specified linked node.
     # TODO: Refactor into separate file with run() that does platform independent env vars.
     def _run_linked_node(self, node: LinkedNode, *args, **kwargs) -> subprocess.CompletedProcess:
-        loader_path = os.environ[paths.loader_path_env_var()]
+        loader_path = os.environ.get(paths.loader_path_env_var(), "")
         G_LOGGER.verbose(f"Running linked node: {node}")
         for lib_dir in node.lib_dirs:
             loader_path += f"{os.path.pathsep}{lib_dir}"
@@ -434,8 +504,7 @@ class Project(object):
         G_LOGGER.log(f"{paths.loader_path_env_var()}={loader_path} {node.path}\n", colors=[Color.BOLD, Color.GREEN])
         return subprocess.run([node.path], *args, env={paths.loader_path_env_var(): loader_path}, **kwargs)
 
-
-    def run(self, targets: List[ProjectTarget], profile_names: List[str]=[]) -> None:
+    def run(self, targets: List[ProjectTarget], profile_names: List[str] = []) -> None:
         """
         Runs targets from this project.
 
@@ -444,19 +513,22 @@ class Project(object):
         """
         for target in targets:
             if target.name not in self.executables:
-                G_LOGGER.critical(f"Could not find target: {target.name} in project executables. Note: Available executables are: {list(self.executables.keys())}")
+                G_LOGGER.critical(
+                    f"Could not find target: {target.name} in project executables. Note: Available executables are: {list(self.executables.keys())}"
+                )
 
         def run_target(target: ProjectTarget, prof_name: str):
             G_LOGGER.log(f"\nRunning target: {target}, for profile: {prof_name}", colors=[Color.BOLD, Color.GREEN])
             status = self._run_linked_node(target[prof_name])
             if status.returncode:
-                G_LOGGER.critical(f"Failed to run. Reconfiguring the project or running a clean build may resolve this.")
+                G_LOGGER.critical(
+                    f"Failed to run. Reconfiguring the project or running a clean build may resolve this."
+                )
 
         for prof_name in profile_names:
             G_LOGGER.log(f"\n{utils.wrap_str(f' Profile: {prof_name} ')}", colors=[Color.BOLD, Color.GREEN])
             for target in targets:
                 run_target(target, prof_name)
-
 
     def test_targets(self) -> List[ProjectTarget]:
         """
@@ -466,8 +538,7 @@ class Project(object):
         """
         return list(self.tests.values())
 
-
-    def run_tests(self, targets: List[ProjectTarget]=None, profile_names: List[str]=None):
+    def run_tests(self, targets: List[ProjectTarget] = None, profile_names: List[str] = None):
         """
         Run tests from this project. Runs all tests from the project for all profiles by default.
 
@@ -476,7 +547,9 @@ class Project(object):
         """
         for target in targets:
             if target.name not in self.tests:
-                G_LOGGER.critical(f"Could not find test: {target.name} in project.\n\tAvailable tests:\n\t\t{list(self.tests.keys())}")
+                G_LOGGER.critical(
+                    f"Could not find test: {target.name} in project.\n\tAvailable tests:\n\t\t{list(self.tests.keys())}"
+                )
 
         tests = utils.default_value(targets, self.test_targets())
         profile_names = utils.default_value(profile_names, self.all_profile_names())
@@ -493,7 +566,10 @@ class Project(object):
             G_LOGGER.log(f"\nRunning test: {test}, for profile: {prof_name}", colors=[Color.BOLD, Color.GREEN])
             status = self._run_linked_node(test[prof_name])
             if status.returncode:
-                G_LOGGER.log(f"\nFAILED {test}, for profile: {prof_name}:\n{test[prof_name].path}", colors=[Color.BOLD, Color.RED])
+                G_LOGGER.log(
+                    f"\nFAILED {test}, for profile: {prof_name}:\n{test[prof_name].path}",
+                    colors=[Color.BOLD, Color.RED],
+                )
                 test_results[prof_name].failed += 1
                 failed_targets[prof_name].add(test[prof_name].name)
             else:
@@ -515,8 +591,10 @@ class Project(object):
                 if result.passed:
                     G_LOGGER.log(f"\tPASSED {plural('test', result.passed)}", colors=[Color.BOLD, Color.GREEN])
                 if result.failed:
-                    G_LOGGER.log(f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}", colors=[Color.BOLD, Color.RED])
-
+                    G_LOGGER.log(
+                        f"\tFAILED {plural('test', result.failed)}: {failed_targets[prof_name]}",
+                        colors=[Color.BOLD, Color.RED],
+                    )
 
     def install_targets(self) -> List[ProjectTarget]:
         """
@@ -526,22 +604,22 @@ class Project(object):
         """
         return [target for target in self.all_targets() if not target.internal]
 
-
     def install_profile(self) -> str:
         """
         Returns the name of the profile for which this project will install targets.
         """
         return "release"
 
-
-    def install(self,
-        targets: List[ProjectTarget]=None,
-        profile_names: List[str]=None,
-        headers: List[str]=None,
-        header_install_path: str=paths.default_header_install_path(),
-        library_install_path: str=paths.default_library_install_path(),
-        executable_install_path: str=paths.default_executable_install_path(),
-        dry_run: bool=True):
+    def install(
+        self,
+        targets: List[ProjectTarget] = None,
+        profile_names: List[str] = None,
+        headers: List[str] = None,
+        header_install_path: str = paths.default_header_install_path(),
+        library_install_path: str = paths.default_library_install_path(),
+        executable_install_path: str = paths.default_executable_install_path(),
+        dry_run: bool = True,
+    ):
         """
         Install the specified targets for the specified profiles.
 
@@ -585,15 +663,16 @@ class Project(object):
         for header in headers:
             install_header(header)
 
-
-    def uninstall(self,
-        targets: List[ProjectTarget]=None,
-        profile_names: List[str]=None,
-        headers: List[str]=None,
-        header_install_path: str=paths.default_header_install_path(),
-        library_install_path: str=paths.default_library_install_path(),
-        executable_install_path: str=paths.default_executable_install_path(),
-        dry_run: bool=True):
+    def uninstall(
+        self,
+        targets: List[ProjectTarget] = None,
+        profile_names: List[str] = None,
+        headers: List[str] = None,
+        header_install_path: str = paths.default_header_install_path(),
+        library_install_path: str = paths.default_library_install_path(),
+        executable_install_path: str = paths.default_executable_install_path(),
+        dry_run: bool = True,
+    ):
         """
         Uninstall the specified targets for the specified profiles.
 
@@ -637,8 +716,7 @@ class Project(object):
         for header in headers:
             uninstall_header(header)
 
-
-    def clean(self, nuke: bool=False, dry_run: bool=True):
+    def clean(self, nuke: bool = False, dry_run: bool = True):
         """
         Removes build directories and project artifacts.
 
@@ -651,7 +729,9 @@ class Project(object):
             G_LOGGER.warning(f"Clean dry-run, will not remove files.")
 
         # By default, cleans all targets for all profiles.
-        to_remove = [self.profiles[prof_name].build_dir for prof_name in self.all_profile_names()] + [self.common_build_dir]
+        to_remove = [self.profiles[prof_name].build_dir for prof_name in self.all_profile_names()] + [
+            self.common_build_dir
+        ]
         G_LOGGER.info(f"Cleaning targets for profiles: {self.all_profile_names()}")
         if nuke:
             # The nuclear option

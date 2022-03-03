@@ -1,6 +1,6 @@
 __pycache__
 *.py[ocd]
-*/build/*
+build/
 dist/
 SBuildr.egg-info/
 .pytest_cache/

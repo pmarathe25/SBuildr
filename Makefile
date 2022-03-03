@@ -17,7 +17,7 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 test:
-	export PYTHONPATH=$(CURDIR); python3 -m pytest tests/
+	export PYTHONPATH=$(CURDIR); python3 -m pytest tests/ -v
 	# TODO: Move these into separate tests.
 	export PYTHONPATH=$(CURDIR); bin/sbuildr -p examples/minimal_project/build/project.sbuildr configure -b examples/minimal_project/build.py -vv && \
 		bin/sbuildr -p examples/minimal_project/build/project.sbuildr build -vv && \
@@ -27,12 +27,12 @@ test:
 		bin/sbuildr -p examples/single_dependency/build/project.sbuildr build -vv && \
 		bin/sbuildr -p examples/single_dependency/build/project.sbuildr test -vv && \
 		bin/sbuildr -p examples/single_dependency/build/project.sbuildr clean --nuke --force; \
-		rm -r ~/.sbuildr/*/minimal_project*
+		rm -rf ~/.sbuildr/*/minimal_project*
 	export PYTHONPATH=$(CURDIR); bin/sbuildr -p examples/nested_dependency/build/project.sbuildr configure -b examples/nested_dependency/build.py -vv && \
 		bin/sbuildr -p examples/nested_dependency/build/project.sbuildr build -vv && \
 		bin/sbuildr -p examples/nested_dependency/build/project.sbuildr test -vv && \
 		bin/sbuildr -p examples/nested_dependency/build/project.sbuildr clean --nuke --force; \
-		rm -r ~/.sbuildr/*/minimal_project* ~/.sbuildr/*/single_dependency*
+		rm -rf ~/.sbuildr/*/minimal_project* ~/.sbuildr/*/single_dependency*
 
 clean:
 	-rm -r $(CURDIR)/build/ $(CURDIR)/dist/ $(CURDIR)/SBuildr.egg-info

@@ -1,12 +1,11 @@
 from sbuildr.dependencies.fetcher import DependencyFetcher
-from sbuildr.logger import G_LOGGER
 
-import filecmp
 import shutil
 import os
 
+
 class CopyFetcher(DependencyFetcher):
-    def __init__(self, path: str, version: str=""):
+    def __init__(self, path: str, version: str = ""):
         """
         A dependency fetcher that copies source code from the specified path.
 
@@ -17,12 +16,10 @@ class CopyFetcher(DependencyFetcher):
         self.version_tag = version
         super().__init__(os.path.basename(self.path))
 
-
     def fetch(self) -> str:
         super().fetch()
         shutil.rmtree(self.dest_dir, ignore_errors=True)
         return shutil.copytree(self.path, self.dest_dir)
-
 
     def version(self) -> str:
         super().version()

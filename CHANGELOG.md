@@ -1,9 +1,10 @@
 # SBuildr Changelog
 Dates are in YYYY-MM-DD format.
 
-## vNext ()
+## v0.6.3 (2022-03-03)
 - Reduces logging output for builds.
 - Changes `clean` behavior - will now always remove the common build directory, including artifacts for all profiles.
+- Fixes a bug that would occur when `LD_LIBRARY_PATH` was not set.
 
 ## v0.6.2 (2020-01-10)
 - `Dependency` will now create destination directories for fetchers if they do not exist.

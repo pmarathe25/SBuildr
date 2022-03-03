@@ -56,7 +56,7 @@ project.interfaces(["math.hpp"])
 test = project.test("test", sources=["test.cpp"], libs=["stdc++", libmath])
 
 # Enable this script to be used interactively on the command-line
-sbuildr.cli(project)
+project.export()
 ```
 
 The call to the `cli()` function allows us to use the script to build interactively in a shell.

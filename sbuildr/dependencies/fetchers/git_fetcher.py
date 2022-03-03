@@ -8,7 +8,7 @@ import os
 # TODO: Support local repos (they should be copied to the destination instead of downloaded)
 # TODO: Support better options for version, like >, <, == etc.
 class GitFetcher(DependencyFetcher):
-    def __init__(self, url, commit: str=None, tag: str=None, branch: str="master"):
+    def __init__(self, url, commit: str = None, tag: str = None, branch: str = "master"):
         """
         A dependency fetcher that fetches git repositories.
 
@@ -20,26 +20,28 @@ class GitFetcher(DependencyFetcher):
         self.branch = branch
         super().__init__(os.path.splitext(os.path.basename(self.url))[0])
 
-
     def fetch(self) -> str:
         super().fetch()
-        init_status = subprocess.run(["git", "init"], cwd=self.dest_dir, capture_output=True)
+        subprocess.run(["git", "init"], cwd=self.dest_dir, capture_output=True)
 
         # Stash any local changes made by external sources
         G_LOGGER.info(f"Stashing changes in {self.dest_dir}")
-        stash_status = subprocess.run(["git", "stash"], capture_output=False, cwd=self.dest_dir)
+        subprocess.run(["git", "stash"], capture_output=False, cwd=self.dest_dir)
 
         checkout = self.commit or self.tag or self.branch
         G_LOGGER.info(f"Pulling: {self.url} at {checkout} into {self.dest_dir}")
         # # TODO: Error checking here? Pull may fail if this is a local repo.
-        pull_status = subprocess.run(["git", "pull", "--force", "--recurse-submodules", "--tags", self.url, checkout], capture_output=False, cwd=self.dest_dir)
+        subprocess.run(
+            ["git", "pull", "--force", "--recurse-submodules", "--tags", self.url, checkout],
+            capture_output=False,
+            cwd=self.dest_dir,
+        )
 
         G_LOGGER.info(f"Checking out: {checkout}")
         checkout_status = subprocess.run(["git", "checkout", checkout], capture_output=True, cwd=self.dest_dir)
         if checkout_status.returncode:
             G_LOGGER.critical(f"Failed to checkout {checkout} with:\n{utils.subprocess_output(checkout_status)}")
         return self.dest_dir
-
 
     def version(self) -> str:
         super().version()
